@@ -5,7 +5,7 @@ services:
     env: node
     plan: free
     rootDir: .
-    buildCommand: buildCommand: npx pnpm@10.13.1 install --frozen-lockfile && npx pnpm@10.13.1 --filter @eurohouse/api build
+    buildCommand: npx pnpm@10.13.1 install --frozen-lockfile && npx pnpm@10.13.1 --filter @eurohouse/api build
     startCommand: npx pnpm@10.13.1 --filter @eurohouse/api start
     healthCheckPath: /api/health
     envVars:
