@@ -5,8 +5,8 @@ services:
     env: node
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @eurohouse/api build
-    startCommand: pnpm --filter @eurohouse/api start
+    buildCommand: buildCommand: npx pnpm@10.13.1 install --frozen-lockfile && npx pnpm@10.13.1 --filter @eurohouse/api build
+    startCommand: npx pnpm@10.13.1 --filter @eurohouse/api start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
