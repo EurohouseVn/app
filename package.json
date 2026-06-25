@@ -1,0 +1,29 @@
+{
+  "name": "eurohouse-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Eurohouse mobile, admin and API monorepo",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @eurohouse/mobile --filter @eurohouse/admin --filter @eurohouse/api dev",
+    "dev:mobile": "pnpm --filter @eurohouse/mobile dev",
+    "dev:admin": "pnpm --filter @eurohouse/admin dev",
+    "dev:api": "pnpm --filter @eurohouse/api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "eslint": "^9.30.0",
+    "eslint-config-prettier": "^10.1.5",
+    "husky": "^9.1.7",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0"
+  }
+}

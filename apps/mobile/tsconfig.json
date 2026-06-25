@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["react", "react-native"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@eurohouse/ui": ["../../packages/ui/src/index.ts"],
+      "@eurohouse/types": ["../../packages/types/src/index.ts"]
+    }
+  },
+  "include": ["app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx", "expo-env.d.ts"]
+}

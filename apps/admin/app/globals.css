@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --brand-orange: #FDA720;
+  --brand-red: #FC0000;
+  --brand-black: #151110;
+  --brand-grey: #A9A9A9;
+  --brand-white: #FFFFFF;
+  --brand-orange-soft: #FFF3DF;
+  --success: #1E8E3E;
+  --warning: #F4B400;
+  --danger: #FC0000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--brand-white);
+  color: var(--brand-black);
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
