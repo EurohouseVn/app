@@ -2,5 +2,4 @@
   "version": 2,
   "installCommand": "corepack enable && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @eurohouse/admin build",
-  "outputDirectory": "apps/admin/.next"
 }
