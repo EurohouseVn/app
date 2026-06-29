@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 function getCorsOrigins() {
@@ -11,16 +13,16 @@ function getCorsOrigins() {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-  origin: [
-    'https://app-admin-flame.vercel.app',
-    'https://app-admin-45xyvhamj-eurohouse.vercel.app',
-  ],
-  credentials: true,
-});
+    origin: getCorsOrigins(),
+    credentials: true,
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Phục vụ ảnh tĩnh (poster khuyến mãi, thư viện) tại /static
+  app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/static/' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, '0.0.0.0');

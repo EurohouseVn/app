@@ -1,0 +1,113 @@
+R1 | C1=CÔNG TY CỔ PHẦN EUROHOUSE VIỆT
+R2 | C1=Số 374 Đường Nguyễn Thiện Thuậ
+R3 | C1=ĐT:  0221 3900 899
+R4 | C1=Email: vneurohouse@gmail.com
+R7 | C1=PHIẾU XUẤT KHO
+R8 | C1=Ngày 24 tháng 02 năm 2026
+R10 | C1=Mã khách hàng: | C3=VCBEURPPNAMANHHD | C12=Số phiếu:  | C15=PXK2026/287
+R11 | C1=Tên khách hàng: | C3=HỘ KINH DOANH NAM ANH HD | C12=Số hóa đơn:  | C15=00000
+R12 | C1=Địa chỉ: | C3=46 Phạm Thị Trân, KĐT Thái Hà, | C12=Số đơn đặt hàng 
+R13 | C1=Điện thoại: | C3=0981191202
+R14 | C1=Mã số thuế:  | C3=#REF!
+R16 | C1=STT | C2=Tên hàng | C4=Mã VT | C5=Tên mô tả | C12=ĐVT | C13=Tỷ trọng | C15=Thực tế
+R17 | C1=1 | C2=Thanh nhôm sơn tĩnh điện | C4=2C | C5=XÁM NGỌC TRAI | C12=Kg
+R18 | C1=2 | C2=Thanh nhôm sơn tĩnh điện | C4=3C | C5=EPLUS XÁM NGỌC TRAI | C12=Kg
+R19 | C1=3 | C2=Thanh nhôm sơn tĩnh điện | C4=1A | C5=CAFÉ | C12=Kg
+R20 | C1=4 | C2=Thanh nhôm sơn tĩnh điện | C4=2A | C5=CAFÉ METALIC | C12=Kg
+R21 | C1=TỔNG | C15=0
+R23 | C1=STT | C2=Mã VT | C3=Tên mô tả | C4=Tỷ trọng kg/m | C5=Quy cách cây/bó | C6=Số lượng (bó) | C17=Tổng (thanh)
+R24 | C6=Xám nt | C7=eplus xám nt | C8=café | C9=café metalic
+R26 | C1=1 | C2=LH5110 | C3=Khung cửa đi và cửa sổ hệ 55 V | C4=1.368 | C5=2 | C17=0
+R27 | C1=2 | C2=LH11801 | C3=Cánh cửa đi bản rộng | C4=1.369 | C5=2 | C17=0
+R28 | C1=3 | C2=DATD91 | C3=Đố cánh cửa bản rộng | C4=1.061 | C5=4 | C17=0
+R29 | C1=4 | C2=DAK55 | C3=Khung cửa đi và cửa sổ | C4=0.804 | C5=4 | C17=0
+R30 | C1=5 | C2=DAD91 | C3=Cánh cửa đi  | C4=1.098 | C5=4 | C17=0
+R31 | C1=6 | C2=DAS76 | C3=Cánh cửa sổ | C4=0.901 | C5=4 | C17=0
+R32 | C1=7 | C2=DAT55 | C3=Đố khung | C4=0.941 | C5=4 | C17=0
+R33 | C1=8 | C2=DATD76 | C3=Đố cánh | C4=0.997 | C5=4 | C17=0
+R34 | C1=9 | C2=DD55 | C3=Đố động  | C4=0.658 | C5=4 | C17=0
+R35 | C1=10 | C2=DAS14 | C3=Nep vách | C4=0.217 | C5=10 | C17=0
+R36 | C1=11 | C2=DA3002 | C3=Pano | C4=0.484 | C5=10 | C17=0
+R37 | C1=12 | C2=CN 55 | C3=Sập chân cánh | C4=0.233 | C5=10 | C17=0
+R38 | C1=13 | C2=PR5542 | C3=Khung cửa trượt | C4=0.78 | C5=4 | C17=0
+R39 | C1=14 | C2=PR2966 | C3=Cánh cửa trượt | C4=0.681 | C5=4 | C17=0
+R40 | C1=15 | C2=PR55M | C3=Nẹp móc cửa trượt | C4=0.341 | C5=10 | C17=0
+R41 | C1=16 | C2=PR5512 | C3=Ray mỏng cửa lùa | C4=0.552 | C5=5 | C17=0
+R42 | C1=17 | C2=PR2990 | C3=Cánh cửa trượt 90 | C4=0.954 | C5=4 | C17=0
+R43 | C1=18 | C2=PR55M90 | C3=Nẹp móc cửa trượt | C4=0.341 | C5=10 | C17=0
+R44 | C1=19 | C2=PR55N | C3=Nẹp sập cửa bốn cánh | C4=0.258 | C5=10 | C17=0
+R45 | C1=20 | C2=C3300 | C3=Xập ghép khung | C4=0.348 | C5=10 | C17=0
+R46 | C1=21 | C2=C3326 | C3=Chuyển góc 90 độ | C4=1.051 | C5=4 | C17=0
+R47 | C1=22 | C2=C459 | C3=Thanh trượt đa điểm | C4=0.137 | C5=10 | C17=0
+R48 | C1=23 | C2=CN55 | C3=Sập chân cánh | C4=0.233 | C5=10 | C17=0
+R49 | C1=24 | C2=E1283A | C3=Khung chớp | C4=0.29 | C5=10 | C17=0
+R50 | C1=25 | C2=E192 | C3=Lá chớp | C4=0.317 | C5=10 | C17=0
+R51 | C1=26 | C2=KHK65 | C3=Khung phào mở quay ngoài | C4=1.12 | C5=2 | C17=0
+R52 | C1=27 | C2=PRK55 | C3=Khung cửa đi và cửa sổ 55 | C4=0.664 | C5=4 | C17=0
+R53 | C1=28 | C2=PRK50 | C3=Khung cửa đi và cửa sổ  | C4=0.664 | C5=4 | C17=0
+R54 | C1=29 | C2=PRD91 | C3=Cánh cửa đi | C4=0.8645 | C5=4 | C17=0
+R55 | C1=30 | C2=PRS76 | C3=Cánh của sổ | C4=0.7440000000000001 | C5=4 | C17=0
+R56 | C1=31 | C2=PRD86 | C3=Cánh cửa đi | C4=0.857 | C5=4 | C17=0
+R57 | C1=32 | C2=PRS68 | C3=Cánh cửa sổ | C4=0.772 | C5=4 | C17=0
+R58 | C1=33 | C2=EPV55 | C3=Phào viền vát cạnh mới | C4=0.637 | C5=5 | C17=0
+R59 | C1=34 | C2=KTL 01 | C3=CÁNH 180 5.2 | C4=3.06 | C5=1 | C17=0
+R60 | C1=35 | C2=KTL 01 | C3=CÁNH 180 5.8m | C4=3.06 | C5=1 | C17=0
+R61 | C1=36 | C2=KTL 01 | C3=CÁNH 180 6m | C4=3.06 | C5=1 | C17=0
+R62 | C1=37 | C2=KTL 03 | C3=NẸP KÍNH HỘP | C4=0.23 | C5=10 | C17=0
+R63 | C1=38 | C2=KTL 07 | C3=NẸP KÍNH VUÔNG | C4=0.364 | C5=10 | C17=0
+R64 | C1=39 | C2=KTL 04 | C3=NẸP KÍNH TRÒN | C4=0.364 | C5=10 | C17=0
+R65 | C1=40 | C2=KTL 05 | C3=KHUNG 200 | C4=2.9 | C5=1 | C17=0
+R66 | C1=41 | C2=KTL 06 | C3=ĐẾ SẬP | C4=0.377 | C5=10 | C17=0
+R67 | C1=42 | C2=D1409 | C3=Sập vách kính hộp | C4=0.377 | C5=10 | C17=0
+R68 | C1=43 | C2=C101 | C3=SẬP VÁCH KÍNH  | C4=0.133 | C5=10 | C17=0
+R69 | C1=44 | C2=TL03 | C3=Khung thủy lực nhỏ | C4=1.858 | C5=1 | C17=0
+R70 | C1=45 | C2=H50*150 | C3=Hộp 50*150 | C4=2.134 | C5=1 | C17=0
+R71 | C1=46 | C2=KTL08 | C3=Sập cánh kính hộp vuông | C4=0.301 | C5=10 | C17=0
+R72 | C1=47 | C2=KTL09 | C3=Đế sập kính hộp | C4=0.417 | C5=10 | C17=0
+R73 | C1=48 | C2=KH01 | C3=Phào nóc | C4=0.720387 | C5=4 | C17=0
+R74 | C1=49 | C2=KH02 | C3=Cánh | C4=0.638 | C5=5 | C17=0
+R75 | C1=50 | C2=KH03 | C3=Pano phẳng 16 | C4=0.754758 | C5=5 | C17=0
+R76 | C1=51 | C2=KH04 | C3=Cột sau | C4=0.31211865 | C5=5 | C17=0
+R77 | C1=52 | C2=KH05 | C3=khung vách | C4=0.35082234 | C5=5 | C17=0
+R78 | C1=53 | C2=KH06 | C3=Cột trước | C4=0.8165245499999999 | C5=4 | C17=0
+R79 | C1=54 | C2=KH07 | C3=đố chia vách | C4=0.21887658 | C5=10 | C17=0
+R80 | C1=55 | C2=KH08 | C3=lá chớp  | C4=0.421767 | C5=5 | C17=0
+R81 | C1=56 | C2=KH09 | C3=u16 | C4=0.130248 | C5=10 | C17=0
+R82 | C1=57 | C2=KH10 | C3=thanh ngang | C4=0.497448 | C5=5 | C17=0
+R83 | C1=58 | C2=KH11 | C3=cây ngăn kéo | C4=0.20514788999999997 | C5=10 | C17=0
+R84 | C1=59 | C2=KH12 | C3=phào nhỏ | C4=0.30336228 | C5=10 | C17=0
+R85 | C1=60 | C2=KH13 | C3=cột trước nhỏ | C4=0.4841397 | C5=5 | C17=0
+R86 | C1=61 | C2=KH14 | C3=U8 | C4=0.146 | C5=10 | C17=0
+R87 | C1=62 | C2=DA3002 | C3=Pano cánh 100 | C4=0.484 | C5=5 | C17=0
+R88 | C1=63 | C2=KH16 | C3=Nan trang trí | C4=0.258 | C5=20 | C17=0
+R89 | C1=64 | C2=KH17 | C3=Cánh nhỏ | C4=0.502 | C5=5 | C17=0
+R90 | C1=65 | C2=E70-KA | C3=ÁO KHUNG | C4=0.28 | C5=10 | C17=0
+R91 | C1=66 | C2=E70KT | C3=Khung thấp E70 | C4=0.72 | C5=5 | C17=0
+R92 | C1=67 | C2=E70KD | C3=Khung đơn | C4=1.214 | C5=4 | C17=0
+R93 | C1=68 | C2=E701A | C3=Khung liền phào | C4=1.385 | C5=2 | C17=0
+R94 | C1=69 | C2=E702 | C3=NẸP PHẲNG | C4=0.096 | C5=10 | C17=0
+R95 | C1=70 | C2=E70D110 | C3=CÁNH CỬA ĐI 110 | C4=1.963 | C5=2 | C17=0
+R96 | C1=71 | C2=E70S86 | C3=Cánh cửa sổ E70 | C4=1.515 | C5=2 | C17=0
+R97 | C1=72 | C2=E70T98 | C3=ĐỐ KHUNG | C4=1.498 | C5=2 | C17=0
+R98 | C1=73 | C2=E704 | C3=Đố chia khung | C4=1.188 | C5=4 | C17=0
+R99 | C1=74 | C2=E705 | C3=ĐỐ ĐỘNG | C4=1.045 | C5=4 | C17=0
+R100 | C1=75 | C2=E706 | C3=NẸP CHÂN CÁNH  | C4=0.34 | C5=10 | C17=0
+R101 | C1=76 | C2=E707 | C3=CÁNH CỬA SỔ | C4=1.692 | C5=2 | C17=0
+R102 | C1=77 | C2=E703 | C3=CÁNH CỬA ĐI | C4=2.152 | C5=2 | C17=0
+R103 | C1=78 | C2=E70D150 | C3=CÁNH 150 | C4=2.393 | C5=1 | C17=0
+R104 | C1=79 | C2=E70D190 | C3=CÁNH 190 | C4=2.91 | C5=1 | C17=0
+R105 | C1=80 | C2=E70NK | C3=Nối khung | C4=0.373 | C5=10 | C17=0
+R106 | C1=81 | C2=E70SH | C3=Sập kính thường | C4=0.266 | C5=10 | C17=0
+R107 | C1=82 | C2=T9809 | C3=Sập kính hộp | C4=0.214 | C5=10 | C17=0
+R108 | C1=83 | C2=C3296 | C3=Sập kính | C4=0.237 | C5=10 | C17=0
+R109 | C1=84 | C2=C3225 | C3=Sập kính hộp | C4=0.211 | C5=10 | C17=0
+R110 | C1=85 | C2=T9801 | C3=Cánh trượt | C4=1.3991400000000003 | C5=2 | C17=0
+R111 | C1=86 | C2=T9802 | C3=Khung trượt | C4=1.3991400000000003 | C5=2 | C17=0
+R112 | C1=87 | C2=T9803 | C3=Ray dưới | C4=0.713529 | C5=4 | C17=0
+R113 | C1=88 | C2=T9804 | C3=Khung đơn | C4=0.653481 | C5=4 | C17=0
+R114 | C1=89 | C2=T9805 | C3=Ray đơn | C4=0.43964100000000006 | C5=6 | C17=0
+R115 | C1=90 | C2=T9806 | C3=Sập đối đầu | C4=0.2785455 | C5=10 | C17=0
+R116 | C1=91 | C2=T9807 | C3=Sập U | C4=0.19560419999999998 | C5=10 | C17=0
+R117 | C1=92 | C2=T9808 | C3=Nẹp móc liền tay nắm | C4=1.030914 | C5=2 | C17=0
+R118 | C1=93 | C2=T9809 | C3=Nẹp kính  | C4=0.214326 | C5=10 | C17=0
+R119 | C1=94 | C2=T9810 | C3=Nẹp kính hộp | C4=0.17995500000000003 | C5=20 | C17=0

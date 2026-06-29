@@ -1,5 +1,7 @@
 export const colors = {
   brandOrange: '#FDA720',
+  // Cam đậm hơn dùng cho CHỮ/nhãn để nổi bật trên nền trắng (đủ tương phản).
+  brandOrangeText: '#E8780C',
   brandRed: '#FC0000',
   brandBlack: '#151110',
   brandGrey: '#A9A9A9',

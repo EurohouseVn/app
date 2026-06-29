@@ -1,92 +1,150 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
-import type { CuttingListItem } from '@eurohouse/types';
+import { AppHeader } from '../src/components/AppHeader';
+import { Icon, type IconName } from '../src/components/Icon';
 
-const steps = ['Hệ nhôm', 'Kích thước', 'Bảng cắt', 'Phụ kiện', 'Tổng tiền'];
+const doorTypes: { id: string; label: string; icon: IconName }[] = [
+  { id: 'mo-quay-2', label: 'Mở quay 2 cánh', icon: 'square' },
+  { id: 'mat-tien', label: 'Mặt tiền thủy lực', icon: 'columns' },
+  { id: 'mo-quay-4', label: 'Mở quay 4 cánh', icon: 'grid' },
+  { id: 'truot', label: 'Cửa trượt', icon: 'sidebar' },
+  { id: 'truot-quay', label: 'Trượt quay', icon: 'repeat' },
+  { id: 'cua-so', label: 'Cửa sổ', icon: 'maximize-2' },
+];
 
-const sampleItems: CuttingListItem[] = [
-  { profileCode: 'XF55-K', profileName: 'Khung bao Xingfa 55', lengthMm: 1950, quantity: 2, cutAngle: '45°' },
-  { profileCode: 'XF55-C', profileName: 'Cánh mở quay', lengthMm: 2150, quantity: 4, cutAngle: '45°' },
-  { profileCode: 'XF55-D', profileName: 'Đố giữa', lengthMm: 900, quantity: 1, cutAngle: '90°' },
+const cutItems = [
+  { label: 'Khung trên/dưới', value: '1150mm × 4' },
+  { label: 'Khung trái/phải', value: '2150mm × 4' },
+  { label: 'Cánh đứng', value: '2050mm × 8' },
+  { label: 'Cánh ngang', value: '520mm × 8' },
+  { label: 'Nẹp kính', value: 'tự tính ×16' },
+];
+
+const priceRows = [
+  { label: 'Nhôm (đ/kg)', value: '92.000' },
+  { label: 'Kính (đ/m²)', value: '320.000' },
+  { label: 'Bản lề', value: '4 × 85.000' },
+  { label: 'Khóa', value: '1 × 450.000' },
+  { label: 'Ke góc / gioăng', value: '180.000' },
 ];
 
 export default function QuoteScreen() {
-  const [width, setWidth] = useState('1200');
-  const [height, setHeight] = useState('2200');
-  const [quantity, setQuantity] = useState('1');
-  const totalKg = useMemo(() => Number(quantity || 1) * 42.6, [quantity]);
+  const [step, setStep] = useState(0);
+  const [doorType, setDoorType] = useState('mo-quay-2');
+
+  const stepTitle = useMemo(() => ['Chọn loại cửa', 'Bảng cắt tự động', 'Báo giá & đơn giá'][step], [step]);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Tính & Báo giá</Text>
-      <Text style={styles.subtitle}>Skeleton wizard. Công thức cắt sẽ lấy từ API, không hard-code trong mobile.</Text>
-
-      <View style={styles.progress}>
-        {steps.map((step, index) => (
-          <View key={step} style={[styles.step, index === 0 && styles.stepActive]}>
-            <Text style={[styles.stepText, index === 0 && styles.stepTextActive]}>{index + 1}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>1. Chọn hệ nhôm / loại cửa</Text>
-        <Text style={styles.pill}>Xingfa 55 · Cửa mở quay 2 cánh</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>2. Nhập kích thước</Text>
-        <View style={styles.inputRow}>
-          <TextInput value={width} onChangeText={setWidth} keyboardType="numeric" style={styles.input} />
-          <TextInput value={height} onChangeText={setHeight} keyboardType="numeric" style={styles.input} />
-          <TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={styles.input} />
+    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
+      <AppHeader title="Công thức cắt" subtitle={stepTitle} />
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.stepBar}>
+          {[0, 1, 2].map((index) => (
+            <View key={index} style={[styles.stepDot, { backgroundColor: index <= step ? colors.brandOrange : '#E4E6EA' }]} />
+          ))}
         </View>
-        <Text style={styles.hint}>Rộng × Cao × Số bộ, đơn vị mm.</Text>
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>3. Bảng cắt mẫu</Text>
-        {sampleItems.map((item) => (
-          <View key={item.profileCode} style={styles.itemRow}>
-            <View>
-              <Text style={styles.itemName}>{item.profileName}</Text>
-              <Text style={styles.itemMeta}>{item.profileCode} · {item.cutAngle}</Text>
+        {step === 0 ? (
+          <>
+            <Text style={styles.label}>Chọn loại cửa · Hệ Xingfa 55</Text>
+            <View style={styles.grid}>
+              {doorTypes.map((door) => {
+                const active = doorType === door.id;
+                return (
+                  <Pressable key={door.id} onPress={() => setDoorType(door.id)} style={[styles.doorCard, active && styles.doorActive]}>
+                    <View style={[styles.doorIconWrap, active && { backgroundColor: colors.brandOrange }]}>
+                      <Icon name={door.icon} size={24} color={active ? colors.brandBlack : colors.brandOrange} />
+                    </View>
+                    <Text style={styles.doorLabel}>{door.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Text style={styles.itemQty}>{item.lengthMm}mm × {item.quantity}</Text>
-          </View>
-        ))}
-      </View>
+          </>
+        ) : null}
 
-      <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Tổng kg nhôm tạm tính</Text>
-        <Text style={styles.totalValue}>{totalKg.toFixed(1)} kg</Text>
-        <Text style={styles.totalLabel}>API kế tiếp: POST /quotes/calculate</Text>
-      </View>
-    </ScrollView>
+        {step === 1 ? (
+          <View style={styles.panel}>
+            <View style={styles.sizeChip}>
+              <Icon name="maximize" size={14} color={colors.brandBlack} />
+              <Text style={styles.sizeText}>R 1200 × C 2200 mm · 2 bộ</Text>
+            </View>
+            <Text style={styles.panelTitle}>Thanh profile cần cắt</Text>
+            {cutItems.map((item) => (
+              <View key={item.label} style={styles.row}>
+                <Text style={styles.rowLabel}>{item.label}</Text>
+                <Text style={styles.rowValue}>{item.value}</Text>
+              </View>
+            ))}
+            <View style={styles.totalBox}>
+              <Text style={styles.totalCaption}>TỔNG NHÔM CẦN THIẾT</Text>
+              <Text style={styles.totalValue}>38,6 kg</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {step === 2 ? (
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Nhập đơn giá</Text>
+            {priceRows.map((item) => (
+              <View key={item.label} style={styles.row}>
+                <Text style={styles.rowLabel}>{item.label}</Text>
+                <Text style={styles.rowValue}>{item.value}</Text>
+              </View>
+            ))}
+            <View style={styles.totalBox}>
+              <Text style={styles.totalCaption}>TỔNG BÁO GIÁ · 2 BỘ</Text>
+              <Text style={styles.totalValue}>12.480.000đ</Text>
+            </View>
+            <View style={styles.actionRow}>
+              <Pressable style={styles.darkButton}><Icon name="save" size={16} color={colors.white} /><Text style={styles.darkButtonText}>Lưu</Text></Pressable>
+              <Pressable style={styles.orangeButton}><Icon name="file-text" size={16} color={colors.brandBlack} /><Text style={styles.orangeButtonText}>Xuất PDF</Text></Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        <View style={styles.navRow}>
+          {step > 0 ? (
+            <Pressable style={styles.backButton} onPress={() => setStep((value) => value - 1)}><Icon name="arrow-left" size={16} color={colors.brandOrange} /><Text style={styles.backText}>Quay lại</Text></Pressable>
+          ) : <View style={{ flex: 1 }} />}
+          {step < 2 ? (
+            <Pressable style={styles.nextButton} onPress={() => setStep((value) => value + 1)}><Text style={styles.nextText}>Tiếp tục</Text><Icon name="arrow-right" size={16} color={colors.brandBlack} /></Pressable>
+          ) : null}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 40, backgroundColor: colors.white },
-  title: { color: colors.brandBlack, fontSize: 30, fontWeight: '900' },
-  subtitle: { color: colors.brandGrey, marginTop: 8, lineHeight: 22 },
-  progress: { flexDirection: 'row', gap: 8, marginVertical: 20 },
-  step: { width: 42, height: 8, borderRadius: 999, backgroundColor: colors.orangeSoft },
-  stepActive: { backgroundColor: colors.brandOrange },
-  stepText: { display: 'none' },
-  stepTextActive: { display: 'none' },
-  card: { borderColor: colors.orangeSoft, borderWidth: 2, borderRadius: 20, padding: 16, marginBottom: 14 },
-  cardTitle: { color: colors.brandBlack, fontSize: 17, fontWeight: '900', marginBottom: 12 },
-  pill: { alignSelf: 'flex-start', backgroundColor: colors.orangeSoft, color: colors.brandBlack, fontWeight: '800', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, overflow: 'hidden' },
-  inputRow: { flexDirection: 'row', gap: 8 },
-  input: { flex: 1, borderColor: colors.brandGrey, borderWidth: 1, borderRadius: 14, padding: 12, fontSize: 16, textAlign: 'center' },
-  hint: { color: colors.brandGrey, marginTop: 10 },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomColor: colors.orangeSoft, borderBottomWidth: 1, paddingVertical: 10, gap: 12 },
-  itemName: { color: colors.brandBlack, fontWeight: '800' },
-  itemMeta: { color: colors.brandGrey, marginTop: 3 },
-  itemQty: { color: colors.brandBlack, fontWeight: '800' },
-  totalCard: { backgroundColor: colors.orangeSoft, borderRadius: 22, padding: 20 },
-  totalLabel: { color: colors.brandBlack, opacity: 0.72, fontWeight: '700' },
-  totalValue: { color: colors.brandBlack, fontSize: 36, fontWeight: '900', marginVertical: 8 },
+  container: { padding: 18, paddingBottom: 110 },
+  stepBar: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  stepDot: { flex: 1, height: 6, borderRadius: 999 },
+  label: { color: colors.brandBlack, fontWeight: '800', fontSize: 16, marginBottom: 14 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  doorCard: { width: '48%', backgroundColor: colors.white, borderRadius: 20, paddingVertical: 22, alignItems: 'center', gap: 10, shadowColor: colors.brandBlack, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  doorActive: { borderWidth: 2, borderColor: colors.brandOrange },
+  doorIconWrap: { width: 52, height: 52, borderRadius: 18, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  doorLabel: { color: colors.brandBlack, fontWeight: '700', fontSize: 13 },
+  panel: { backgroundColor: colors.white, borderRadius: 20, padding: 18, shadowColor: colors.brandBlack, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  sizeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.orangeSoft, borderRadius: 14, padding: 12, marginBottom: 14 },
+  sizeText: { color: colors.brandBlack, fontWeight: '700' },
+  panelTitle: { color: colors.brandBlack, fontWeight: '900', fontSize: 16, marginBottom: 10 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomColor: '#EEF0F3', borderBottomWidth: 1 },
+  rowLabel: { color: colors.brandBlack, fontWeight: '600' },
+  rowValue: { color: colors.brandGrey, fontWeight: '700' },
+  totalBox: { backgroundColor: colors.brandOrange, borderRadius: 18, padding: 16, alignItems: 'center', marginTop: 16 },
+  totalCaption: { color: colors.brandBlack, fontWeight: '700', fontSize: 12, opacity: 0.8 },
+  totalValue: { color: colors.brandBlack, fontWeight: '900', fontSize: 26, marginTop: 4 },
+  actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  darkButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandBlack, borderRadius: 14, paddingVertical: 14 },
+  darkButtonText: { color: colors.white, fontWeight: '800' },
+  orangeButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
+  orangeButtonText: { color: colors.brandBlack, fontWeight: '800' },
+  navRow: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  backButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, borderColor: colors.brandOrange, borderWidth: 1.5, borderRadius: 999, paddingVertical: 14 },
+  backText: { color: colors.brandOrange, fontWeight: '800' },
+  nextButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, backgroundColor: colors.brandOrange, borderRadius: 999, paddingVertical: 14 },
+  nextText: { color: colors.brandBlack, fontWeight: '900' },
 });

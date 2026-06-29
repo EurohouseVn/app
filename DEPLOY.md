@@ -11,10 +11,11 @@ Anh sẽ có 2 đường link:
 2. **Web Admin trên Vercel**
    - Ví dụ: `https://eurohouse-admin.vercel.app`
 
-Tài khoản demo để đăng nhập Web Admin:
+Tài khoản demo để đăng nhập (mật khẩu chung: `Eurohouse@2026`):
 
-- Email: `board@eurohouse.vn`
-- Mật khẩu: `Eurohouse@2026`
+- Ban lãnh đạo (Admin): `board@eurohouse.vn`
+- Xưởng/Đại lý: `minh@xuong.vn`
+- Nhà phân phối (NPP): `vietanh@npp.vn`
 
 ## 1. Anh cần chuẩn bị gì?
 
@@ -58,10 +59,50 @@ Sau bước này, GitHub phải thấy đầy đủ thư mục:
 
 - `apps/admin`
 - `apps/api`
+- `apps/mobile`
 - `packages/ui`
 - `packages/types`
 - `render.yaml`
 - `vercel.json`
+
+### A3. Nếu gặp lỗi "Permission denied" (403) khi push
+
+Nếu khi `git push` anh thấy lỗi giống thế này:
+
+```text
+remote: Permission to EurohouseVn/app.git denied to VictorLe1982.
+fatal: unable to access 'https://github.com/EurohouseVn/app.git/': The requested URL returned error: 403
+```
+
+Nghĩa là: máy của anh đang đăng nhập GitHub bằng tài khoản (ví dụ `VictorLe1982`) **không có quyền ghi** vào repo đó. Đây là lỗi quyền, không phải lỗi code. Chọn 1 trong 3 cách sau:
+
+**Cách 1 — Đẩy lên repo của chính anh (đơn giản nhất):**
+
+1. Tạo repo mới trên GitHub bằng đúng tài khoản anh đang đăng nhập.
+2. Copy URL repo mới.
+3. Chạy:
+
+```bash
+git remote set-url origin https://github.com/<ten-github-cua-anh>/<ten-repo-moi>.git
+git push -u origin main
+```
+
+**Cách 2 — Xin quyền vào repo EurohouseVn:**
+
+- Nhờ người quản lý tổ chức `EurohouseVn` trên GitHub vào **Settings → Collaborators** và thêm tài khoản của anh với quyền **Write**.
+- Sau đó push lại.
+
+**Cách 3 — Đăng nhập đúng tài khoản có quyền:**
+
+- Mở **Windows Credential Manager** (gõ "Credential Manager" ở thanh tìm kiếm Windows).
+- Vào **Windows Credentials**, tìm mục `git:https://github.com`, xóa nó đi.
+- Push lại, GitHub sẽ hỏi đăng nhập, nhập đúng tài khoản có quyền vào repo.
+
+Kiểm tra remote hiện tại đang trỏ đi đâu:
+
+```bash
+git remote -v
+```
 
 ## 3. Bước B — Deploy API lên Render
 

@@ -5,8 +5,16 @@ services:
     env: node
     plan: free
     rootDir: .
-    buildCommand: npx pnpm@10.13.1 install --frozen-lockfile && npx pnpm@10.13.1 --filter @eurohouse/api build
-    startCommand: npx pnpm@10.13.1 --filter @eurohouse/api start
+    # Prod dùng Postgres: cần đổi provider trong prisma/schema.prisma sang "postgresql"
+    # rồi db push để đồng bộ schema và seed dữ liệu danh mục.
+    buildCommand: >
+      npx pnpm@10.13.1 install --frozen-lockfile &&
+      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma generate &&
+      npx pnpm@10.13.1 --filter @eurohouse/api build
+    startCommand: >
+      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma db push --skip-generate &&
+      npx pnpm@10.13.1 --filter @eurohouse/api exec ts-node prisma/seed.ts &&
+      npx pnpm@10.13.1 --filter @eurohouse/api start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -15,9 +23,7 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-      - key: REDIS_URL
+      - key: DEMO_ADMIN_EMAIL
         sync: false
-      - key: JWT_ACCESS_SECRET
-        sync: false
-      - key: JWT_REFRESH_SECRET
+      - key: DEMO_ADMIN_PASSWORD
         sync: false

@@ -1,9 +1,13 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
+import { EurohouseService } from './eurohouse/eurohouse.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly eurohouse: EurohouseService,
+  ) {}
 
   @Get('health')
   health() {
@@ -17,14 +21,17 @@ export class AppController {
 
   @Post('auth/demo-login')
   demoLogin(@Body() body: { identifier?: string; password?: string }) {
-    return this.appService.demoLogin(
-      body.identifier ?? 'board@eurohouse.vn',
-      body.password ?? 'Eurohouse@2026',
-    );
+    return this.appService.demoLogin(body.identifier ?? 'board@eurohouse.vn', body.password ?? 'Eurohouse@2026');
   }
 
   @Get('admin/dashboard')
-  adminDashboard() {
-    return this.appService.adminDashboard();
+  async adminDashboard() {
+    const orders = await this.eurohouse.listOrders();
+    return this.appService.adminDashboard(orders);
+  }
+
+  @Get('admin/orders')
+  adminOrders() {
+    return this.eurohouse.listOrders();
   }
 }

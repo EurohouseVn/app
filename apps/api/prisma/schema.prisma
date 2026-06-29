@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Tổ chức & người dùng ----------
+
+model Organization {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  type      String // COMPANY | FACTORY | NPP | DEALER
+  phone     String?
+  address   String?
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  displayName    String
+  phone          String?
+  passwordHash   String
+  role           String // ADMIN | STAFF | NPP | DAILY | FACTORY
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  projects       Project[]
+  orders         Order[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// ---------- Danh mục hệ nhôm ----------
+
+model AluSystem {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  description String?
+  sortOrder   Int       @default(0)
+  profiles    Profile[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Profile {
+  id           String      @id @default(cuid())
+  aluSystemId  String
+  aluSystem    AluSystem   @relation(fields: [aluSystemId], references: [id])
+  code         String      @unique
+  name         String
+  thicknessMm  String? // ví dụ "1.0" hoặc "1 - 1.25"
+  kgPerMeter   Float       @default(0)
+  barLengthMm  Int         @default(6000) // chiều dài cây tiêu chuẩn
+  barsPerBundle Int        @default(0) // quy cách bó
+  pricePerKg   Int         @default(0)
+  imageUrl     String? // ảnh mặt cắt
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  orderItems   OrderItem[]
+}
+
+model ColorCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  hex       String? // hiển thị màu
+  createdAt DateTime @default(now())
+}
+
+// ---------- Đơn hàng (đặt hàng theo cây nhôm) ----------
+
+model Order {
+  id              String      @id @default(cuid())
+  code            String      @unique
+  sourceType      String // FACTORY | DEALER | NPP | ADMIN
+  createdById     String?
+  createdBy       User?       @relation(fields: [createdById], references: [id])
+  factoryName     String      @default("")
+  dealerName      String      @default("")
+  nppName         String      @default("")
+  customerName    String      @default("")
+  customerPhone   String      @default("")
+  deliveryAddress String      @default("")
+  colorCode       String      @default("")
+  status          String      @default("NEW")
+  note            String      @default("")
+  totalKg         Float       @default(0)
+  totalAmount     Int         @default(0)
+  dueNote         String      @default("")
+  items           OrderItem[]
+  histories       OrderStatusHistory[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  profileId   String?
+  profile     Profile? @relation(fields: [profileId], references: [id])
+  productCode String
+  productName String
+  colorCode   String   @default("")
+  quantity    Int      @default(0) // số cây
+  unit        String   @default("cây")
+  totalKg     Float    @default(0)
+  unitPrice   Int      @default(0)
+  totalPrice  Int      @default(0)
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  title     String
+  note      String   @default("")
+  actor     String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// ---------- Quản lý công trình & lợi nhuận (App Xưởng) ----------
+
+model Project {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  name          String
+  ownerId       String?
+  owner         User?         @relation(fields: [ownerId], references: [id])
+  customerName  String        @default("")
+  customerPhone String        @default("")
+  address       String        @default("")
+  status        String        @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
+  // Giá nhận với chủ nhà
+  contractValue Int           @default(0)
+  // Chi phí đầu vào
+  costAluminum  Int           @default(0)
+  costAccessory Int           @default(0)
+  costLockHinge Int           @default(0)
+  costGasket    Int           @default(0) // zoăng
+  costSilicone  Int           @default(0)
+  costScrew     Int           @default(0)
+  costGlass     Int           @default(0)
+  costLabor     Int           @default(0)
+  costPartnerPct Float        @default(0) // % chi phí cho đối tác
+  costOther     Int           @default(0)
+  extraRevenue  Int           @default(0) // phát sinh tăng từ khách
+  note          String        @default("")
+  costs         ProjectCost[]
+  debts         Debt[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model ProjectCost {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category  String
+  label     String
+  amount    Int      @default(0)
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model Debt {
+  id          String   @id @default(cuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  type        String // NPP | ACCESSORY | CUSTOMER
+  partnerName String
+  amount      Int      @default(0)
+  paidAmount  Int      @default(0)
+  status      String   @default("OPEN") // OPEN | PARTIAL | PAID
+  bankAccount String   @default("")
+  bankName    String   @default("")
+  note        String   @default("")
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------- Báo giá tự động ----------
+
+model Quotation {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  ownerId       String?
+  customerName  String   @default("")
+  doorType      String   @default("")
+  widthMm       Int      @default(0)
+  heightMm      Int      @default(0)
+  quantity      Int      @default(1)
+  pricePerM2    Int      @default(0)
+  aluPricePerKg Int      @default(0)
+  glassPerM2    Int      @default(0)
+  accessoryCost Int      @default(0)
+  laborCost     Int      @default(0)
+  installCost   Int      @default(0)
+  profitPct     Float    @default(0)
+  depreciation  Int      @default(0)
+  totalAmount   Int      @default(0)
+  payload       String   @default("{}") // JSON chi tiết dòng
+  createdAt     DateTime @default(now())
+}
+
+// ---------- Nội dung từ Web Admin ----------
+
+model Promotion {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String   @default("")
+  imageUrl    String
+  bannerUrl   String   @default("")
+  gallery     String   @default("[]") // JSON danh sách ảnh poster
+  content     String   @default("") // mô tả chi tiết
+  active      Boolean  @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  type      String // IMAGE | KNOWLEDGE | PRODUCT | VIDEO
+  title     String
+  imageUrl  String   @default("")
+  videoUrl  String   @default("")
+  tag       String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model Gift {
+  id        String   @id @default(cuid())
+  name      String
+  points    Int
+  icon      String   @default("")
+  imageUrl  String   @default("")
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+}

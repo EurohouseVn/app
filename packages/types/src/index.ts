@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'STAFF' | 'NPP' | 'DAILY';
+export type UserRole = 'ADMIN' | 'STAFF' | 'NPP' | 'DAILY' | 'FACTORY';
 
 export type UserStatus = 'active' | 'locked';
 
@@ -104,6 +104,208 @@ export interface AdminDashboardData {
   quote: QuoteCalculationResult;
 }
 
+export type OrderStatus =
+  | 'NEW'
+  | 'RECEIVED_BY_NPP'
+  | 'SENT_TO_ADMIN'
+  | 'PROCESSING'
+  | 'PARTIAL'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'OVERDUE';
+
+export type OrderSourceType = 'FACTORY' | 'DEALER' | 'NPP' | 'ADMIN';
+
+export type OrganizationType = 'COMPANY' | 'FACTORY' | 'NPP' | 'DEALER';
+
+export interface DemoOrderItem {
+  productCode: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  totalKg: number;
+  totalPrice: number;
+}
+
+export interface DemoOrder {
+  id: string;
+  code: string;
+  sourceType: OrderSourceType;
+  factory: string;
+  dealer: string;
+  npp: string;
+  customerName: string;
+  deliveryAddress: string;
+  status: OrderStatus;
+  statusLabel: string;
+  tone: DashboardTone;
+  totalKg: number;
+  totalAmount: number;
+  age: string;
+  dueNote: string;
+  items: DemoOrderItem[];
+  history: DashboardActivity[];
+}
+
+export interface MobileHomeData {
+  userName: string;
+  roleLabel: string;
+  greeting: string;
+  promo: string;
+  metrics: DashboardMetric[];
+  orders: DemoOrder[];
+}
+
+export interface GiftItem {
+  id: string;
+  name: string;
+  points: number;
+  icon: string;
+  imageUrl?: string;
+  stock?: number;
+}
+
+export interface LibraryItem {
+  id: string;
+  type: 'IMAGE' | 'KNOWLEDGE' | 'PRODUCT' | 'VIDEO';
+  title: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  tag?: string;
+}
+
+export interface Promotion {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  bannerUrl: string;
+  gallery: string[];
+  content: string;
+  active: boolean;
+  startDate?: string;
+  endDate?: string;
+}
+
+// ---------- Danh mục hệ nhôm (đặt hàng dạng cây) ----------
+
+export interface CatalogProfile {
+  id: string;
+  code: string;
+  name: string;
+  thicknessMm?: string;
+  kgPerMeter: number;
+  barLengthMm: number;
+  barsPerBundle: number;
+  pricePerKg: number;
+  imageUrl?: string;
+}
+
+export interface CatalogSystem {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  profiles: CatalogProfile[];
+}
+
+export interface ColorCode {
+  id: string;
+  code: string;
+  name: string;
+  hex?: string;
+}
+
+export interface CreateOrderItemInput {
+  profileId: string;
+  productCode: string;
+  productName: string;
+  colorCode: string;
+  quantity: number;
+  kgPerMeter?: number;
+}
+
+export interface CreateOrderInput {
+  sourceType: OrderSourceType;
+  createdByEmail?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  colorCode?: string;
+  note?: string;
+  items: CreateOrderItemInput[];
+}
+
+// ---------- Công trình & lợi nhuận ----------
+
+export interface ProjectSummary {
+  id: string;
+  code: string;
+  name: string;
+  customerName: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+  contractValue: number;
+  totalCost: number;
+  profit: number;
+  profitPct: number;
+}
+
+export interface ProjectDetail extends ProjectSummary {
+  customerPhone: string;
+  address: string;
+  costAluminum: number;
+  costAccessory: number;
+  costLockHinge: number;
+  costGasket: number;
+  costSilicone: number;
+  costScrew: number;
+  costGlass: number;
+  costLabor: number;
+  costPartnerPct: number;
+  costOther: number;
+  extraRevenue: number;
+  note: string;
+}
+
+export interface DebtItem {
+  id: string;
+  type: 'NPP' | 'ACCESSORY' | 'CUSTOMER';
+  partnerName: string;
+  amount: number;
+  paidAmount: number;
+  status: 'OPEN' | 'PARTIAL' | 'PAID';
+  bankAccount: string;
+  bankName: string;
+  note: string;
+}
+
+export interface QuotationInput {
+  customerName?: string;
+  doorType?: string;
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+  pricePerM2: number;
+  aluPricePerKg: number;
+  glassPerM2: number;
+  accessoryCost: number;
+  laborCost: number;
+  installCost: number;
+  profitPct: number;
+  depreciation: number;
+}
+
+export interface QuotationResult {
+  areaM2: number;
+  baseAmount: number;
+  accessoryCost: number;
+  laborCost: number;
+  installCost: number;
+  depreciation: number;
+  profitAmount: number;
+  totalAmount: number;
+}
+
 export interface QuoteWizardInput {
   aluSystemId: string;
   doorTypeId: string;
@@ -131,4 +333,43 @@ export interface QuoteCalculationResult {
 export interface ApiResponse<T> {
   data: T;
   message?: string;
+}
+
+// ---------- Quản lý người dùng & tổ chức (Web Admin) ----------
+
+export interface AdminUserItem {
+  id: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  organizationId?: string;
+  organizationName?: string;
+  organizationType?: OrganizationType;
+  createdAt: string;
+}
+
+export interface OrgItem {
+  id: string;
+  code: string;
+  name: string;
+  type: OrganizationType;
+  phone?: string;
+  address?: string;
+  userCount: number;
+}
+
+export interface CreateUserInput {
+  email: string;
+  displayName: string;
+  phone?: string;
+  role: UserRole;
+  organizationId?: string;
+}
+
+export interface UpdateUserInput {
+  displayName?: string;
+  phone?: string;
+  role?: UserRole;
+  organizationId?: string;
 }

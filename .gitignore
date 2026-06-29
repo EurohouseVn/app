@@ -11,3 +11,10 @@ coverage
 .DS_Store
 *.log
 uploads
+
+# Local SQLite dev database (prod uses Postgres via db push + seed)
+*.db
+*.db-journal
+
+# Oversized source asset (97MB) — keep out of git to avoid repo bloat / GitHub limits
+EUROHOUSE CATALOG R17.pdf
