@@ -10,6 +10,7 @@ import type {
   ProjectDetail,
   QuotationInput,
   UpdateMaterialInput,
+  UpdateOrderInput,
   UpdateOrgInput,
 } from '@eurohouse/types';
 import { EurohouseService } from './eurohouse.service';
@@ -136,10 +137,16 @@ export class EurohouseController {
   listOrders(
     @Query('sourceType') sourceType: string | undefined,
     @Query('status') status: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
     @CurrentUser() user: JwtUser,
   ) {
-    // Thợ (FACTORY) chỉ được xem đơn của chính mình — không tin filter từ client.
     const createdById = user.role === 'FACTORY' ? user.sub : undefined;
+    const pageNum = page ? Number(page) : undefined;
+    const pageSizeNum = pageSize ? Number(pageSize) : undefined;
+    if (pageNum !== undefined) {
+      return this.service.listOrders({ sourceType, status, createdById, page: pageNum, pageSize: pageSizeNum });
+    }
     return this.service.listOrders({ sourceType, status, createdById });
   }
 
@@ -147,6 +154,12 @@ export class EurohouseController {
   @UseGuards(JwtAuthGuard)
   getOrder(@Param('id') id: string) {
     return this.service.getOrder(id);
+  }
+
+  @Patch('orders/:id')
+  @UseGuards(JwtAuthGuard)
+  updateOrder(@Param('id') id: string, @Body() body: UpdateOrderInput, @CurrentUser() user: JwtUser) {
+    return this.service.updateOrder(id, body, user.sub);
   }
 
   @Patch('orders/:id/status')
@@ -188,7 +201,7 @@ export class EurohouseController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
   updateOrg(@Param('id') id: string, @Body() body: UpdateOrgInput) {
-    return this.service.updateOrgManagedNpp(id, body.managedByNppId ?? null);
+    return this.service.updateOrg(id, body);
   }
 
   // Công trình

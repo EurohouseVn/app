@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdjustProfileStockInput,
   AdminUserItem,
@@ -25,6 +25,7 @@ import type {
   QuotationResult,
   StockMovementItem,
   UpdateMaterialInput,
+  UpdateOrderInput,
 } from '@eurohouse/types';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -186,11 +187,25 @@ export class EurohouseService {
 
   // ---------- Đơn hàng ----------
 
-  private async nextOrderCode(): Promise<string> {
-    const count = await this.prisma.order.count();
+  // Mã đơn theo Xưởng: <KýHiệuXưởng>-<YYMMDD>-<NN>, số thứ tự đếm lại từ 01 mỗi ngày, riêng theo từng Xưởng.
+  // Nếu người tạo không thuộc Xưởng nào (NPP/ADMIN/Dealer đặt hộ), dùng tiền tố "EH" như cũ.
+  private async nextOrderCode(organization?: { id: string; code: string; shortLabel: string | null } | null): Promise<string> {
     const now = new Date();
-    const ym = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return `EH-${ym}-${String(count + 1).padStart(3, '0')}`;
+    const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const prefix = organization?.shortLabel || organization?.code || 'EH';
+
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const count = organization
+      ? await this.prisma.order.count({
+          where: {
+            createdBy: { organizationId: organization.id },
+            createdAt: { gte: startOfDay, lt: endOfDay },
+          },
+        })
+      : await this.prisma.order.count({ where: { createdAt: { gte: startOfDay, lt: endOfDay } } });
+
+    return `${prefix}-${ymd}-${String(count + 1).padStart(2, '0')}`;
   }
 
   async createOrder(input: CreateOrderInput, userId?: string) {
@@ -224,7 +239,8 @@ export class EurohouseService {
     const creator = userId
       ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } })
       : null;
-    const code = await this.nextOrderCode();
+    const factoryOrg = creator?.organization?.type === 'FACTORY' ? creator.organization : null;
+    const code = await this.nextOrderCode(factoryOrg);
 
     // Xưởng đặt hàng → tự động chuyển đơn về NPP quản lý xưởng đó (cấu hình sẵn ở Web Admin).
     let nppOrgId: string | null = null;
@@ -259,6 +275,7 @@ export class EurohouseService {
           deliveryAddress: input.deliveryAddress ?? '',
           colorCode: input.colorCode ?? '',
           note: input.note ?? '',
+          accessoriesNote: input.accessoriesNote ?? '',
           status: 'NEW',
           totalKg: Number(totalKg.toFixed(2)),
           totalAmount,
@@ -298,14 +315,41 @@ export class EurohouseService {
     return { ...order, stockWarnings, nppWarning };
   }
 
-  async listOrders(filter?: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string }) {
+  listOrders(filter: {
+    sourceType?: string; status?: string; createdById?: string; nppOrgId?: string;
+    page: number; pageSize?: number;
+  }): Promise<{ items: Awaited<ReturnType<EurohouseService['getOrder']>>[]; total: number; page: number; pageSize: number }>;
+  listOrders(filter?: {
+    sourceType?: string; status?: string; createdById?: string; nppOrgId?: string;
+    page?: undefined; pageSize?: number;
+  }): Promise<Awaited<ReturnType<EurohouseService['getOrder']>>[]>;
+  async listOrders(filter?: {
+    sourceType?: string; status?: string; createdById?: string; nppOrgId?: string;
+    page?: number; pageSize?: number;
+  }) {
+    const where = {
+      sourceType: filter?.sourceType,
+      status: filter?.status,
+      createdById: filter?.createdById,
+      nppOrgId: filter?.nppOrgId,
+    };
+    if (filter?.page !== undefined) {
+      const pageSize = filter.pageSize ?? 5;
+      const page = filter.page;
+      const [items, total] = await Promise.all([
+        this.prisma.order.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+        }),
+        this.prisma.order.count({ where }),
+      ]);
+      return { items, total, page, pageSize };
+    }
     return this.prisma.order.findMany({
-      where: {
-        sourceType: filter?.sourceType,
-        status: filter?.status,
-        createdById: filter?.createdById,
-        nppOrgId: filter?.nppOrgId,
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
     });
@@ -330,6 +374,97 @@ export class EurohouseService {
       data: { status },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
     });
+  }
+
+  async updateOrder(id: string, input: UpdateOrderInput, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+    if (order.status !== 'NEW') throw new BadRequestException('Chỉ có thể sửa đơn khi trạng thái là Mới (NEW).');
+    if (order.createdById !== userId) throw new BadRequestException('Không có quyền sửa đơn này.');
+
+    const profileIds = (input.items ?? []).map((i) => i.profileId).filter(Boolean);
+    const profiles = profileIds.length
+      ? await this.prisma.profile.findMany({ where: { id: { in: profileIds } } })
+      : [];
+    const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+    let totalKg = 0;
+    let totalAmount = 0;
+    const newItemsData = (input.items ?? order.items.map((i) => ({
+      profileId: i.profileId ?? '',
+      productCode: i.productCode,
+      productName: i.productName,
+      colorCode: i.colorCode,
+      quantity: i.quantity,
+    }))).map((item) => {
+      const profile = profileById.get(item.profileId);
+      const kgPerMeter = profile?.kgPerMeter ?? 0;
+      const pricePerKg = profile?.pricePerKg ?? 0;
+      const itemKg = Number((kgPerMeter * STD_BAR_M * item.quantity).toFixed(2));
+      const itemPrice = Math.round(itemKg * pricePerKg);
+      totalKg += itemKg;
+      totalAmount += itemPrice;
+      return {
+        profileId: profile?.id ?? null,
+        productCode: item.productCode,
+        productName: item.productName,
+        colorCode: item.colorCode ?? '',
+        quantity: item.quantity,
+        unit: 'cây',
+        totalKg: itemKg,
+        unitPrice: pricePerKg,
+        totalPrice: itemPrice,
+      };
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      if (input.items) {
+        // Hoàn tồn kho cũ
+        for (const oldItem of order.items) {
+          if (!oldItem.profileId) continue;
+          await tx.profile.update({ where: { id: oldItem.profileId }, data: { stockBars: { increment: oldItem.quantity } } });
+          await tx.profileStockMovement.create({
+            data: {
+              profileId: oldItem.profileId, direction: 'IN', quantity: oldItem.quantity,
+              reason: 'Hoàn kho do sửa đơn', orderId: order.id, createdById: userId, note: order.code,
+            },
+          });
+        }
+        // Xoá items cũ, tạo items mới
+        await tx.orderItem.deleteMany({ where: { orderId: id } });
+        await tx.orderItem.createMany({ data: newItemsData.map((d) => ({ ...d, orderId: id })) });
+        // Trừ tồn kho mới
+        for (const item of newItemsData) {
+          if (!item.profileId) continue;
+          await tx.profile.update({ where: { id: item.profileId }, data: { stockBars: { decrement: item.quantity } } });
+          await tx.profileStockMovement.create({
+            data: {
+              profileId: item.profileId, direction: 'OUT', quantity: item.quantity,
+              reason: 'Trừ theo đơn hàng (sửa)', orderId: order.id, createdById: userId, note: order.code,
+            },
+          });
+        }
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (input.customerName !== undefined) updateData.customerName = input.customerName;
+      if (input.customerPhone !== undefined) updateData.customerPhone = input.customerPhone;
+      if (input.deliveryAddress !== undefined) updateData.deliveryAddress = input.deliveryAddress;
+      if (input.colorCode !== undefined) updateData.colorCode = input.colorCode;
+      if (input.note !== undefined) updateData.note = input.note;
+      if (input.accessoriesNote !== undefined) updateData.accessoriesNote = input.accessoriesNote;
+      if (input.items) {
+        updateData.totalKg = Number(totalKg.toFixed(2));
+        updateData.totalAmount = totalAmount;
+      }
+
+      await tx.order.update({ where: { id }, data: updateData });
+    });
+
+    return this.getOrder(id);
   }
 
   // ---------- Công trình ----------
@@ -607,14 +742,18 @@ export class EurohouseService {
       type: o.type as OrgItem['type'],
       phone: o.phone ?? undefined,
       address: o.address ?? undefined,
+      shortLabel: o.shortLabel ?? undefined,
       userCount: o._count.users,
       managedByNppId: o.managedByNppId ?? undefined,
       managedByNppName: o.managedByNpp?.name,
     }));
   }
 
-  async updateOrgManagedNpp(orgId: string, managedByNppId: string | null): Promise<OrgItem> {
-    await this.prisma.organization.update({ where: { id: orgId }, data: { managedByNppId } });
+  async updateOrg(orgId: string, data: { managedByNppId?: string | null; shortLabel?: string | null }): Promise<OrgItem> {
+    const update: Record<string, unknown> = {};
+    if ('managedByNppId' in data) update.managedByNppId = data.managedByNppId;
+    if ('shortLabel' in data) update.shortLabel = data.shortLabel ?? null;
+    await this.prisma.organization.update({ where: { id: orgId }, data: update });
     const orgs = await this.adminOrgs();
     const updated = orgs.find((o) => o.id === orgId);
     if (!updated) throw new NotFoundException('Không tìm thấy tổ chức.');

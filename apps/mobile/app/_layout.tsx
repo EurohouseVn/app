@@ -62,6 +62,7 @@ function Gate() {
       <Tabs.Screen name="quotation" options={{ href: null }} />
       <Tabs.Screen name="my-orders" options={{ href: null }} />
       <Tabs.Screen name="order/[id]" options={{ href: null }} />
+      <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />
     </Tabs>
   );
 }

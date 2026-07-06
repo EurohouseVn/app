@@ -24,6 +24,7 @@ export default function OrderTreeScreen() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [note, setNote] = useState('');
+  const [accessoriesNote, setAccessoriesNote] = useState('');
   const [result, setResult] = useState<CreateOrderResult | null>(null);
 
   const load = useCallback(() => {
@@ -100,6 +101,7 @@ export default function OrderTreeScreen() {
         customerPhone: customerPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
         note: note || undefined,
+        accessoriesNote: accessoriesNote || undefined,
         items,
       });
       setResult(order);
@@ -117,6 +119,7 @@ export default function OrderTreeScreen() {
     setCustomerPhone('');
     setDeliveryAddress('');
     setNote('');
+    setAccessoriesNote('');
     setStep('browse');
   }
 
@@ -182,6 +185,15 @@ export default function OrderTreeScreen() {
           <TextInput style={styles.input} placeholder="Số điện thoại" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" />
           <TextInput style={styles.input} placeholder="Địa chỉ giao hàng" value={deliveryAddress} onChangeText={setDeliveryAddress} />
           <TextInput style={[styles.input, { height: 80 }]} placeholder="Ghi chú" value={note} onChangeText={setNote} multiline />
+
+          <Text style={[styles.label, { marginTop: 16 }]}>Phụ kiện đi kèm (không bắt buộc)</Text>
+          <TextInput
+            style={[styles.input, { height: 120 }]}
+            placeholder={"- Khoá Severnday hệ 55 = 5 bộ\n- Keo silicon A500 = 1 thùng\n- Ron EPDM 8mm = 20m"}
+            value={accessoriesNote}
+            onChangeText={setAccessoriesNote}
+            multiline
+          />
 
           {message ? <Text style={styles.errorText}>{message}</Text> : null}
 

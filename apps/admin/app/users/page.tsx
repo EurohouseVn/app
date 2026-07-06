@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
   const [error, setError] = useState('');
+  const [shortLabelDraft, setShortLabelDraft] = useState<Record<string, string>>({});
 
   function loadOrgs() {
     apiGet<OrgItem[]>('/admin/orgs').then(setOrgs).catch(() => undefined);
@@ -44,6 +45,17 @@ export default function UsersPage() {
       loadOrgs();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không gán được NPP quản lý.');
+    }
+  }
+
+  async function saveShortLabel(orgId: string) {
+    const value = shortLabelDraft[orgId];
+    if (value === undefined) return;
+    try {
+      await apiSend(`/admin/orgs/${orgId}`, 'PATCH', { shortLabel: value.trim() || null });
+      loadOrgs();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không lưu được ký hiệu xưởng.');
     }
   }
 
@@ -79,19 +91,34 @@ export default function UsersPage() {
               <p style={{ margin: 0, color: ui.textFaint, fontSize: 13 }}>{org.phone || '—'}</p>
               <p style={{ margin: '10px 0 0', color: ui.text, fontWeight: 700, fontSize: 13 }}>{org.userCount} người dùng</p>
               {org.type === 'FACTORY' ? (
-                <label style={{ display: 'block', marginTop: 12 }}>
-                  <span style={{ display: 'block', color: ui.textFaint, fontSize: 11, marginBottom: 4 }}>NPP quản lý</span>
-                  <select
-                    style={{ ...inputStyle, fontSize: 12, padding: '6px 8px' }}
-                    value={org.managedByNppId ?? ''}
-                    onChange={(e) => assignNpp(org.id, e.target.value)}
-                  >
-                    <option value="">— Chưa gán —</option>
-                    {nppOrgs.map((npp) => (
-                      <option key={npp.id} value={npp.id}>{npp.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <>
+                  <label style={{ display: 'block', marginTop: 12 }}>
+                    <span style={{ display: 'block', color: ui.textFaint, fontSize: 11, marginBottom: 4 }}>NPP quản lý</span>
+                    <select
+                      style={{ ...inputStyle, fontSize: 12, padding: '6px 8px' }}
+                      value={org.managedByNppId ?? ''}
+                      onChange={(e) => assignNpp(org.id, e.target.value)}
+                    >
+                      <option value="">— Chưa gán —</option>
+                      {nppOrgs.map((npp) => (
+                        <option key={npp.id} value={npp.id}>{npp.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: 'block', marginTop: 10 }}>
+                    <span style={{ display: 'block', color: ui.textFaint, fontSize: 11, marginBottom: 4 }}>Ký hiệu xưởng (dùng để sinh mã đơn)</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        style={{ ...inputStyle, fontSize: 12, padding: '6px 8px', flex: 1 }}
+                        placeholder="ví dụ: X.MinhViet"
+                        value={shortLabelDraft[org.id] ?? org.shortLabel ?? ''}
+                        onChange={(e) => setShortLabelDraft((cur) => ({ ...cur, [org.id]: e.target.value }))}
+                        onBlur={() => saveShortLabel(org.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveShortLabel(org.id); }}
+                      />
+                    </div>
+                  </label>
+                </>
               ) : null}
             </div>
           );

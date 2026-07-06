@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { AppHeader } from '../../src/components/AppHeader';
+import { Icon } from '../../src/components/Icon';
 import { api } from '../../src/lib/api';
 import { statusText, statusTone } from '../../src/lib/orderStatus';
 
@@ -17,12 +18,14 @@ type OrderDetail = {
   totalKg: number;
   totalAmount: number;
   note: string;
+  accessoriesNote: string;
   items: { productCode: string; productName: string; quantity: number; unit: string; totalKg: number; totalPrice: number }[];
   histories: { status: string; title: string; note: string; actor: string; createdAt: string }[];
 };
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [error, setError] = useState('');
 
@@ -104,6 +107,20 @@ export default function OrderDetailScreen() {
           </View>
         ) : null}
 
+        {order.accessoriesNote ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Phụ kiện đi kèm</Text>
+            <Text style={styles.cardLine}>{order.accessoriesNote}</Text>
+          </View>
+        ) : null}
+
+        {order.status === 'NEW' ? (
+          <Pressable style={styles.editBtn} onPress={() => router.push(`/order/${order.id}/edit` as Href)}>
+            <Icon name="edit-2" size={15} color={colors.brandBlack} />
+            <Text style={styles.editBtnText}>Sửa đơn</Text>
+          </Pressable>
+        ) : null}
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -131,4 +148,6 @@ const styles = StyleSheet.create({
   historyDot: { width: 8, height: 8, borderRadius: 999, marginTop: 5 },
   historyTitle: { fontWeight: '800', fontSize: 13 },
   historyMeta: { color: colors.brandGrey, fontSize: 12, marginTop: 2 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 16, paddingVertical: 14, marginTop: 20 },
+  editBtnText: { color: colors.brandBlack, fontWeight: '900' },
 });

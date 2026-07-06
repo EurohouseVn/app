@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import { Link, useFocusEffect, useRouter, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import type { ProjectSummary } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+
+const PROJECT_LIMIT = 50;
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   OPEN: { text: 'Đang mở', color: colors.brandOrange },
@@ -37,6 +39,14 @@ export default function ProjectsScreen() {
     }
   }
 
+  function showUpgradeInfo() {
+    Alert.alert(
+      'Đạt giới hạn lưu trữ',
+      `Xưởng của bạn đã đạt ${PROJECT_LIMIT} công trình lưu trữ. Công trình cũ nhất sẽ không còn hiển thị trong danh sách (dữ liệu vẫn được giữ nguyên). Vui lòng liên hệ Admin để nâng cấp gói 89.000đ/tháng, tăng hạn mức lưu trữ.`,
+      [{ text: 'Đã hiểu' }],
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
       <AppHeader title="Công trình" subtitle="Theo dõi lợi nhuận từng công trình" />
@@ -45,6 +55,15 @@ export default function ProjectsScreen() {
           <Icon name="plus" size={18} color={colors.brandOrange} />
           <Text style={styles.createText}>{creating ? 'Đang tạo...' : 'Tạo công trình mới'}</Text>
         </Pressable>
+
+        {projects.length >= PROJECT_LIMIT ? (
+          <Pressable style={styles.limitBanner} onPress={showUpgradeInfo}>
+            <Icon name="zap" size={16} color={colors.warning} />
+            <Text style={styles.limitBannerText}>
+              Đã đạt giới hạn {PROJECT_LIMIT} công trình lưu trữ — công trình cũ nhất sẽ không còn hiển thị. Nâng cấp gói 89k/tháng để lưu thêm.
+            </Text>
+          </Pressable>
+        ) : null}
 
         {projects.length === 0 ? (
           <View style={styles.empty}>
@@ -86,6 +105,8 @@ const styles = StyleSheet.create({
   container: { padding: 18, paddingBottom: 110 },
   createBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandBlack, borderRadius: 16, paddingVertical: 15, marginBottom: 16 },
   createText: { color: colors.brandOrange, fontWeight: '900' },
+  limitBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#FFF8E5', borderRadius: 16, padding: 14, marginBottom: 16 },
+  limitBannerText: { flex: 1, color: colors.brandBlack, fontSize: 12.5, lineHeight: 18, fontWeight: '600' },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: colors.brandGrey, textAlign: 'center', paddingHorizontal: 20 },

@@ -14,6 +14,7 @@ model Organization {
   code      String   @unique
   name      String
   type      String // COMPANY | FACTORY | NPP | DEALER
+  shortLabel String? // Ký hiệu ngắn dùng để sinh mã đơn, ví dụ "X.MinhViet" (chỉ Xưởng cần đặt)
   phone     String?
   address   String?
   users     User[]
@@ -105,6 +106,7 @@ model Order {
   colorCode       String      @default("")
   status          String      @default("NEW")
   note            String      @default("")
+  accessoriesNote String      @default("")
   totalKg         Float       @default(0)
   totalAmount     Int         @default(0)
   dueNote         String      @default("")

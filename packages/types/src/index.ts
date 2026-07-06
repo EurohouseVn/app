@@ -244,6 +244,7 @@ export interface CreateOrderInput {
   deliveryAddress?: string;
   colorCode?: string;
   note?: string;
+  accessoriesNote?: string;
   items: CreateOrderItemInput[];
 }
 
@@ -264,6 +265,23 @@ export interface CreateOrderResult {
   totalAmount: number;
   stockWarnings: OrderStockWarning[];
   nppWarning?: string;
+}
+
+export interface UpdateOrderInput {
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  colorCode?: string;
+  note?: string;
+  accessoriesNote?: string;
+  items?: CreateOrderItemInput[];
+}
+
+export interface PaginatedOrders<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 // ---------- Công trình & lợi nhuận ----------
@@ -389,6 +407,7 @@ export interface OrgItem {
   type: OrganizationType;
   phone?: string;
   address?: string;
+  shortLabel?: string;
   userCount: number;
   managedByNppId?: string;
   managedByNppName?: string;
@@ -396,6 +415,7 @@ export interface OrgItem {
 
 export interface UpdateOrgInput {
   managedByNppId?: string | null;
+  shortLabel?: string | null;
 }
 
 export interface CreateUserInput {
