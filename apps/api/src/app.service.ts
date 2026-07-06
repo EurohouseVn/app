@@ -1,8 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type {
   AdminDashboardData,
-  DemoAdminUser,
-  LoginResponse,
   QuoteCalculationResult,
 } from '@eurohouse/types';
 import { PrismaService } from './prisma/prisma.service';
@@ -26,25 +24,6 @@ export class AppService {
 
   health() {
     return { name: 'Eurohouse API', status: 'ok', timestamp: new Date().toISOString() };
-  }
-
-  async demoLogin(identifier: string, password: string): Promise<LoginResponse> {
-    const expected = process.env.DEMO_ADMIN_PASSWORD ?? 'Eurohouse@2026';
-    if (password !== expected) {
-      throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
-    }
-    const user = await this.prisma.user.findUnique({ where: { email: identifier } });
-    if (!user) {
-      throw new UnauthorizedException('Tài khoản không tồn tại.');
-    }
-    const result: DemoAdminUser = {
-      id: user.id,
-      displayName: user.displayName,
-      email: user.email,
-      role: user.role as DemoAdminUser['role'],
-      token: `token-${user.id}`,
-    };
-    return { user: result, message: `Đăng nhập thành công với vai trò ${user.role}.` };
   }
 
   sampleQuote(): QuoteCalculationResult {

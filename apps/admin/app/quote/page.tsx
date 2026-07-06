@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { colors } from '@eurohouse/ui';
+import { Calculator, Receipt } from 'lucide-react';
 import type { QuotationInput, QuotationResult } from '@eurohouse/types';
 import { AdminPage } from '../../src/AdminPage';
 import { apiSend } from '../../src/lib/api';
@@ -15,6 +15,7 @@ import {
   panelTitleStyle,
   primaryButtonStyle,
   subtitleStyle,
+  ui,
 } from '../../src/ui';
 
 type FormState = Omit<QuotationInput, 'customerName' | 'doorType'> & { customerName: string; doorType: string };
@@ -78,11 +79,14 @@ export default function QuotePage() {
       <p style={eyebrowStyle}>BÁO GIÁ</p>
       <h1 style={pageTitleStyle}>Tính báo giá nhanh</h1>
       <p style={subtitleStyle}>Nhập kích thước và đơn giá, hệ thống tính diện tích, chi phí và lợi nhuận tự động.</p>
-      {error ? <p style={{ color: colors.danger }}>{error}</p> : null}
+      {error ? <p style={{ color: ui.danger }}>{error}</p> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20, marginTop: 12, alignItems: 'start' }}>
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>Thông số</h2>
+          <h2 style={panelTitleStyle}>
+            <Calculator size={16} style={{ verticalAlign: -2, marginRight: 8 }} color={ui.textMuted} />
+            Thông số
+          </h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
               Khách hàng
@@ -95,7 +99,7 @@ export default function QuotePage() {
             {numberFields.map((field) => (
               <label key={field.key} style={labelStyle}>
                 {field.label}
-                {field.suffix ? <span style={{ color: colors.brandGrey }}> ({field.suffix})</span> : null}
+                {field.suffix ? <span style={{ color: ui.textFaint, fontWeight: 400 }}> ({field.suffix})</span> : null}
                 <input
                   style={inputStyle}
                   type="number"
@@ -111,7 +115,10 @@ export default function QuotePage() {
         </div>
 
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>Kết quả</h2>
+          <h2 style={panelTitleStyle}>
+            <Receipt size={16} style={{ verticalAlign: -2, marginRight: 8 }} color={ui.textMuted} />
+            Kết quả
+          </h2>
           {result ? (
             <>
               <ResultRow label="Diện tích" value={`${result.areaM2} m²`} />
@@ -121,13 +128,13 @@ export default function QuotePage() {
               <ResultRow label="Lắp đặt" value={currency(result.installCost)} />
               <ResultRow label="Khấu hao" value={currency(result.depreciation)} />
               <ResultRow label={`Lợi nhuận (${form.profitPct}%)`} value={currency(result.profitAmount)} />
-              <div style={{ background: colors.brandOrange, borderRadius: 16, padding: 18, marginTop: 16, textAlign: 'center' }}>
-                <small style={{ color: colors.brandBlack, fontWeight: 700, opacity: 0.8 }}>TỔNG BÁO GIÁ · {form.quantity} BỘ</small>
-                <strong style={{ display: 'block', color: colors.brandBlack, fontSize: 30, marginTop: 4 }}>{currency(result.totalAmount)}</strong>
+              <div style={{ background: ui.brandSoft, border: `1px solid ${ui.brand}22`, borderRadius: 14, padding: 18, marginTop: 16, textAlign: 'center' }}>
+                <small style={{ color: ui.brandText, fontWeight: 700 }}>TỔNG BÁO GIÁ · {form.quantity} BỘ</small>
+                <strong style={{ display: 'block', color: ui.text, fontSize: 28, marginTop: 4 }}>{currency(result.totalAmount)}</strong>
               </div>
             </>
           ) : (
-            <p style={{ color: colors.brandGrey }}>Nhập thông số rồi bấm “Tính báo giá”.</p>
+            <p style={{ color: ui.textFaint, fontSize: 14 }}>Nhập thông số rồi bấm "Tính báo giá".</p>
           )}
         </div>
       </div>
@@ -137,9 +144,9 @@ export default function QuotePage() {
 
 function ResultRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${colors.orangeSoft}` }}>
-      <span style={{ color: colors.brandBlack }}>{label}</span>
-      <strong style={{ color: colors.brandBlack }}>{value}</strong>
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${ui.border}`, fontSize: 14 }}>
+      <span style={{ color: ui.textMuted }}>{label}</span>
+      <strong style={{ color: ui.text }}>{value}</strong>
     </div>
   );
 }

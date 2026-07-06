@@ -5,15 +5,15 @@ services:
     env: node
     plan: free
     rootDir: .
-    # Prod dùng Postgres: cần đổi provider trong prisma/schema.prisma sang "postgresql"
-    # rồi db push để đồng bộ schema và seed dữ liệu danh mục.
     buildCommand: >
       npx pnpm@10.13.1 install --frozen-lockfile &&
       npx pnpm@10.13.1 --filter @eurohouse/api exec prisma generate &&
       npx pnpm@10.13.1 --filter @eurohouse/api build
+    # Lưu ý: seed.ts KHÔNG chạy ở đây — seed xóa/tạo lại profile + orderItem mỗi lần chạy,
+    # nếu để trong startCommand sẽ mất dữ liệu đơn hàng thật mỗi lần service restart/redeploy.
+    # Chạy seed đúng 1 lần duy nhất qua Render Shell sau khi deploy lần đầu thành công.
     startCommand: >
-      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma db push --skip-generate &&
-      npx pnpm@10.13.1 --filter @eurohouse/api exec ts-node prisma/seed.ts &&
+      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma migrate deploy &&
       npx pnpm@10.13.1 --filter @eurohouse/api start
     healthCheckPath: /api/health
     envVars:

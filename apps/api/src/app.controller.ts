@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { EurohouseService } from './eurohouse/eurohouse.service';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
+import { Roles } from './auth/roles.decorator';
 
 @Controller()
 export class AppController {
@@ -19,18 +22,17 @@ export class AppController {
     return this.appService.sampleQuote();
   }
 
-  @Post('auth/demo-login')
-  demoLogin(@Body() body: { identifier?: string; password?: string }) {
-    return this.appService.demoLogin(body.identifier ?? 'board@eurohouse.vn', body.password ?? 'Eurohouse@2026');
-  }
-
   @Get('admin/dashboard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
   async adminDashboard() {
     const orders = await this.eurohouse.listOrders();
     return this.appService.adminDashboard(orders);
   }
 
   @Get('admin/orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
   adminOrders() {
     return this.eurohouse.listOrders();
   }

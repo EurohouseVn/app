@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
-import type { CatalogSystem, ColorCode } from '@eurohouse/types';
+import type { CatalogSystem, ColorCode, CreateOrderResult } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { ProfileThumb } from '../src/components/ProfileThumb';
 import { api } from '../src/lib/api';
 
-const STD_BAR_M = 5.8;
+const STD_BAR_M = 6;
 
 export default function OrderTreeScreen() {
+  const router = useRouter();
   const [systems, setSystems] = useState<CatalogSystem[]>([]);
   const [colorList, setColorList] = useState<ColorCode[]>([]);
   const [openSystem, setOpenSystem] = useState<string | null>(null);
@@ -17,6 +19,12 @@ export default function OrderTreeScreen() {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState<'browse' | 'confirm'>('browse');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [note, setNote] = useState('');
+  const [result, setResult] = useState<CreateOrderResult | null>(null);
 
   const load = useCallback(() => {
     api.get<CatalogSystem[]>('/catalog/systems').then((data) => {
@@ -41,16 +49,19 @@ export default function OrderTreeScreen() {
     let totalKg = 0;
     let totalAmount = 0;
     let lines = 0;
+    const items: { id: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
     Object.entries(qty).forEach(([id, q]) => {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
-      lines += 1;
       const kg = p.kgPerMeter * STD_BAR_M * q;
+      const amount = kg * p.pricePerKg;
+      lines += 1;
       totalKg += kg;
-      totalAmount += kg * p.pricePerKg;
+      totalAmount += amount;
+      items.push({ id, code: p.code, name: p.name, quantity: q, kg, amount });
     });
-    return { totalKg, totalAmount, lines };
+    return { totalKg, totalAmount, lines, items };
   }, [qty, profileById]);
 
   function toggleColor(code: string) {
@@ -61,37 +72,128 @@ export default function OrderTreeScreen() {
     setQty((cur) => ({ ...cur, [id]: Math.max(0, value) }));
   }
 
-  async function submit() {
+  function goToConfirm() {
     setMessage('');
     if (selectedColors.length === 0) {
       setMessage('Chọn ít nhất một màu.');
       return;
     }
-    const items = Object.entries(qty)
-      .filter(([, q]) => q > 0)
-      .map(([id, q]) => {
-        const p = profileById.get(id)!;
-        return { profileId: id, productCode: p.code, productName: p.name, colorCode: selectedColors.join(', '), quantity: q };
-      });
-    if (items.length === 0) {
+    if (cart.lines === 0) {
       setMessage('Chọn ít nhất một thanh nhôm.');
       return;
     }
+    setStep('confirm');
+  }
+
+  async function submit() {
+    setMessage('');
     setSubmitting(true);
     try {
-      const order = await api.post<{ code: string }>('/orders', {
+      const items = cart.items.map((item) => {
+        const p = profileById.get(item.id)!;
+        return { profileId: item.id, productCode: p.code, productName: p.name, colorCode: selectedColors.join(', '), quantity: item.quantity };
+      });
+      const order = await api.post<CreateOrderResult>('/orders', {
         sourceType: 'FACTORY',
-        createdByEmail: 'tho@eurohouse.vn',
         colorCode: selectedColors.join(', '),
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        note: note || undefined,
         items,
       });
-      setMessage(`Đã tạo đơn ${order.code} và gửi lên NPP.`);
+      setResult(order);
       setQty({});
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Tạo đơn thất bại');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function resetAfterSuccess() {
+    setResult(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setDeliveryAddress('');
+    setNote('');
+    setStep('browse');
+  }
+
+  if (result) {
+    const hasWarnings = result.stockWarnings.length > 0 || result.nppWarning;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
+        <AppHeader title="Đặt hàng nhôm" subtitle="Đơn đã được tạo" />
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.successBox}>
+            <Icon name="check-circle" size={32} color={colors.success} />
+            <Text style={styles.successTitle}>Đã tạo đơn {result.code}</Text>
+            <Text style={styles.successSub}>{result.nppName ? `Đã gửi tới ${result.nppName}` : 'Đang chờ gán NPP xử lý'}</Text>
+          </View>
+
+          {hasWarnings ? (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningTitle}>Lưu ý</Text>
+              {result.nppWarning ? <Text style={styles.warningText}>• {result.nppWarning}</Text> : null}
+              {result.stockWarnings.map((w) => (
+                <Text key={w.profileId} style={styles.warningText}>
+                  • {w.code} ({w.name}) thiếu {w.shortBy} cây trong kho
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          <Pressable style={styles.primaryBtn} onPress={() => router.push(`/order/${result.id}` as Href)}>
+            <Text style={styles.primaryBtnText}>Xem chi tiết đơn</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={resetAfterSuccess}>
+            <Text style={styles.secondaryBtnText}>Đặt thêm đơn khác</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (step === 'confirm') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
+        <AppHeader title="Xác nhận đơn hàng" subtitle="Kiểm tra lại trước khi gửi" />
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          <Text style={styles.label}>Danh sách thanh nhôm</Text>
+          {cart.items.map((item) => (
+            <View key={item.id} style={styles.confirmRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.confirmCode}>{item.code}</Text>
+                <Text style={styles.confirmName} numberOfLines={1}>{item.name}</Text>
+              </View>
+              <Text style={styles.confirmQty}>×{item.quantity}</Text>
+              <Text style={styles.confirmAmount}>{Math.round(item.amount).toLocaleString('vi-VN')} đ</Text>
+            </View>
+          ))}
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Tổng: {cart.totalKg.toFixed(1)} kg</Text>
+            <Text style={styles.totalValue}>{Math.round(cart.totalAmount).toLocaleString('vi-VN')} đ</Text>
+          </View>
+
+          <Text style={[styles.label, { marginTop: 20 }]}>Thông tin khách hàng (không bắt buộc)</Text>
+          <TextInput style={styles.input} placeholder="Tên khách hàng" value={customerName} onChangeText={setCustomerName} />
+          <TextInput style={styles.input} placeholder="Số điện thoại" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" />
+          <TextInput style={styles.input} placeholder="Địa chỉ giao hàng" value={deliveryAddress} onChangeText={setDeliveryAddress} />
+          <TextInput style={[styles.input, { height: 80 }]} placeholder="Ghi chú" value={note} onChangeText={setNote} multiline />
+
+          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+
+          <Pressable style={[styles.primaryBtn, submitting && { opacity: 0.6 }]} disabled={submitting} onPress={submit}>
+            <Text style={styles.primaryBtnText}>{submitting ? 'Đang gửi...' : 'Xác nhận gửi đơn'}</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => setStep('browse')}>
+            <Text style={styles.secondaryBtnText}>Quay lại chọn thêm</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
   }
 
   return (
@@ -155,7 +257,7 @@ export default function OrderTreeScreen() {
           );
         })}
 
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {message ? <Text style={styles.errorText}>{message}</Text> : null}
         <View style={{ height: 150 }} />
       </ScrollView>
 
@@ -164,9 +266,9 @@ export default function OrderTreeScreen() {
           <Text style={styles.sumLabel}>{cart.lines} loại · {cart.totalKg.toFixed(1)} kg · {selectedColors.length} màu</Text>
           <Text style={styles.sumValue}>{Math.round(cart.totalAmount).toLocaleString('vi-VN')} đ</Text>
         </View>
-        <Pressable style={[styles.submit, submitting && { opacity: 0.6 }]} disabled={submitting} onPress={submit}>
+        <Pressable style={styles.submit} onPress={goToConfirm}>
           <Icon name="send" size={15} color={colors.brandBlack} />
-          <Text style={styles.submitText}>{submitting ? 'Đang gửi...' : 'Tạo đơn'}</Text>
+          <Text style={styles.submitText}>Xem lại đơn</Text>
         </Pressable>
       </View>
     </View>
@@ -201,10 +303,29 @@ const styles = StyleSheet.create({
   stepBtn: { width: 30, height: 30, borderRadius: 999, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
   stepBtnAdd: { backgroundColor: colors.brandOrange },
   stepVal: { minWidth: 22, textAlign: 'center', color: colors.brandBlack, fontWeight: '900' },
-  message: { color: colors.success, fontWeight: '700', marginTop: 12 },
+  errorText: { color: colors.danger, fontWeight: '700', marginTop: 12 },
   summary: { position: 'absolute', left: 16, right: 16, bottom: 90, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: colors.brandBlack, borderRadius: 22, padding: 16, paddingHorizontal: 18, shadowColor: colors.brandBlack, shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
   sumLabel: { color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: 12 },
   sumValue: { color: colors.white, fontWeight: '900', fontSize: 19, marginTop: 2 },
   submit: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 13 },
   submitText: { color: colors.brandBlack, fontWeight: '900' },
+  input: { backgroundColor: colors.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, color: colors.brandBlack, fontSize: 14 },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderRadius: 14, padding: 12, marginBottom: 8 },
+  confirmCode: { color: colors.brandBlack, fontWeight: '900', fontSize: 13 },
+  confirmName: { color: colors.brandGrey, fontSize: 12, marginTop: 2 },
+  confirmQty: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 13 },
+  confirmAmount: { color: colors.brandBlack, fontWeight: '800', fontSize: 13, minWidth: 90, textAlign: 'right' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.brandBlack, borderRadius: 16, padding: 16, marginTop: 6 },
+  totalLabel: { color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: 13 },
+  totalValue: { color: colors.white, fontWeight: '900', fontSize: 18 },
+  primaryBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 16, paddingVertical: 15, marginTop: 20 },
+  primaryBtnText: { color: colors.brandBlack, fontWeight: '900' },
+  secondaryBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 8 },
+  secondaryBtnText: { color: colors.brandGrey, fontWeight: '700' },
+  successBox: { alignItems: 'center', gap: 8, backgroundColor: colors.white, borderRadius: 20, padding: 24, marginTop: 8 },
+  successTitle: { color: colors.brandBlack, fontWeight: '900', fontSize: 17, marginTop: 4 },
+  successSub: { color: colors.brandGrey, fontSize: 13 },
+  warningBox: { backgroundColor: '#FFF8E5', borderRadius: 16, padding: 16, marginTop: 16, gap: 4 },
+  warningTitle: { color: colors.warning, fontWeight: '900', fontSize: 13 },
+  warningText: { color: colors.brandBlack, fontSize: 12.5, lineHeight: 18 },
 });

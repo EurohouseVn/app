@@ -29,7 +29,6 @@ export default function ProjectsScreen() {
     setCreating(true);
     try {
       const project = await api.post<{ id: string }>('/projects', {
-        ownerEmail: 'tho@eurohouse.vn',
         name: 'Công trình mới',
       });
       router.push(`/project/${project.id}` as Href);

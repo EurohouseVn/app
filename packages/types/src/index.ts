@@ -35,6 +35,18 @@ export interface LoginResponse {
   message: string;
 }
 
+/** Thông tin người dùng đã xác thực, trả về từ /auth/login và /auth/me. */
+export interface AuthUser {
+  id: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  organizationId?: string;
+  organizationName?: string;
+  organizationType?: OrganizationType;
+}
+
 export type DashboardTone = 'brandOrange' | 'success' | 'warning' | 'danger' | 'brandBlack';
 
 export interface DashboardSummaryCard {
@@ -227,13 +239,31 @@ export interface CreateOrderItemInput {
 
 export interface CreateOrderInput {
   sourceType: OrderSourceType;
-  createdByEmail?: string;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
   colorCode?: string;
   note?: string;
   items: CreateOrderItemInput[];
+}
+
+export interface OrderStockWarning {
+  profileId: string;
+  code: string;
+  name: string;
+  shortBy: number;
+}
+
+export interface CreateOrderResult {
+  id: string;
+  code: string;
+  status: OrderStatus;
+  nppOrgId?: string;
+  nppName: string;
+  totalKg: number;
+  totalAmount: number;
+  stockWarnings: OrderStockWarning[];
+  nppWarning?: string;
 }
 
 // ---------- Công trình & lợi nhuận ----------
@@ -267,9 +297,12 @@ export interface ProjectDetail extends ProjectSummary {
   note: string;
 }
 
+export type DebtDirection = 'PAYABLE' | 'RECEIVABLE';
+
 export interface DebtItem {
   id: string;
   type: 'NPP' | 'ACCESSORY' | 'CUSTOMER';
+  direction?: DebtDirection;
   partnerName: string;
   amount: number;
   paidAmount: number;
@@ -357,6 +390,12 @@ export interface OrgItem {
   phone?: string;
   address?: string;
   userCount: number;
+  managedByNppId?: string;
+  managedByNppName?: string;
+}
+
+export interface UpdateOrgInput {
+  managedByNppId?: string | null;
 }
 
 export interface CreateUserInput {
@@ -372,4 +411,154 @@ export interface UpdateUserInput {
   phone?: string;
   role?: UserRole;
   organizationId?: string;
+}
+
+// ---------- Kho NVL & chi phí sản xuất chung ----------
+
+export type MaterialCategory = 'DIRECT_MATERIAL' | 'OVERHEAD';
+
+export type MaterialGroup =
+  | 'BILLET'
+  | 'PAINT'
+  | 'LABEL'
+  | 'NYLON'
+  | 'PACKAGING'
+  | 'ACCESSORY_HW'
+  | 'ELECTRICITY'
+  | 'GAS'
+  | 'WATER'
+  | 'FUEL'
+  | 'MAINTENANCE';
+
+export interface MaterialItem {
+  id: string;
+  code: string;
+  name: string;
+  category: MaterialCategory;
+  group: MaterialGroup;
+  unit: string;
+  unitPrice: number;
+  stockQty: number;
+  lowStockAlert: number;
+  note: string;
+  active: boolean;
+}
+
+export interface CreateMaterialInput {
+  code: string;
+  name: string;
+  category: MaterialCategory;
+  group: MaterialGroup;
+  unit?: string;
+  unitPrice?: number;
+  lowStockAlert?: number;
+  note?: string;
+}
+
+export interface UpdateMaterialInput {
+  name?: string;
+  unitPrice?: number;
+  lowStockAlert?: number;
+  note?: string;
+  active?: boolean;
+}
+
+export type StockDirection = 'IN' | 'OUT';
+
+export interface StockMovementItem {
+  id: string;
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  direction: StockDirection;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  reason: string;
+  note: string;
+  createdByName?: string;
+  createdAt: string;
+}
+
+export interface CreateStockMovementInput {
+  materialId: string;
+  direction: StockDirection;
+  quantity: number;
+  unitPrice?: number;
+  reason?: string;
+  note?: string;
+}
+
+export interface ProfileStockMovementItem {
+  id: string;
+  profileId: string;
+  direction: StockDirection;
+  quantity: number;
+  reason: string;
+  orderId?: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface AdjustProfileStockInput {
+  direction: StockDirection;
+  quantity: number;
+  reason?: string;
+  note?: string;
+}
+
+// ---------- Thu chi & công nợ ----------
+
+export type CashTransactionType = 'RECEIPT' | 'PAYMENT';
+export type CashMethod = 'CASH' | 'BANK_TRANSFER';
+
+export interface CashTransactionItem {
+  id: string;
+  code: string;
+  type: CashTransactionType;
+  amount: number;
+  method: CashMethod;
+  category: string;
+  debtId?: string;
+  projectId?: string;
+  partnerName: string;
+  note: string;
+  transDate: string;
+  createdAt: string;
+}
+
+export interface CreateCashTransactionInput {
+  type: CashTransactionType;
+  amount: number;
+  method?: CashMethod;
+  category?: string;
+  debtId?: string;
+  projectId?: string;
+  partnerName?: string;
+  note?: string;
+  transDate?: string;
+}
+
+export interface PayDebtInput {
+  amount: number;
+  method?: CashMethod;
+  note?: string;
+}
+
+// ---------- Báo cáo tài chính ----------
+
+export interface MonthlyPnL {
+  month: string; // "2026-07"
+  revenue: number;
+  directMaterialCost: number;
+  overheadCost: number;
+  profit: number;
+  profitPct: number;
+}
+
+export interface FinancialReportData {
+  months: MonthlyPnL[];
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
 }

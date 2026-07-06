@@ -26,6 +26,7 @@ const GUT = Number(arg('--gut', 0.985)); // tỉ lệ trắng để coi là rãn
 const PAD = Number(arg('--pad', 6)); // chừa lề khi cắt
 const rowsOverride = arg('--rows', null);
 const colsOverride = arg('--cols', null);
+const region = arg('--region', null); // "left,top,right,bottom" px cắt bỏ mỗi cạnh trước khi phân tích
 if (!input) {
   console.error('Thiếu đường dẫn ảnh nguồn.');
   process.exit(1);
@@ -60,7 +61,18 @@ function contentBands(whiteFrac, gut, minLen, minGutRun) {
 }
 
 const main = async () => {
-  const { data, info } = await sharp(input).greyscale().raw().toBuffer({ resolveWithObject: true });
+  // Cắt bỏ lề (region) nếu có, tạo ảnh làm việc _work.png
+  let src = input;
+  if (region) {
+    const [cl, ct, cr, cb] = region.split(',').map(Number);
+    const meta = await sharp(input).metadata();
+    const ew = meta.width - cl - cr;
+    const eh = meta.height - ct - cb;
+    src = path.join(outDir, '_work.png');
+    await sharp(input).extract({ left: cl, top: ct, width: ew, height: eh }).png().toFile(src);
+  }
+
+  const { data, info } = await sharp(src).greyscale().raw().toBuffer({ resolveWithObject: true });
   const W = info.width;
   const H = info.height;
   const CH = info.channels;
@@ -163,7 +175,7 @@ const main = async () => {
     )
     .join('');
   const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
-  await sharp(input)
+  await sharp(src)
     .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
     .png()
     .toFile(path.join(outDir, 'overlay.png'));
@@ -174,7 +186,7 @@ const main = async () => {
   fs.mkdirSync(cellsDir, { recursive: true });
   for (let i = 0; i < boxes.length; i++) {
     const b = boxes[i];
-    await sharp(input)
+    await sharp(src)
       .extract({ left: b.x, top: b.y, width: b.w, height: b.h })
       .png()
       .toFile(path.join(cellsDir, `cell_${String(i).padStart(2, '0')}.png`));

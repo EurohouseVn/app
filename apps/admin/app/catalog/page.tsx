@@ -1,20 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { colors } from '@eurohouse/ui';
+import { Layers, Palette } from 'lucide-react';
 import type { CatalogSystem, ColorCode } from '@eurohouse/types';
 import { AdminPage } from '../../src/AdminPage';
 import { apiGet } from '../../src/lib/api';
+import { ProfileImage } from '../../src/ProfileImage';
 import {
   currency,
   eyebrowStyle,
-  ghostButtonStyle,
   pageTitleStyle,
   panelStyle,
   panelTitleStyle,
   subtitleStyle,
   tableCellStyle,
   tableHeadStyle,
+  ui,
 } from '../../src/ui';
 
 export default function CatalogPage() {
@@ -45,7 +46,7 @@ export default function CatalogPage() {
       <p style={subtitleStyle}>
         {systems.length} hệ nhôm · {totalProfiles} thanh profile · {palette.length} màu sơn tĩnh điện.
       </p>
-      {error ? <p style={{ color: colors.danger }}>{error}</p> : null}
+      {error ? <p style={{ color: ui.danger }}>{error}</p> : null}
 
       {/* Bộ chọn hệ nhôm */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, margin: '12px 0 20px' }}>
@@ -56,13 +57,22 @@ export default function CatalogPage() {
               key={system.id}
               onClick={() => setActiveId(system.id)}
               style={{
-                ...ghostButtonStyle,
-                background: selected ? colors.brandOrange : colors.white,
-                fontWeight: 800,
+                border: `1px solid ${selected ? ui.brand : ui.borderStrong}`,
+                background: selected ? ui.brandSoft : ui.surface,
+                color: selected ? ui.brandText : ui.text,
+                borderRadius: 10,
+                padding: '9px 14px',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
               }}
             >
+              <Layers size={14} />
               {system.name}
-              <span style={{ color: colors.brandGrey, fontWeight: 700, marginLeft: 8 }}>{system.profiles.length}</span>
+              <span style={{ color: selected ? ui.brandText : ui.textFaint, fontWeight: 700 }}>{system.profiles.length}</span>
             </button>
           );
         })}
@@ -70,23 +80,26 @@ export default function CatalogPage() {
 
       {/* Bảng màu */}
       <div style={{ ...panelStyle, marginBottom: 20 }}>
-        <h2 style={panelTitleStyle}>Màu sơn tiêu chuẩn</h2>
+        <h2 style={panelTitleStyle}>
+          <Palette size={16} style={{ verticalAlign: -2, marginRight: 8 }} color={ui.textMuted} />
+          Màu sơn tiêu chuẩn
+        </h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
           {palette.map((color) => (
             <div key={color.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  background: color.hex ?? colors.brandGrey,
-                  border: `1px solid ${colors.orangeSoft}`,
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  background: color.hex ?? ui.textFaint,
+                  border: `1px solid ${ui.border}`,
                   display: 'inline-block',
                 }}
               />
               <div>
-                <strong style={{ display: 'block', fontSize: 14 }}>{color.name}</strong>
-                <small style={{ color: colors.brandGrey }}>{color.code}</small>
+                <strong style={{ display: 'block', fontSize: 13, color: ui.text }}>{color.name}</strong>
+                <small style={{ color: ui.textFaint }}>{color.code}</small>
               </div>
             </div>
           ))}
@@ -94,16 +107,16 @@ export default function CatalogPage() {
       </div>
 
       {/* Bảng profile của hệ đang chọn */}
-      <div style={panelStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+      <div style={{ ...panelStyle, padding: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 20px 0' }}>
           <h2 style={panelTitleStyle}>{active ? active.name : 'Thanh profile'}</h2>
-          {active?.description ? <span style={{ color: colors.brandGrey }}>{active.description}</span> : null}
+          {active?.description ? <span style={{ color: ui.textFaint, fontSize: 13 }}>{active.description}</span> : null}
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Mã cây', 'Tên thanh', 'Độ dày', 'kg/m', 'Dài cây', 'Cây/bó', 'Giá/kg'].map((head) => (
+                {['Mặt cắt', 'Mã cây', 'Tên thanh', 'Độ dày', 'kg/m', 'Dài cây', 'Cây/bó', 'Giá/kg'].map((head) => (
                   <th key={head} style={tableHeadStyle}>
                     {head}
                   </th>
@@ -113,7 +126,10 @@ export default function CatalogPage() {
             <tbody>
               {(active?.profiles ?? []).map((profile) => (
                 <tr key={profile.id}>
-                  <td style={{ ...tableCellStyle, fontWeight: 800 }}>{profile.code}</td>
+                  <td style={tableCellStyle}>
+                    <ProfileImage imageUrl={profile.imageUrl} />
+                  </td>
+                  <td style={{ ...tableCellStyle, fontWeight: 700 }}>{profile.code}</td>
                   <td style={tableCellStyle}>{profile.name}</td>
                   <td style={tableCellStyle}>{profile.thicknessMm ?? '—'}</td>
                   <td style={tableCellStyle}>{profile.kgPerMeter}</td>

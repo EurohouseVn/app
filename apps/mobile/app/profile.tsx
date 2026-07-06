@@ -6,6 +6,15 @@ import type { ProjectSummary } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon, type IconName } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+import { useAuth } from '../src/lib/auth';
+
+const roleLabels: Record<string, string> = {
+  ADMIN: 'Quản trị viên',
+  STAFF: 'Nhân viên',
+  NPP: 'Nhà phân phối',
+  DAILY: 'Đại lý',
+  FACTORY: 'Thợ / Xưởng sản xuất',
+};
 
 const tools: { label: string; href: Href; icon: IconName; desc: string; bg: string; fg: string }[] = [
   { label: 'Công trình', href: '/projects', icon: 'layers', desc: 'Quản lý & theo dõi lợi nhuận', bg: '#FFF3DF', fg: colors.brandOrange },
@@ -15,6 +24,7 @@ const tools: { label: string; href: Href; icon: IconName; desc: string; bg: stri
 ];
 
 export default function ProfileScreen() {
+  const { user, logout } = useAuth();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
 
   useFocusEffect(
@@ -26,18 +36,19 @@ export default function ProfileScreen() {
   const totalRevenue = projects.reduce((s, p) => s + p.contractValue, 0);
   const totalProfit = projects.reduce((s, p) => s + p.profit, 0);
   const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0';
+  const roleLabel = user ? roleLabels[user.role] ?? user.role : '';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Khu làm việc" subtitle="Thợ / Xưởng sản xuất" />
+      <AppHeader title="Khu làm việc" subtitle={roleLabel || 'Eurohouse'} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
           <View style={styles.avatar}><Icon name="user" size={24} color={colors.brandOrange} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>Thợ / Xưởng</Text>
-            <Text style={styles.area}>tho@eurohouse.vn</Text>
+            <Text style={styles.name}>{user?.displayName ?? 'Người dùng'}</Text>
+            <Text style={styles.area}>{user?.email ?? ''}</Text>
           </View>
-          <Pressable style={styles.settingsBtn}><Icon name="settings" size={18} color={colors.brandGrey} /></Pressable>
+          <Pressable style={styles.settingsBtn} onPress={logout}><Icon name="log-out" size={18} color={colors.brandGrey} /></Pressable>
         </View>
 
         <View style={styles.kpiRow}>

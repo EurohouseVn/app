@@ -1,22 +1,34 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  AdjustProfileStockInput,
   AdminUserItem,
+  CashTransactionItem,
   CatalogSystem,
   ColorCode,
+  CreateCashTransactionInput,
+  CreateMaterialInput,
   CreateOrderInput,
+  CreateStockMovementInput,
   DebtItem,
+  FinancialReportData,
   GiftItem,
   LibraryItem,
+  MaterialItem,
+  MonthlyPnL,
   OrgItem,
+  PayDebtInput,
+  ProfileStockMovementItem,
   ProjectDetail,
   ProjectSummary,
   Promotion,
   QuotationInput,
   QuotationResult,
+  StockMovementItem,
+  UpdateMaterialInput,
 } from '@eurohouse/types';
 import { PrismaService } from '../prisma/prisma.service';
 
-const STD_BAR_M = 5.8; // chiều dài cây tiêu chuẩn (m)
+const STD_BAR_M = 6; // chiều dài cây tiêu chuẩn (m)
 
 function projectTotalCost(p: {
   costAluminum: number; costAccessory: number; costLockHinge: number; costGasket: number;
@@ -55,6 +67,123 @@ export class EurohouseService {
     return list.map((c) => ({ id: c.id, code: c.code, name: c.name, hex: c.hex ?? undefined }));
   }
 
+  // ---------- Kho NVL & chi phí sản xuất chung ----------
+
+  async listMaterials(filter?: { category?: string; group?: string }): Promise<MaterialItem[]> {
+    const list = await this.prisma.material.findMany({
+      where: { category: filter?.category, group: filter?.group },
+      orderBy: [{ category: 'asc' }, { group: 'asc' }],
+    });
+    return list.map((m) => ({
+      id: m.id, code: m.code, name: m.name, category: m.category as MaterialItem['category'],
+      group: m.group as MaterialItem['group'], unit: m.unit, unitPrice: m.unitPrice,
+      stockQty: m.stockQty, lowStockAlert: m.lowStockAlert, note: m.note, active: m.active,
+    }));
+  }
+
+  async createMaterial(data: CreateMaterialInput): Promise<MaterialItem> {
+    const created = await this.prisma.material.create({
+      data: {
+        code: data.code, name: data.name, category: data.category, group: data.group,
+        unit: data.unit ?? 'kg', unitPrice: data.unitPrice ?? 0,
+        lowStockAlert: data.lowStockAlert ?? 0, note: data.note ?? '',
+      },
+    });
+    return (await this.listMaterials()).find((m) => m.id === created.id)!;
+  }
+
+  async updateMaterial(id: string, data: UpdateMaterialInput): Promise<MaterialItem> {
+    await this.prisma.material.update({ where: { id }, data });
+    return (await this.listMaterials()).find((m) => m.id === id)!;
+  }
+
+  private toStockMovementItem(m: {
+    id: string; materialId: string; direction: string; quantity: number; unitPrice: number;
+    totalAmount: number; reason: string; note: string; createdAt: Date;
+    material: { code: string; name: string }; createdBy: { displayName: string } | null;
+  }): StockMovementItem {
+    return {
+      id: m.id, materialId: m.materialId, materialCode: m.material.code, materialName: m.material.name,
+      direction: m.direction as StockMovementItem['direction'], quantity: m.quantity, unitPrice: m.unitPrice,
+      totalAmount: m.totalAmount, reason: m.reason, note: m.note,
+      createdByName: m.createdBy?.displayName, createdAt: m.createdAt.toISOString(),
+    };
+  }
+
+  async listStockMovements(filter?: { direction?: string; materialId?: string; from?: string; to?: string }): Promise<StockMovementItem[]> {
+    const list = await this.prisma.stockMovement.findMany({
+      where: {
+        direction: filter?.direction,
+        materialId: filter?.materialId,
+        createdAt: filter?.from || filter?.to ? { gte: filter?.from ? new Date(filter.from) : undefined, lte: filter?.to ? new Date(filter.to) : undefined } : undefined,
+      },
+      include: { material: true, createdBy: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return list.map((m) => this.toStockMovementItem(m));
+  }
+
+  async listMaterialMovements(materialId: string): Promise<StockMovementItem[]> {
+    return this.listStockMovements({ materialId });
+  }
+
+  async createStockMovement(input: CreateStockMovementInput, userId?: string): Promise<StockMovementItem> {
+    const material = await this.prisma.material.findUnique({ where: { id: input.materialId } });
+    if (!material) throw new NotFoundException('Không tìm thấy vật tư.');
+    const unitPrice = input.unitPrice ?? material.unitPrice;
+    const totalAmount = Math.round(unitPrice * input.quantity);
+    const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const movement = await tx.stockMovement.create({
+        data: {
+          materialId: input.materialId, direction: input.direction, quantity: input.quantity,
+          unitPrice, totalAmount, reason: input.reason ?? '', note: input.note ?? '', createdById: userId ?? null,
+        },
+        include: { material: true, createdBy: true },
+      });
+      await tx.material.update({ where: { id: input.materialId }, data: { stockQty: { increment: delta } } });
+      return movement;
+    });
+    return this.toStockMovementItem(created);
+  }
+
+  // ---------- Tồn kho thanh nhôm (Profile) ----------
+
+  async listProfileMovements(profileId: string): Promise<ProfileStockMovementItem[]> {
+    const list = await this.prisma.profileStockMovement.findMany({
+      where: { profileId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return list.map((m) => ({
+      id: m.id, profileId: m.profileId, direction: m.direction as ProfileStockMovementItem['direction'],
+      quantity: m.quantity, reason: m.reason, orderId: m.orderId ?? undefined, note: m.note,
+      createdAt: m.createdAt.toISOString(),
+    }));
+  }
+
+  async adjustProfileStock(profileId: string, input: AdjustProfileStockInput, userId?: string): Promise<ProfileStockMovementItem> {
+    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
+    if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
+    const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const movement = await tx.profileStockMovement.create({
+        data: {
+          profileId, direction: input.direction, quantity: input.quantity,
+          reason: input.reason ?? 'Điều chỉnh kiểm kê', note: input.note ?? '', createdById: userId ?? null,
+        },
+      });
+      await tx.profile.update({ where: { id: profileId }, data: { stockBars: { increment: delta } } });
+      return movement;
+    });
+    return {
+      id: created.id, profileId: created.profileId, direction: created.direction as ProfileStockMovementItem['direction'],
+      quantity: created.quantity, reason: created.reason, orderId: created.orderId ?? undefined, note: created.note,
+      createdAt: created.createdAt.toISOString(),
+    };
+  }
+
   // ---------- Đơn hàng ----------
 
   private async nextOrderCode(): Promise<string> {
@@ -64,7 +193,7 @@ export class EurohouseService {
     return `EH-${ym}-${String(count + 1).padStart(3, '0')}`;
   }
 
-  async createOrder(input: CreateOrderInput) {
+  async createOrder(input: CreateOrderInput, userId?: string) {
     const profileIds = input.items.map((i) => i.profileId).filter(Boolean);
     const profiles = await this.prisma.profile.findMany({ where: { id: { in: profileIds } } });
     const profileById = new Map(profiles.map((p) => [p.id, p]));
@@ -92,37 +221,91 @@ export class EurohouseService {
       };
     });
 
-    const creator = input.createdByEmail
-      ? await this.prisma.user.findUnique({ where: { email: input.createdByEmail }, include: { organization: true } })
+    const creator = userId
+      ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } })
       : null;
+    const code = await this.nextOrderCode();
 
-    const order = await this.prisma.order.create({
-      data: {
-        code: await this.nextOrderCode(),
-        sourceType: input.sourceType,
-        createdById: creator?.id ?? null,
-        factoryName: creator?.organization?.type === 'FACTORY' ? creator.organization.name : '',
-        nppName: creator?.organization?.type === 'NPP' ? creator.organization.name : '',
-        customerName: input.customerName ?? '',
-        customerPhone: input.customerPhone ?? '',
-        deliveryAddress: input.deliveryAddress ?? '',
-        colorCode: input.colorCode ?? '',
-        note: input.note ?? '',
-        status: 'NEW',
-        totalKg: Number(totalKg.toFixed(2)),
-        totalAmount,
-        dueNote: 'Chờ NPP tiếp nhận',
-        items: { create: itemsData },
-        histories: { create: [{ status: 'NEW', title: 'Tạo đơn', actor: creator?.displayName ?? 'Người dùng', note: 'Đơn được tạo' }] },
-      },
-      include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+    // Xưởng đặt hàng → tự động chuyển đơn về NPP quản lý xưởng đó (cấu hình sẵn ở Web Admin).
+    let nppOrgId: string | null = null;
+    let nppName = '';
+    let nppWarning: string | undefined;
+    if (creator?.organization?.type === 'FACTORY') {
+      const managedByNppId = creator.organization.managedByNppId;
+      if (managedByNppId) {
+        const npp = await this.prisma.organization.findUnique({ where: { id: managedByNppId } });
+        if (npp) {
+          nppOrgId = npp.id;
+          nppName = npp.name;
+        }
+      } else {
+        nppWarning = 'Xưởng chưa được gán NPP quản lý — đơn chưa thể chuyển tới NPP nào.';
+      }
+    } else if (creator?.organization?.type === 'NPP') {
+      nppName = creator.organization.name;
+    }
+
+    const { order, stockWarnings } = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          code,
+          sourceType: input.sourceType,
+          createdById: creator?.id ?? null,
+          factoryName: creator?.organization?.type === 'FACTORY' ? creator.organization.name : '',
+          nppOrgId,
+          nppName,
+          customerName: input.customerName ?? '',
+          customerPhone: input.customerPhone ?? '',
+          deliveryAddress: input.deliveryAddress ?? '',
+          colorCode: input.colorCode ?? '',
+          note: input.note ?? '',
+          status: 'NEW',
+          totalKg: Number(totalKg.toFixed(2)),
+          totalAmount,
+          dueNote: 'Chờ NPP tiếp nhận',
+          items: { create: itemsData },
+          histories: { create: [{ status: 'NEW', title: 'Tạo đơn', actor: creator?.displayName ?? 'Người dùng', note: 'Đơn được tạo' }] },
+        },
+        include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+      });
+
+      // Tự động trừ kho thanh nhôm theo đơn hàng — chỉ cảnh báo khi tồn không đủ, không chặn tạo đơn (B2B nội bộ).
+      const warnings: { profileId: string; code: string; name: string; shortBy: number }[] = [];
+      for (const item of itemsData) {
+        if (!item.profileId) continue;
+        const profile = profileById.get(item.profileId);
+        if (!profile) continue;
+        if (profile.stockBars < item.quantity) {
+          warnings.push({ profileId: profile.id, code: profile.code, name: profile.name, shortBy: item.quantity - profile.stockBars });
+        }
+        await tx.profile.update({ where: { id: profile.id }, data: { stockBars: { decrement: item.quantity } } });
+        await tx.profileStockMovement.create({
+          data: {
+            profileId: profile.id,
+            direction: 'OUT',
+            quantity: item.quantity,
+            reason: 'Trừ theo đơn hàng',
+            orderId: created.id,
+            createdById: userId ?? null,
+            note: created.code,
+          },
+        });
+      }
+
+      return { order: created, stockWarnings: warnings };
     });
-    return order;
+
+    return { ...order, stockWarnings, nppWarning };
   }
 
-  async listOrders(filter?: { sourceType?: string; status?: string }) {
+  async listOrders(filter?: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string }) {
     return this.prisma.order.findMany({
-      where: { sourceType: filter?.sourceType, status: filter?.status },
+      where: {
+        sourceType: filter?.sourceType,
+        status: filter?.status,
+        createdById: filter?.createdById,
+        nppOrgId: filter?.nppOrgId,
+      },
       orderBy: { createdAt: 'desc' },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
     });
@@ -151,10 +334,9 @@ export class EurohouseService {
 
   // ---------- Công trình ----------
 
-  async listProjects(ownerEmail?: string): Promise<ProjectSummary[]> {
-    const owner = ownerEmail ? await this.prisma.user.findUnique({ where: { email: ownerEmail } }) : null;
+  async listProjects(ownerId?: string): Promise<ProjectSummary[]> {
     const projects = await this.prisma.project.findMany({
-      where: owner ? { ownerId: owner.id } : undefined,
+      where: ownerId ? { ownerId } : undefined,
       orderBy: { createdAt: 'desc' },
     });
     return projects.map((p) => this.toProjectSummary(p));
@@ -185,14 +367,13 @@ export class EurohouseService {
     };
   }
 
-  async createProject(data: Partial<ProjectDetail> & { ownerEmail?: string }): Promise<ProjectDetail> {
-    const owner = data.ownerEmail ? await this.prisma.user.findUnique({ where: { email: data.ownerEmail } }) : null;
+  async createProject(data: Partial<ProjectDetail>, ownerId?: string): Promise<ProjectDetail> {
     const count = await this.prisma.project.count();
     const created = await this.prisma.project.create({
       data: {
         code: `CT-${String(count + 1).padStart(4, '0')}`,
         name: data.name ?? 'Công trình mới',
-        ownerId: owner?.id ?? null,
+        ownerId: ownerId ?? null,
         customerName: data.customerName ?? '',
         customerPhone: data.customerPhone ?? '',
         address: data.address ?? '',
@@ -218,19 +399,32 @@ export class EurohouseService {
 
   // ---------- Công nợ ----------
 
-  async listDebts(): Promise<DebtItem[]> {
-    const debts = await this.prisma.debt.findMany({ orderBy: { createdAt: 'desc' } });
-    return debts.map((d) => ({
-      id: d.id, type: d.type as DebtItem['type'], partnerName: d.partnerName, amount: d.amount,
-      paidAmount: d.paidAmount, status: d.status as DebtItem['status'],
-      bankAccount: d.bankAccount, bankName: d.bankName, note: d.note,
-    }));
+  private toDebtItem(d: {
+    id: string; type: string; direction: string; partnerName: string; amount: number;
+    paidAmount: number; status: string; bankAccount: string; bankName: string; note: string;
+  }): DebtItem {
+    return {
+      id: d.id, type: d.type as DebtItem['type'], direction: d.direction as DebtItem['direction'],
+      partnerName: d.partnerName, amount: d.amount, paidAmount: d.paidAmount,
+      status: d.status as DebtItem['status'], bankAccount: d.bankAccount, bankName: d.bankName, note: d.note,
+    };
+  }
+
+  async listDebts(filter?: { direction?: string; status?: string; type?: string }): Promise<DebtItem[]> {
+    const debts = await this.prisma.debt.findMany({
+      where: { direction: filter?.direction, status: filter?.status, type: filter?.type },
+      orderBy: { createdAt: 'desc' },
+    });
+    return debts.map((d) => this.toDebtItem(d));
   }
 
   async createDebt(data: Partial<DebtItem> & { projectId?: string }): Promise<DebtItem> {
+    const type = data.type ?? 'CUSTOMER';
+    const direction = data.direction ?? (type === 'CUSTOMER' ? 'RECEIVABLE' : 'PAYABLE');
     const created = await this.prisma.debt.create({
       data: {
-        type: data.type ?? 'CUSTOMER',
+        type,
+        direction,
         partnerName: data.partnerName ?? '',
         amount: data.amount ?? 0,
         paidAmount: data.paidAmount ?? 0,
@@ -240,7 +434,145 @@ export class EurohouseService {
         projectId: data.projectId ?? null,
       },
     });
-    return (await this.listDebts()).find((d) => d.id === created.id)!;
+    return this.toDebtItem(created);
+  }
+
+  async updateDebt(id: string, data: Partial<DebtItem>): Promise<DebtItem> {
+    const allowed = ['partnerName', 'amount', 'bankAccount', 'bankName', 'note', 'direction', 'status'];
+    const updateData: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (key in data) updateData[key] = (data as Record<string, unknown>)[key];
+    }
+    const updated = await this.prisma.debt.update({ where: { id }, data: updateData });
+    return this.toDebtItem(updated);
+  }
+
+  async payDebt(id: string, input: PayDebtInput, userId?: string): Promise<CashTransactionItem> {
+    const debt = await this.prisma.debt.findUnique({ where: { id } });
+    if (!debt) throw new NotFoundException('Không tìm thấy công nợ.');
+    const type: CashTransactionItem['type'] = debt.direction === 'RECEIVABLE' ? 'RECEIPT' : 'PAYMENT';
+    return this.createCashTransaction(
+      { type, amount: input.amount, method: input.method, debtId: id, partnerName: debt.partnerName, note: input.note },
+      userId,
+    );
+  }
+
+  // ---------- Thu chi ----------
+
+  private async nextCashCode(type: string): Promise<string> {
+    const prefix = type === 'RECEIPT' ? 'PT' : 'PC';
+    const count = await this.prisma.cashTransaction.count({ where: { type } });
+    const now = new Date();
+    const ym = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return `${prefix}-${ym}-${String(count + 1).padStart(3, '0')}`;
+  }
+
+  private toCashTransactionItem(c: {
+    id: string; code: string; type: string; amount: number; method: string; category: string;
+    debtId: string | null; projectId: string | null; partnerName: string; note: string;
+    transDate: Date; createdAt: Date;
+  }): CashTransactionItem {
+    return {
+      id: c.id, code: c.code, type: c.type as CashTransactionItem['type'], amount: c.amount,
+      method: c.method as CashTransactionItem['method'], category: c.category,
+      debtId: c.debtId ?? undefined, projectId: c.projectId ?? undefined,
+      partnerName: c.partnerName, note: c.note, transDate: c.transDate.toISOString(), createdAt: c.createdAt.toISOString(),
+    };
+  }
+
+  async listCashTransactions(filter?: { type?: string; debtId?: string; from?: string; to?: string }): Promise<CashTransactionItem[]> {
+    const list = await this.prisma.cashTransaction.findMany({
+      where: {
+        type: filter?.type,
+        debtId: filter?.debtId,
+        transDate: filter?.from || filter?.to ? { gte: filter?.from ? new Date(filter.from) : undefined, lte: filter?.to ? new Date(filter.to) : undefined } : undefined,
+      },
+      orderBy: { transDate: 'desc' },
+    });
+    return list.map((c) => this.toCashTransactionItem(c));
+  }
+
+  async createCashTransaction(input: CreateCashTransactionInput, userId?: string): Promise<CashTransactionItem> {
+    const code = await this.nextCashCode(input.type);
+    const created = await this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.cashTransaction.create({
+        data: {
+          code, type: input.type, amount: input.amount, method: input.method ?? 'CASH',
+          category: input.category ?? '', debtId: input.debtId ?? null, projectId: input.projectId ?? null,
+          partnerName: input.partnerName ?? '', note: input.note ?? '',
+          transDate: input.transDate ? new Date(input.transDate) : undefined,
+          createdById: userId ?? null,
+        },
+      });
+
+      if (input.debtId) {
+        const debt = await tx.debt.findUnique({ where: { id: input.debtId } });
+        if (debt) {
+          const paidAmount = debt.paidAmount + input.amount;
+          const status = paidAmount >= debt.amount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN';
+          await tx.debt.update({ where: { id: input.debtId }, data: { paidAmount, status } });
+        }
+      }
+
+      return transaction;
+    });
+    return this.toCashTransactionItem(created);
+  }
+
+  // ---------- Báo cáo tài chính ----------
+
+  async monthlyPnL(months = 6): Promise<FinancialReportData> {
+    const now = new Date();
+    const rangeStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+    const [orders, payments, materials] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { createdAt: { gte: rangeStart }, status: { not: 'CANCELLED' } },
+        select: { totalAmount: true, createdAt: true },
+      }),
+      this.prisma.cashTransaction.findMany({
+        where: { type: 'PAYMENT', transDate: { gte: rangeStart } },
+        select: { amount: true, category: true, transDate: true },
+      }),
+      this.prisma.material.findMany({ select: { group: true, category: true } }),
+    ]);
+
+    const overheadGroups = new Set(materials.filter((m) => m.category === 'OVERHEAD').map((m) => m.group));
+
+    const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const buckets = new Map<string, MonthlyPnL>();
+    for (let i = 0; i < months; i += 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+      const key = monthKey(d);
+      buckets.set(key, { month: key, revenue: 0, directMaterialCost: 0, overheadCost: 0, profit: 0, profitPct: 0 });
+    }
+
+    for (const order of orders) {
+      const bucket = buckets.get(monthKey(order.createdAt));
+      if (bucket) bucket.revenue += order.totalAmount;
+    }
+    for (const payment of payments) {
+      const bucket = buckets.get(monthKey(payment.transDate));
+      if (!bucket) continue;
+      if (overheadGroups.has(payment.category)) bucket.overheadCost += payment.amount;
+      else bucket.directMaterialCost += payment.amount;
+    }
+
+    let totalRevenue = 0;
+    let totalCost = 0;
+    for (const bucket of buckets.values()) {
+      bucket.profit = bucket.revenue - bucket.directMaterialCost - bucket.overheadCost;
+      bucket.profitPct = bucket.revenue > 0 ? Number(((bucket.profit / bucket.revenue) * 100).toFixed(1)) : 0;
+      totalRevenue += bucket.revenue;
+      totalCost += bucket.directMaterialCost + bucket.overheadCost;
+    }
+
+    return {
+      months: Array.from(buckets.values()),
+      totalRevenue,
+      totalCost,
+      totalProfit: totalRevenue - totalCost,
+    };
   }
 
   // ---------- Người dùng & tổ chức (Web Admin) ----------
@@ -265,7 +597,7 @@ export class EurohouseService {
 
   async adminOrgs(): Promise<OrgItem[]> {
     const orgs = await this.prisma.organization.findMany({
-      include: { _count: { select: { users: true } } },
+      include: { _count: { select: { users: true } }, managedByNpp: true },
       orderBy: { createdAt: 'asc' },
     });
     return orgs.map((o) => ({
@@ -276,7 +608,17 @@ export class EurohouseService {
       phone: o.phone ?? undefined,
       address: o.address ?? undefined,
       userCount: o._count.users,
+      managedByNppId: o.managedByNppId ?? undefined,
+      managedByNppName: o.managedByNpp?.name,
     }));
+  }
+
+  async updateOrgManagedNpp(orgId: string, managedByNppId: string | null): Promise<OrgItem> {
+    await this.prisma.organization.update({ where: { id: orgId }, data: { managedByNppId } });
+    const orgs = await this.adminOrgs();
+    const updated = orgs.find((o) => o.id === orgId);
+    if (!updated) throw new NotFoundException('Không tìm thấy tổ chức.');
+    return updated;
   }
 
   // ---------- Báo giá tự động ----------

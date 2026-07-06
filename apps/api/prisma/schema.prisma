@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,6 +17,10 @@ model Organization {
   phone     String?
   address   String?
   users     User[]
+  managedByNppId   String?
+  managedByNpp     Organization?  @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
+  managedFactories Organization[] @relation("NppManagesFactory")
+  ordersAsNpp      Order[]        @relation("OrderNppOrg")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -32,6 +36,9 @@ model User {
   organization   Organization? @relation(fields: [organizationId], references: [id])
   projects       Project[]
   orders         Order[]
+  stockMovements StockMovement[]
+  profileStockMovements ProfileStockMovement[]
+  cashTransactions CashTransaction[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -53,7 +60,7 @@ model Profile {
   id           String      @id @default(cuid())
   aluSystemId  String
   aluSystem    AluSystem   @relation(fields: [aluSystemId], references: [id])
-  code         String      @unique
+  code         String // mã cây — không unique toàn cục vì nhiều hệ dùng chung phụ kiện/thanh giống nhau
   name         String
   thicknessMm  String? // ví dụ "1.0" hoặc "1 - 1.25"
   kgPerMeter   Float       @default(0)
@@ -61,9 +68,14 @@ model Profile {
   barsPerBundle Int        @default(0) // quy cách bó
   pricePerKg   Int         @default(0)
   imageUrl     String? // ảnh mặt cắt
+  stockBars    Int         @default(0) // tồn hiện tại theo cây
+  lowStockAlert Int        @default(0) // ngưỡng cảnh báo tồn thấp (0 = không cảnh báo)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   orderItems   OrderItem[]
+  stockMovements ProfileStockMovement[]
+
+  @@unique([aluSystemId, code])
 }
 
 model ColorCode {
@@ -85,6 +97,8 @@ model Order {
   factoryName     String      @default("")
   dealerName      String      @default("")
   nppName         String      @default("")
+  nppOrgId        String?
+  nppOrg          Organization? @relation("OrderNppOrg", fields: [nppOrgId], references: [id])
   customerName    String      @default("")
   customerPhone   String      @default("")
   deliveryAddress String      @default("")
@@ -96,6 +110,7 @@ model Order {
   dueNote         String      @default("")
   items           OrderItem[]
   histories       OrderStatusHistory[]
+  profileStockMovements ProfileStockMovement[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 }
@@ -156,6 +171,7 @@ model Project {
   note          String        @default("")
   costs         ProjectCost[]
   debts         Debt[]
+  cashTransactions CashTransaction[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -176,6 +192,7 @@ model Debt {
   projectId   String?
   project     Project? @relation(fields: [projectId], references: [id])
   type        String // NPP | ACCESSORY | CUSTOMER
+  direction   String   @default("PAYABLE") // PAYABLE (phải trả) | RECEIVABLE (phải thu)
   partnerName String
   amount      Int      @default(0)
   paidAmount  Int      @default(0)
@@ -184,6 +201,7 @@ model Debt {
   bankName    String   @default("")
   note        String   @default("")
   dueDate     DateTime?
+  transactions CashTransaction[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -210,6 +228,87 @@ model Quotation {
   totalAmount   Int      @default(0)
   payload       String   @default("{}") // JSON chi tiết dòng
   createdAt     DateTime @default(now())
+}
+
+// ---------- Kho NVL & chi phí sản xuất chung ----------
+
+model Material {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  category      String // DIRECT_MATERIAL | OVERHEAD
+  group         String // BILLET|PAINT|LABEL|NYLON|PACKAGING|ACCESSORY_HW|ELECTRICITY|GAS|WATER|FUEL|MAINTENANCE
+  unit          String   @default("kg")
+  unitPrice     Int      @default(0)
+  stockQty      Float    @default(0)
+  lowStockAlert Float    @default(0)
+  note          String   @default("")
+  active        Boolean  @default(true)
+  movements     StockMovement[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  materialId  String
+  material    Material @relation(fields: [materialId], references: [id])
+  direction   String // IN | OUT
+  quantity    Float
+  unitPrice   Int      @default(0)
+  totalAmount Int      @default(0)
+  reason      String   @default("")
+  note        String   @default("")
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([materialId])
+  @@index([createdAt])
+}
+
+model ProfileStockMovement {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id])
+  direction   String // IN | OUT
+  quantity    Int
+  reason      String   @default("")
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id])
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([profileId])
+}
+
+// ---------- Thu chi ----------
+
+model CashTransaction {
+  id          String   @id @default(cuid())
+  code        String   @unique // PT-2607-001 (thu) | PC-2607-001 (chi)
+  type        String // RECEIPT | PAYMENT
+  amount      Int
+  method      String   @default("CASH") // CASH | BANK_TRANSFER
+  category    String   @default("")
+  debtId      String?
+  debt        Debt?    @relation(fields: [debtId], references: [id])
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  partnerName String   @default("")
+  note        String   @default("")
+  transDate   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([type])
+  @@index([debtId])
+  @@index([transDate])
 }
 
 // ---------- Nội dung từ Web Admin ----------

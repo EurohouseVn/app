@@ -6,6 +6,7 @@ import type { Promotion } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon, type IconName } from '../src/components/Icon';
 import { api, assetUrl } from '../src/lib/api';
+import { statusText, statusTone } from '../src/lib/orderStatus';
 
 const quickActions: { label: string; icon: IconName; href: Href; bg: string }[] = [
   { label: 'Đặt hàng', icon: 'grid', href: '/orders', bg: '#FFF3DF' },
@@ -22,16 +23,6 @@ const actionFg: Record<string, string> = {
 };
 
 type OrderRow = { id: string; code: string; status: string; totalAmount: number; totalKg: number };
-
-const statusText: Record<string, string> = {
-  NEW: 'Mới', RECEIVED_BY_NPP: 'NPP tiếp nhận', SENT_TO_ADMIN: 'Gửi công ty',
-  PROCESSING: 'Đang xử lý', PARTIAL: 'Giao một phần', COMPLETED: 'Hoàn tất', CANCELLED: 'Đã hủy',
-};
-
-const statusTone: Record<string, string> = {
-  NEW: colors.brandOrange, RECEIVED_BY_NPP: colors.success, SENT_TO_ADMIN: colors.brandBlack,
-  PROCESSING: colors.warning, PARTIAL: colors.warning, COMPLETED: colors.success, CANCELLED: colors.brandRed,
-};
 
 export default function HomeScreen() {
   const [promo, setPromo] = useState<Promotion | null>(null);
@@ -80,7 +71,7 @@ export default function HomeScreen() {
 
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Đơn hàng của tôi</Text>
-          <Link href="/orders" style={styles.seeAll}>Đặt thêm</Link>
+          <Link href="/my-orders" style={styles.seeAll}>Xem tất cả</Link>
         </View>
 
         {orders.length === 0 ? (
@@ -92,18 +83,20 @@ export default function HomeScreen() {
           </View>
         ) : (
           orders.slice(0, 5).map((order) => (
-            <View key={order.id} style={styles.orderCard}>
-              <View style={styles.orderIconWrap}>
-                <Icon name="box" size={18} color={colors.brandOrangeText} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.orderCode}>{order.code}</Text>
-                <Text style={styles.orderMeta}>{order.totalKg.toFixed(1)} kg · {(order.totalAmount / 1000000).toFixed(1)} tr</Text>
-              </View>
-              <View style={[styles.statusPill, { backgroundColor: (statusTone[order.status] ?? colors.brandGrey) + '1A' }]}>
-                <Text style={[styles.statusPillText, { color: statusTone[order.status] ?? colors.brandBlack }]}>{statusText[order.status] ?? order.status}</Text>
-              </View>
-            </View>
+            <Link key={order.id} href={`/order/${order.id}` as Href} asChild>
+              <Pressable style={styles.orderCard}>
+                <View style={styles.orderIconWrap}>
+                  <Icon name="box" size={18} color={colors.brandOrangeText} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.orderCode}>{order.code}</Text>
+                  <Text style={styles.orderMeta}>{order.totalKg.toFixed(1)} kg · {(order.totalAmount / 1000000).toFixed(1)} tr</Text>
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: (statusTone[order.status] ?? colors.brandGrey) + '1A' }]}>
+                  <Text style={[styles.statusPillText, { color: statusTone[order.status] ?? colors.brandBlack }]}>{statusText[order.status] ?? order.status}</Text>
+                </View>
+              </Pressable>
+            </Link>
           ))
         )}
       </ScrollView>
