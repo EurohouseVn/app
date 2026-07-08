@@ -5,6 +5,7 @@ export interface JwtUser {
   sub: string;
   email: string;
   role: UserRole;
+  organizationId?: string;
 }
 
 export const CurrentUser = createParamDecorator(

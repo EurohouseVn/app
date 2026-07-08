@@ -49,7 +49,7 @@ function Gate() {
     >
       <Tabs.Screen name="index" options={{ title: 'Trang chủ', tabBarIcon: tabBarIcon('home') }} />
       <Tabs.Screen name="orders" options={{ title: 'Đặt hàng', tabBarIcon: tabBarIcon('grid') }} />
-      <Tabs.Screen name="quote" options={{ title: 'Công thức', tabBarIcon: tabBarIcon('sliders') }} />
+      <Tabs.Screen name="quote" options={{ title: 'Báo giá', tabBarIcon: tabBarIcon('sliders') }} />
       <Tabs.Screen name="library" options={{ title: 'Thư viện', tabBarIcon: tabBarIcon('image') }} />
       <Tabs.Screen name="profile" options={{ title: 'Cá nhân', tabBarIcon: tabBarIcon('user') }} />
       <Tabs.Screen name="auth" options={{ href: null }} />
@@ -59,7 +59,6 @@ function Gate() {
       <Tabs.Screen name="projects" options={{ href: null }} />
       <Tabs.Screen name="project/[id]" options={{ href: null }} />
       <Tabs.Screen name="debts" options={{ href: null }} />
-      <Tabs.Screen name="quotation" options={{ href: null }} />
       <Tabs.Screen name="my-orders" options={{ href: null }} />
       <Tabs.Screen name="order/[id]" options={{ href: null }} />
       <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />

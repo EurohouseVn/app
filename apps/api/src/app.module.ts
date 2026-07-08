@@ -5,10 +5,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { EurohouseController } from './eurohouse/eurohouse.controller';
 import { EurohouseService } from './eurohouse/eurohouse.service';
+import { QuotationPdfService } from './eurohouse/quotation-pdf.service';
 
 @Module({
   imports: [PrismaModule, AuthModule],
   controllers: [AppController, EurohouseController],
-  providers: [AppService, EurohouseService],
+  providers: [AppService, EurohouseService, QuotationPdfService],
 })
 export class AppModule {}

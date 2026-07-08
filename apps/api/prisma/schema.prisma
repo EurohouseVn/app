@@ -22,6 +22,8 @@ model Organization {
   managedByNpp     Organization?  @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
   managedFactories Organization[] @relation("NppManagesFactory")
   ordersAsNpp      Order[]        @relation("OrderNppOrg")
+  debtsAsNpp       Debt[]         @relation("DebtNppOrg")
+  debtsAsFactory   Debt[]         @relation("DebtFactoryOrg")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -40,6 +42,7 @@ model User {
   stockMovements StockMovement[]
   profileStockMovements ProfileStockMovement[]
   cashTransactions CashTransaction[]
+  quotations     Quotation[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -113,6 +116,7 @@ model Order {
   items           OrderItem[]
   histories       OrderStatusHistory[]
   profileStockMovements ProfileStockMovement[]
+  debts           Debt[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 }
@@ -203,9 +207,19 @@ model Debt {
   bankName    String   @default("")
   note        String   @default("")
   dueDate     DateTime?
+  // Công nợ NPP↔Xưởng: tự động sinh khi đơn hàng chuyển COMPLETED (xem eurohouse.service.ts).
+  nppOrgId     String?
+  nppOrg       Organization? @relation("DebtNppOrg", fields: [nppOrgId], references: [id])
+  factoryOrgId String?
+  factoryOrg   Organization? @relation("DebtFactoryOrg", fields: [factoryOrgId], references: [id])
+  orderId      String?
+  order        Order?        @relation(fields: [orderId], references: [id])
   transactions CashTransaction[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([nppOrgId])
+  @@index([factoryOrgId])
 }
 
 // ---------- Báo giá tự động ----------
@@ -213,7 +227,8 @@ model Debt {
 model Quotation {
   id            String   @id @default(cuid())
   code          String   @unique
-  ownerId       String?
+  createdById   String?
+  createdBy     User?    @relation(fields: [createdById], references: [id])
   customerName  String   @default("")
   doorType      String   @default("")
   widthMm       Int      @default(0)
@@ -227,9 +242,13 @@ model Quotation {
   installCost   Int      @default(0)
   profitPct     Float    @default(0)
   depreciation  Int      @default(0)
+  areaM2        Float    @default(0)
+  baseAmount    Int      @default(0)
+  profitAmount  Int      @default(0)
   totalAmount   Int      @default(0)
-  payload       String   @default("{}") // JSON chi tiết dòng
   createdAt     DateTime @default(now())
+
+  @@index([createdById])
 }
 
 // ---------- Kho NVL & chi phí sản xuất chung ----------

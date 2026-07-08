@@ -328,6 +328,11 @@ export interface DebtItem {
   bankAccount: string;
   bankName: string;
   note: string;
+  nppOrgId?: string;
+  factoryOrgId?: string;
+  factoryOrgName?: string;
+  orderId?: string;
+  orderCode?: string;
 }
 
 export interface QuotationInput {
@@ -355,6 +360,12 @@ export interface QuotationResult {
   depreciation: number;
   profitAmount: number;
   totalAmount: number;
+}
+
+export interface QuotationRecord extends QuotationInput, QuotationResult {
+  id: string;
+  code: string;
+  createdAt: string;
 }
 
 export interface QuoteWizardInput {
@@ -581,4 +592,35 @@ export interface FinancialReportData {
   totalRevenue: number;
   totalCost: number;
   totalProfit: number;
+}
+
+// ---------- NPP Web Manager ----------
+
+export interface NppDashboardData {
+  ordersByStatus: Record<string, number>;
+  managedFactoryCount: number;
+  openDebtTotal: number;
+  openDebtPaid: number;
+  monthRevenue: number;
+}
+
+export interface NppFactoryReconciliation {
+  factoryOrgId?: string;
+  factoryName: string;
+  counts: Record<string, number>;
+  totalAmount: number;
+  totalKg: number;
+}
+
+export interface NppMonthlyReport {
+  month: string;
+  revenue: number;
+  debtCreated: number;
+  debtPaid: number;
+}
+
+export interface NppFinancialReportData {
+  months: NppMonthlyReport[];
+  totalRevenue: number;
+  totalDebtOpen: number;
 }

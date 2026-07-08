@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import type {
   AdjustProfileStockInput,
   CreateCashTransactionInput,
@@ -14,6 +15,7 @@ import type {
   UpdateOrgInput,
 } from '@eurohouse/types';
 import { EurohouseService } from './eurohouse.service';
+import { QuotationPdfService } from './quotation-pdf.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -21,7 +23,10 @@ import { CurrentUser, type JwtUser } from '../auth/current-user.decorator';
 
 @Controller()
 export class EurohouseController {
-  constructor(private readonly service: EurohouseService) {}
+  constructor(
+    private readonly service: EurohouseService,
+    private readonly pdfService: QuotationPdfService,
+  ) {}
 
   // Danh mục đặt hàng
   @Get('catalog/systems')
@@ -142,12 +147,13 @@ export class EurohouseController {
     @CurrentUser() user: JwtUser,
   ) {
     const createdById = user.role === 'FACTORY' ? user.sub : undefined;
+    const nppOrgId = user.role === 'NPP' ? user.organizationId : undefined;
     const pageNum = page ? Number(page) : undefined;
     const pageSizeNum = pageSize ? Number(pageSize) : undefined;
     if (pageNum !== undefined) {
-      return this.service.listOrders({ sourceType, status, createdById, page: pageNum, pageSize: pageSizeNum });
+      return this.service.listOrders({ sourceType, status, createdById, nppOrgId, page: pageNum, pageSize: pageSizeNum });
     }
-    return this.service.listOrders({ sourceType, status, createdById });
+    return this.service.listOrders({ sourceType, status, createdById, nppOrgId });
   }
 
   @Get('orders/:id')
@@ -180,6 +186,83 @@ export class EurohouseController {
   @Roles('NPP', 'ADMIN')
   nppSendAdmin(@Param('id') id: string) {
     return this.service.updateOrderStatus(id, 'SENT_TO_ADMIN', 'NPP', 'Gửi công ty', 'NPP chuyển đơn lên công ty');
+  }
+
+  // NPP Web Manager
+  // ADMIN có thể truyền ?nppOrgId= để xem hộ/kiểm tra; NPP luôn bị ép theo organizationId trong JWT của mình.
+  private resolveNppOrgId(user: JwtUser, queryNppOrgId?: string): string {
+    if (user.role === 'NPP') {
+      if (!user.organizationId) throw new BadRequestException('Tài khoản NPP chưa được gán tổ chức.');
+      return user.organizationId;
+    }
+    if (!queryNppOrgId) throw new BadRequestException('Thiếu tham số nppOrgId.');
+    return queryNppOrgId;
+  }
+
+  @Get('npp/dashboard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppDashboard(@Query('nppOrgId') nppOrgId: string | undefined, @CurrentUser() user: JwtUser) {
+    return this.service.nppDashboard(this.resolveNppOrgId(user, nppOrgId));
+  }
+
+  @Get('npp/orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppOrders(
+    @Query('nppOrgId') queryNppOrgId: string | undefined,
+    @Query('status') status: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const nppOrgId = this.resolveNppOrgId(user, queryNppOrgId);
+    const pageNum = page ? Number(page) : undefined;
+    const pageSizeNum = pageSize ? Number(pageSize) : undefined;
+    if (pageNum !== undefined) {
+      return this.service.listOrders({ nppOrgId, status, page: pageNum, pageSize: pageSizeNum });
+    }
+    return this.service.listOrders({ nppOrgId, status });
+  }
+
+  @Get('npp/orders/reconciliation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppOrderReconciliation(
+    @Query('nppOrgId') queryNppOrgId: string | undefined,
+    @Query('month') month: string | undefined,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.service.nppOrderReconciliation(this.resolveNppOrgId(user, queryNppOrgId), { month });
+  }
+
+  @Get('npp/debts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppDebts(
+    @Query('nppOrgId') queryNppOrgId: string | undefined,
+    @Query('status') status: string | undefined,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.service.listDebts({ nppOrgId: this.resolveNppOrgId(user, queryNppOrgId), status, type: 'NPP' });
+  }
+
+  @Post('npp/debts/:id/payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppPayDebt(@Param('id') id: string, @Body() body: PayDebtInput, @CurrentUser() user: JwtUser) {
+    return this.service.payDebt(id, body, user.sub);
+  }
+
+  @Get('npp/reports/pnl')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP', 'ADMIN')
+  nppReportsPnl(
+    @Query('nppOrgId') queryNppOrgId: string | undefined,
+    @Query('months') months: string | undefined,
+    @CurrentUser() user: JwtUser,
+  ) {
+    return this.service.nppFinancialReport(this.resolveNppOrgId(user, queryNppOrgId), months ? Number(months) : undefined);
   }
 
   // Người dùng & tổ chức (Web Admin)
@@ -261,6 +344,45 @@ export class EurohouseController {
   @UseGuards(JwtAuthGuard)
   calcQuotation(@Body() body: QuotationInput) {
     return this.service.calcQuotation(body);
+  }
+
+  @Post('quotations')
+  @UseGuards(JwtAuthGuard)
+  createQuotation(@Body() body: QuotationInput, @CurrentUser() user: JwtUser) {
+    return this.service.createQuotation(body, user.sub);
+  }
+
+  @Get('quotations')
+  @UseGuards(JwtAuthGuard)
+  listQuotations(
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @CurrentUser() user: JwtUser,
+  ) {
+    // ADMIN/STAFF xem tất cả báo giá; các role khác chỉ xem báo giá do mình tạo.
+    const createdById = user.role === 'ADMIN' || user.role === 'STAFF' ? undefined : user.sub;
+    const pageNum = page ? Number(page) : undefined;
+    const pageSizeNum = pageSize ? Number(pageSize) : undefined;
+    if (pageNum !== undefined) {
+      return this.service.listQuotations({ createdById, page: pageNum, pageSize: pageSizeNum });
+    }
+    return this.service.listQuotations({ createdById });
+  }
+
+  @Get('quotations/:id')
+  @UseGuards(JwtAuthGuard)
+  getQuotation(@Param('id') id: string) {
+    return this.service.getQuotation(id);
+  }
+
+  @Get('quotations/:id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async quotationPdf(@Param('id') id: string, @Res() res: Response) {
+    const quotation = await this.service.getQuotation(id);
+    const pdf = await this.pdfService.render(quotation);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="bao-gia-${quotation.code}.pdf"`);
+    res.end(pdf);
   }
 
   // Nội dung

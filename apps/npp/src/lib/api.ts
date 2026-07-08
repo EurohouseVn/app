@@ -45,16 +45,3 @@ export async function apiSend<T>(path: string, method: 'POST' | 'PATCH' | 'DELET
   }
   return (await response.json()) as T;
 }
-
-// Mở file (PDF...) từ endpoint cần Bearer token bằng cách tải blob rồi mở qua object URL.
-export async function openAuthedFile(path: string): Promise<void> {
-  const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
-  if (!response.ok) {
-    handleUnauthorized(response.status);
-    throw new Error(`Không tải được ${path} (lỗi ${response.status})`);
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}

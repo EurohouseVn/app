@@ -18,7 +18,7 @@ const roleLabels: Record<string, string> = {
 
 const tools: { label: string; href: Href; icon: IconName; desc: string; bg: string; fg: string }[] = [
   { label: 'Công trình', href: '/projects', icon: 'layers', desc: 'Quản lý & theo dõi lợi nhuận', bg: '#FFF3DF', fg: colors.brandOrange },
-  { label: 'Báo giá tự động', href: '/quotation', icon: 'file-text', desc: 'Sinh báo giá chào khách', bg: '#E8F1FF', fg: '#2F6FED' },
+  { label: 'Báo giá tự động', href: '/quote', icon: 'file-text', desc: 'Sinh báo giá chào khách', bg: '#E8F1FF', fg: '#2F6FED' },
   { label: 'Công nợ', href: '/debts', icon: 'credit-card', desc: 'NPP, phụ kiện, khách hàng', bg: '#FFEAEA', fg: colors.brandRed },
   { label: 'Bảo hành QR', href: '/warranty', icon: 'maximize', desc: 'Kích hoạt & tích điểm', bg: '#E9F8EE', fg: colors.success },
 ];

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Calculator, Receipt } from 'lucide-react';
-import type { QuotationInput, QuotationResult } from '@eurohouse/types';
+import { Calculator, FileText, Receipt, Save } from 'lucide-react';
+import type { QuotationInput, QuotationRecord, QuotationResult } from '@eurohouse/types';
 import { AdminPage } from '../../src/AdminPage';
-import { apiSend } from '../../src/lib/api';
+import { apiSend, openAuthedFile } from '../../src/lib/api';
 import {
   currency,
   eyebrowStyle,
@@ -51,19 +51,23 @@ const numberFields: { key: keyof FormState; label: string; suffix?: string }[] =
 export default function QuotePage() {
   const [form, setForm] = useState<FormState>(initial);
   const [result, setResult] = useState<QuotationResult | null>(null);
+  const [saved, setSaved] = useState<QuotationRecord | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function update(key: keyof FormState, value: string) {
     setForm((current) => ({
       ...current,
       [key]: key === 'customerName' || key === 'doorType' ? value : Number(value) || 0,
     }));
+    setSaved(null);
   }
 
   async function calculate() {
     setError('');
     setLoading(true);
+    setSaved(null);
     try {
       const data = await apiSend<QuotationResult>('/quotations/calc', 'POST', form);
       setResult(data);
@@ -71,6 +75,29 @@ export default function QuotePage() {
       setError(e instanceof Error ? e.message : 'Không tính được báo giá.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function save() {
+    setError('');
+    setSaving(true);
+    try {
+      const record = await apiSend<QuotationRecord>('/quotations', 'POST', form);
+      setSaved(record);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không lưu được báo giá.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function exportPdf() {
+    if (!saved) return;
+    setError('');
+    try {
+      await openAuthedFile(`/quotations/${saved.id}/pdf`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không xuất được PDF.');
     }
   }
 
@@ -132,6 +159,41 @@ export default function QuotePage() {
                 <small style={{ color: ui.brandText, fontWeight: 700 }}>TỔNG BÁO GIÁ · {form.quantity} BỘ</small>
                 <strong style={{ display: 'block', color: ui.text, fontSize: 28, marginTop: 4 }}>{currency(result.totalAmount)}</strong>
               </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  style={{ ...primaryButtonStyle, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu báo giá'}
+                </button>
+                <button
+                  onClick={exportPdf}
+                  disabled={!saved}
+                  style={{
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    border: `1px solid ${ui.borderStrong}`,
+                    background: saved ? ui.surface : ui.surfaceMuted,
+                    color: saved ? ui.text : ui.textFaint,
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: saved ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <FileText size={16} /> Xuất PDF
+                </button>
+              </div>
+              {saved ? (
+                <p style={{ color: ui.success, fontWeight: 700, fontSize: 13, marginTop: 10, textAlign: 'center' }}>
+                  Đã lưu báo giá {saved.code}. Bấm "Xuất PDF" để tải file gửi khách.
+                </p>
+              ) : null}
             </>
           ) : (
             <p style={{ color: ui.textFaint, fontSize: 14 }}>Nhập thông số rồi bấm "Tính báo giá".</p>

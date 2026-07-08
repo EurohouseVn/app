@@ -5,18 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FileBarChart,
-  FileText,
-  Gift,
   HandCoins,
-  Image as ImageIcon,
   LayoutGrid,
   LogOut,
-  Megaphone,
   Package,
-  Receipt,
-  Users,
-  Wallet,
-  Warehouse,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 import type { DemoAdminUser } from '@eurohouse/types';
@@ -25,28 +18,17 @@ import { ui } from './ui';
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutGrid },
   { label: 'Đơn hàng', href: '/orders', icon: Package },
-  { label: 'Kho NVL', href: '/inventory', icon: Warehouse },
+  { label: 'Đối chiếu', href: '/reconciliation', icon: Scale },
   { label: 'Công nợ', href: '/debts', icon: HandCoins },
-  { label: 'Thu chi', href: '/cashflow', icon: Wallet },
-  { label: 'Báo cáo tài chính', href: '/reports', icon: FileBarChart },
-  { label: 'Người dùng', href: '/users', icon: Users },
-  { label: 'Hệ nhôm', href: '/catalog', icon: LayoutGrid },
-  { label: 'Báo giá', href: '/quote', icon: Receipt },
-  { label: 'Báo giá đã lưu', href: '/quotations', icon: FileText },
-  { label: 'Khuyến mãi', href: '/promotions', icon: Megaphone },
-  { label: 'Loyalty', href: '/loyalty', icon: Gift },
-  { label: 'Thư viện', href: '/library', icon: ImageIcon },
+  { label: 'Báo cáo', href: '/reports', icon: FileBarChart },
 ];
 
 const roleLabel: Record<string, string> = {
   ADMIN: 'Quản trị hệ thống',
-  STAFF: 'Nhân viên',
   NPP: 'Nhà phân phối',
-  DAILY: 'Đại lý',
-  FACTORY: 'Xưởng sản xuất',
 };
 
-export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; onLogout: () => void; children: React.ReactNode }) {
+export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; onLogout: () => void; children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
@@ -67,7 +49,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
           <Image src="/logo.png" alt="Eurohouse" width={38} height={38} style={{ borderRadius: 10 }} />
           <div>
             <strong style={{ color: ui.text, fontSize: 17, letterSpacing: -0.3 }}>Eurohouse</strong>
-            <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>Web Admin</p>
+            <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>NPP Web Manager</p>
           </div>
         </div>
 
@@ -86,10 +68,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
 
         <nav style={{ display: 'grid', gap: 4, marginTop: 20, flex: 1 }}>
           {navItems.map((item, index) => {
-            const active =
-              item.href === '/'
-                ? pathname === '/'
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link

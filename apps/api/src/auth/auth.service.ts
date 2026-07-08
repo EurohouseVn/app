@@ -24,7 +24,12 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
     }
-    const payload: JwtUser = { sub: user.id, email: user.email, role: user.role as UserRole };
+    const payload: JwtUser = {
+      sub: user.id,
+      email: user.email,
+      role: user.role as UserRole,
+      organizationId: user.organizationId ?? undefined,
+    };
     const token = await this.jwtService.signAsync(payload);
     const result: DemoAdminUser = {
       id: user.id,

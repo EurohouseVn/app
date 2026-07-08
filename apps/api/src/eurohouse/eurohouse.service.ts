@@ -15,6 +15,10 @@ import type {
   LibraryItem,
   MaterialItem,
   MonthlyPnL,
+  NppDashboardData,
+  NppFactoryReconciliation,
+  NppFinancialReportData,
+  NppMonthlyReport,
   OrgItem,
   PayDebtInput,
   ProfileStockMovementItem,
@@ -22,6 +26,7 @@ import type {
   ProjectSummary,
   Promotion,
   QuotationInput,
+  QuotationRecord,
   QuotationResult,
   StockMovementItem,
   UpdateMaterialInput,
@@ -369,10 +374,43 @@ export class EurohouseService {
     await this.prisma.orderStatusHistory.create({
       data: { orderId: order.id, status, title, actor, note },
     });
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: order.id },
       data: { status },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+    });
+    if (status === 'COMPLETED') {
+      await this.createNppDebtForOrder(updated.id);
+    }
+    return updated;
+  }
+
+  // Công nợ NPP↔Xưởng tự động khi đơn hoàn tất: NPP đã giao hàng cho Xưởng → Xưởng nợ NPP tiền hàng (NPP phải thu).
+  // Idempotent qua orderId — set lại COMPLETED nhiều lần không tạo trùng.
+  private async createNppDebtForOrder(orderId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { createdBy: { include: { organization: true } } },
+    });
+    if (!order || !order.nppOrgId) return;
+
+    const existing = await this.prisma.debt.findFirst({ where: { orderId: order.id } });
+    if (existing) return;
+
+    const factoryOrg = order.createdBy?.organization?.type === 'FACTORY' ? order.createdBy.organization : null;
+    if (!factoryOrg) return;
+
+    await this.prisma.debt.create({
+      data: {
+        type: 'NPP',
+        direction: 'RECEIVABLE',
+        partnerName: factoryOrg.name,
+        amount: order.totalAmount,
+        note: `Công nợ đơn ${order.code}`,
+        nppOrgId: order.nppOrgId,
+        factoryOrgId: factoryOrg.id,
+        orderId: order.id,
+      },
     });
   }
 
@@ -537,17 +575,22 @@ export class EurohouseService {
   private toDebtItem(d: {
     id: string; type: string; direction: string; partnerName: string; amount: number;
     paidAmount: number; status: string; bankAccount: string; bankName: string; note: string;
+    nppOrgId?: string | null; factoryOrgId?: string | null; orderId?: string | null;
+    factoryOrg?: { name: string } | null; order?: { code: string } | null;
   }): DebtItem {
     return {
       id: d.id, type: d.type as DebtItem['type'], direction: d.direction as DebtItem['direction'],
       partnerName: d.partnerName, amount: d.amount, paidAmount: d.paidAmount,
       status: d.status as DebtItem['status'], bankAccount: d.bankAccount, bankName: d.bankName, note: d.note,
+      nppOrgId: d.nppOrgId ?? undefined, factoryOrgId: d.factoryOrgId ?? undefined,
+      factoryOrgName: d.factoryOrg?.name, orderId: d.orderId ?? undefined, orderCode: d.order?.code,
     };
   }
 
-  async listDebts(filter?: { direction?: string; status?: string; type?: string }): Promise<DebtItem[]> {
+  async listDebts(filter?: { direction?: string; status?: string; type?: string; nppOrgId?: string }): Promise<DebtItem[]> {
     const debts = await this.prisma.debt.findMany({
-      where: { direction: filter?.direction, status: filter?.status, type: filter?.type },
+      where: { direction: filter?.direction, status: filter?.status, type: filter?.type, nppOrgId: filter?.nppOrgId },
+      include: { factoryOrg: true, order: { select: { code: true } } },
       orderBy: { createdAt: 'desc' },
     });
     return debts.map((d) => this.toDebtItem(d));
@@ -710,6 +753,121 @@ export class EurohouseService {
     };
   }
 
+  // ---------- NPP Web Manager ----------
+
+  async nppDashboard(nppOrgId: string): Promise<NppDashboardData> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [statusGroups, managedFactoryCount, openDebts, monthOrders] = await Promise.all([
+      this.prisma.order.groupBy({ by: ['status'], where: { nppOrgId }, _count: { _all: true } }),
+      this.prisma.organization.count({ where: { managedByNppId: nppOrgId } }),
+      this.prisma.debt.aggregate({
+        where: { nppOrgId, status: { not: 'PAID' } },
+        _sum: { amount: true, paidAmount: true },
+      }),
+      this.prisma.order.findMany({
+        where: { nppOrgId, createdAt: { gte: startOfMonth } },
+        select: { totalAmount: true },
+      }),
+    ]);
+
+    const ordersByStatus: Record<string, number> = {};
+    for (const g of statusGroups) ordersByStatus[g.status] = g._count._all;
+
+    return {
+      ordersByStatus,
+      managedFactoryCount,
+      openDebtTotal: openDebts._sum.amount ?? 0,
+      openDebtPaid: openDebts._sum.paidAmount ?? 0,
+      monthRevenue: monthOrders.reduce((sum, o) => sum + o.totalAmount, 0),
+    };
+  }
+
+  async nppOrderReconciliation(nppOrgId: string, filter?: { month?: string }): Promise<NppFactoryReconciliation[]> {
+    let dateRange: { gte: Date; lt: Date } | undefined;
+    if (filter?.month) {
+      const [y, m] = filter.month.split('-').map(Number);
+      dateRange = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: { nppOrgId, createdAt: dateRange },
+      include: { createdBy: { include: { organization: true } } },
+    });
+
+    const groups = new Map<string, NppFactoryReconciliation>();
+    for (const order of orders) {
+      const factoryOrg = order.createdBy?.organization?.type === 'FACTORY' ? order.createdBy.organization : null;
+      const key = factoryOrg?.id ?? '__unknown__';
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          factoryOrgId: factoryOrg?.id,
+          factoryName: factoryOrg?.name ?? order.factoryName ?? 'Không xác định',
+          counts: {},
+          totalAmount: 0,
+          totalKg: 0,
+        };
+        groups.set(key, group);
+      }
+      group.counts[order.status] = (group.counts[order.status] ?? 0) + 1;
+      group.totalAmount += order.totalAmount;
+      group.totalKg += order.totalKg;
+    }
+
+    return Array.from(groups.values());
+  }
+
+  async nppFinancialReport(nppOrgId: string, months = 6): Promise<NppFinancialReportData> {
+    const now = new Date();
+    const rangeStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+    const [orders, debts] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { nppOrgId, createdAt: { gte: rangeStart }, status: { not: 'CANCELLED' } },
+        select: { totalAmount: true, createdAt: true },
+      }),
+      this.prisma.debt.findMany({
+        where: { nppOrgId, createdAt: { gte: rangeStart } },
+        select: { amount: true, paidAmount: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const buckets = new Map<string, NppMonthlyReport>();
+    for (let i = 0; i < months; i += 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+      const key = monthKey(d);
+      buckets.set(key, { month: key, revenue: 0, debtCreated: 0, debtPaid: 0 });
+    }
+
+    for (const order of orders) {
+      const bucket = buckets.get(monthKey(order.createdAt));
+      if (bucket) bucket.revenue += order.totalAmount;
+    }
+    for (const debt of debts) {
+      const bucket = buckets.get(monthKey(debt.createdAt));
+      if (!bucket) continue;
+      bucket.debtCreated += debt.amount;
+      bucket.debtPaid += debt.paidAmount;
+    }
+
+    let totalRevenue = 0;
+    for (const bucket of buckets.values()) totalRevenue += bucket.revenue;
+
+    const totalDebtOpen = await this.prisma.debt.aggregate({
+      where: { nppOrgId, status: { not: 'PAID' } },
+      _sum: { amount: true, paidAmount: true },
+    });
+
+    return {
+      months: Array.from(buckets.values()),
+      totalRevenue,
+      totalDebtOpen: (totalDebtOpen._sum.amount ?? 0) - (totalDebtOpen._sum.paidAmount ?? 0),
+    };
+  }
+
   // ---------- Người dùng & tổ chức (Web Admin) ----------
 
   async adminUsers(): Promise<AdminUserItem[]> {
@@ -777,6 +935,101 @@ export class EurohouseService {
       profitAmount,
       totalAmount: subtotal + profitAmount,
     };
+  }
+
+  private async nextQuotationCode(): Promise<string> {
+    const now = new Date();
+    const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const count = await this.prisma.quotation.count({ where: { createdAt: { gte: startOfDay, lt: endOfDay } } });
+    return `BG-${ymd}-${String(count + 1).padStart(2, '0')}`;
+  }
+
+  async createQuotation(input: QuotationInput, userId?: string): Promise<QuotationRecord> {
+    const result = this.calcQuotation(input);
+    const code = await this.nextQuotationCode();
+    const created = await this.prisma.quotation.create({
+      data: {
+        code,
+        createdById: userId ?? null,
+        customerName: input.customerName ?? '',
+        doorType: input.doorType ?? '',
+        widthMm: input.widthMm,
+        heightMm: input.heightMm,
+        quantity: input.quantity,
+        pricePerM2: input.pricePerM2,
+        aluPricePerKg: input.aluPricePerKg,
+        glassPerM2: input.glassPerM2,
+        accessoryCost: input.accessoryCost,
+        laborCost: input.laborCost,
+        installCost: input.installCost,
+        profitPct: input.profitPct,
+        depreciation: input.depreciation,
+        areaM2: result.areaM2,
+        baseAmount: result.baseAmount,
+        profitAmount: result.profitAmount,
+        totalAmount: result.totalAmount,
+      },
+    });
+    return this.toQuotationRecord(created);
+  }
+
+  private toQuotationRecord(q: {
+    id: string; code: string; customerName: string; doorType: string; widthMm: number; heightMm: number;
+    quantity: number; pricePerM2: number; aluPricePerKg: number; glassPerM2: number; accessoryCost: number;
+    laborCost: number; installCost: number; profitPct: number; depreciation: number; areaM2: number;
+    baseAmount: number; profitAmount: number; totalAmount: number; createdAt: Date;
+  }): QuotationRecord {
+    return {
+      id: q.id,
+      code: q.code,
+      createdAt: q.createdAt.toISOString(),
+      customerName: q.customerName,
+      doorType: q.doorType,
+      widthMm: q.widthMm,
+      heightMm: q.heightMm,
+      quantity: q.quantity,
+      pricePerM2: q.pricePerM2,
+      aluPricePerKg: q.aluPricePerKg,
+      glassPerM2: q.glassPerM2,
+      accessoryCost: q.accessoryCost,
+      laborCost: q.laborCost,
+      installCost: q.installCost,
+      profitPct: q.profitPct,
+      depreciation: q.depreciation,
+      areaM2: q.areaM2,
+      baseAmount: q.baseAmount,
+      profitAmount: q.profitAmount,
+      totalAmount: q.totalAmount,
+    };
+  }
+
+  async getQuotation(id: string): Promise<QuotationRecord> {
+    const quotation = await this.prisma.quotation.findFirst({ where: { OR: [{ id }, { code: id }] } });
+    if (!quotation) throw new NotFoundException('Không tìm thấy báo giá.');
+    return this.toQuotationRecord(quotation);
+  }
+
+  listQuotations(filter: {
+    createdById?: string; page: number; pageSize?: number;
+  }): Promise<{ items: QuotationRecord[]; total: number; page: number; pageSize: number }>;
+  listQuotations(filter?: {
+    createdById?: string; page?: undefined; pageSize?: number;
+  }): Promise<QuotationRecord[]>;
+  async listQuotations(filter?: { createdById?: string; page?: number; pageSize?: number }) {
+    const where = { createdById: filter?.createdById };
+    if (filter?.page !== undefined) {
+      const pageSize = filter.pageSize ?? 10;
+      const page = filter.page;
+      const [items, total] = await Promise.all([
+        this.prisma.quotation.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        this.prisma.quotation.count({ where }),
+      ]);
+      return { items: items.map((q) => this.toQuotationRecord(q)), total, page, pageSize };
+    }
+    const items = await this.prisma.quotation.findMany({ where, orderBy: { createdAt: 'desc' } });
+    return items.map((q) => this.toQuotationRecord(q));
   }
 
   // ---------- Nội dung từ Web Admin ----------
