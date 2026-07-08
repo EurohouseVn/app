@@ -1,3 +1,12 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm v10 chặn postinstall của dependency trừ khi được allowlist ở đây.
+# Cần cho @prisma/client + prisma + esbuild để prisma generate/engines chạy được khi deploy.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - esbuild
+
