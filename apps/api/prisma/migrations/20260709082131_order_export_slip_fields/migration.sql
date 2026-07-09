@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Order" ADD COLUMN     "customerCode" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "invoiceNo" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "poNo" TEXT NOT NULL DEFAULT '';

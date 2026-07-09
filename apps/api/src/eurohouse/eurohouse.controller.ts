@@ -11,11 +11,13 @@ import type {
   ProjectDetail,
   QuotationInput,
   UpdateMaterialInput,
+  UpdateOrderExportFieldsInput,
   UpdateOrderInput,
   UpdateOrgInput,
 } from '@eurohouse/types';
 import { EurohouseService } from './eurohouse.service';
 import { QuotationPdfService } from './quotation-pdf.service';
+import { OrderPdfService } from './order-pdf.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -26,6 +28,7 @@ export class EurohouseController {
   constructor(
     private readonly service: EurohouseService,
     private readonly pdfService: QuotationPdfService,
+    private readonly orderPdfService: OrderPdfService,
   ) {}
 
   // Danh mục đặt hàng
@@ -160,6 +163,46 @@ export class EurohouseController {
   @UseGuards(JwtAuthGuard)
   getOrder(@Param('id') id: string) {
     return this.service.getOrder(id);
+  }
+
+  @Get('orders/:id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async orderPdf(@Param('id') id: string, @Res() res: Response) {
+    const order = await this.service.getOrder(id);
+    const colors = await this.service.colors();
+    const colorNameByCode: Record<string, string> = {};
+    for (const c of colors) colorNameByCode[c.code] = c.name;
+
+    const pdf = await this.orderPdfService.render({
+      code: order.code,
+      customerCode: order.customerCode ?? '',
+      customerName: order.customerName ?? '',
+      customerPhone: order.customerPhone ?? '',
+      deliveryAddress: order.deliveryAddress ?? '',
+      invoiceNo: order.invoiceNo ?? '',
+      poNo: order.poNo ?? '',
+      createdAt: order.createdAt,
+      colorNameByCode,
+      items: order.items.map((it) => ({
+        profileCode: it.profile?.code ?? it.productCode,
+        productName: it.productName,
+        colorCode: it.colorCode ?? '',
+        quantity: it.quantity,
+        totalKg: it.totalKg,
+        kgPerMeter: it.profile?.kgPerMeter,
+        barsPerBundle: it.profile?.barsPerBundle,
+      })),
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="phieu-xuat-kho-${order.code}.pdf"`);
+    res.end(pdf);
+  }
+
+  @Patch('orders/:id/export-fields')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  updateExportFields(@Param('id') id: string, @Body() body: UpdateOrderExportFieldsInput) {
+    return this.service.updateExportFields(id, body);
   }
 
   @Patch('orders/:id')

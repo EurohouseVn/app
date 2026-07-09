@@ -58,3 +58,31 @@ export async function openAuthedFile(path: string): Promise<void> {
   window.open(url, '_blank');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+// Tải PDF (cần Bearer) vào iframe ẩn rồi tự bật hộp thoại In của trình duyệt.
+export async function printAuthedFile(path: string): Promise<void> {
+  const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    throw new Error(`Không tải được ${path} (lỗi ${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = url;
+  iframe.onload = () => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+  };
+  document.body.appendChild(iframe);
+  setTimeout(() => {
+    document.body.removeChild(iframe);
+    URL.revokeObjectURL(url);
+  }, 60_000);
+}

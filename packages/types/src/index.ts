@@ -277,6 +277,12 @@ export interface UpdateOrderInput {
   items?: CreateOrderItemInput[];
 }
 
+export interface UpdateOrderExportFieldsInput {
+  customerCode?: string;
+  invoiceNo?: string;
+  poNo?: string;
+}
+
 export interface PaginatedOrders<T> {
   items: T[];
   total: number;

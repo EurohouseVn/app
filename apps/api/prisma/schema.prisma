@@ -113,6 +113,9 @@ model Order {
   totalKg         Float       @default(0)
   totalAmount     Int         @default(0)
   dueNote         String      @default("")
+  customerCode    String      @default("") // Mã khách hàng (admin nhập khi xuất kho)
+  invoiceNo       String      @default("") // Số hóa đơn
+  poNo            String      @default("") // Số đơn đặt hàng
   items           OrderItem[]
   histories       OrderStatusHistory[]
   profileStockMovements ProfileStockMovement[]

@@ -347,7 +347,10 @@ export class EurohouseService {
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * pageSize,
           take: pageSize,
-          include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+          include: {
+            items: { include: { profile: true } },
+            histories: { orderBy: { createdAt: 'desc' } },
+          },
         }),
         this.prisma.order.count({ where }),
       ]);
@@ -356,17 +359,39 @@ export class EurohouseService {
     return this.prisma.order.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+      include: {
+        items: { include: { profile: true } },
+        histories: { orderBy: { createdAt: 'desc' } },
+      },
     });
   }
 
   async getOrder(id: string) {
     const order = await this.prisma.order.findFirst({
       where: { OR: [{ id }, { code: id }] },
-      include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+      include: {
+        items: { include: { profile: true } },
+        histories: { orderBy: { createdAt: 'desc' } },
+      },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
     return order;
+  }
+
+  async updateExportFields(
+    id: string,
+    input: { customerCode?: string; invoiceNo?: string; poNo?: string },
+  ) {
+    const order = await this.getOrder(id);
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: {
+        ...(input.customerCode !== undefined ? { customerCode: input.customerCode } : {}),
+        ...(input.invoiceNo !== undefined ? { invoiceNo: input.invoiceNo } : {}),
+        ...(input.poNo !== undefined ? { poNo: input.poNo } : {}),
+      },
+    });
+    return this.getOrder(id);
   }
 
   async updateOrderStatus(id: string, status: string, actor: string, title: string, note = '') {
