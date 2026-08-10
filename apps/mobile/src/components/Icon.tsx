@@ -1,4 +1,5 @@
 import FeatherBase from '@expo/vector-icons/Feather';
+import { View } from 'react-native';
 import { colors } from '@eurohouse/ui';
 
 // Ép kiểu một lần để tránh xung đột @types/react (2 bản trong monorepo).
@@ -13,15 +14,18 @@ export type IconName =
   | 'chevron-down' | 'minus' | 'plus' | 'send' | 'book-open' | 'play' | 'play-circle'
   | 'file' | 'star' | 'tool' | 'smartphone' | 'shopping-bag' | 'briefcase'
   | 'arrow-up-circle' | 'arrow-down-circle' | 'check-circle' | 'check' | 'camera' | 'save'
-  | 'square' | 'columns' | 'sidebar' | 'repeat' | 'arrow-left' | 'arrow-right' | 'download' | 'log-out' | 'edit-2';
+  | 'square' | 'columns' | 'sidebar' | 'repeat' | 'arrow-left' | 'arrow-right' | 'download' | 'log-out' | 'edit-2'
+  | 'truck' | 'layout' | 'x' | 'circle' | 'trash-2' | 'check-square';
 
-export function Icon({ name, size = 22, color = colors.brandBlack }: { name: IconName; size?: number; color?: string }) {
+export function Icon({ name, size = 22, color = colors.brandBlack.main }: { name: IconName; size?: number; color?: string }) {
   return <Feather name={name} size={size} color={color} />;
 }
 
 // Helper cho tab bar (giữ cast Feather trong một file duy nhất).
 export function tabBarIcon(name: IconName) {
   return ({ color, focused }: { color: string; focused: boolean }) => (
-    <Feather name={name} size={focused ? 24 : 22} color={color} />
+    <View style={focused ? { backgroundColor: colors.orangeSoft, padding: 8, borderRadius: 14 } : { padding: 8 }}>
+      <Feather name={name} size={focused ? 20 : 22} color={color} />
+    </View>
   );
 }

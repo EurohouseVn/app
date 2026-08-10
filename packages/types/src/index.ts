@@ -23,6 +23,13 @@ export interface DemoAdminUser {
   email: string;
   role: UserRole;
   token: string;
+  isCeo: boolean;
+  modules: string[]; // module key được phép; CEO bỏ qua check này
+  departmentId?: string;
+  departmentName?: string;
+  jobTitle?: string;
+  permissions?: string[];
+  rbacRoleId?: string;
 }
 
 export interface LoginRequest {
@@ -35,6 +42,14 @@ export interface LoginResponse {
   message: string;
 }
 
+export interface RegisterFactoryInput {
+  displayName: string;
+  email: string;
+  phone?: string;
+  password: string;
+  factoryCode: string;
+}
+
 /** Thông tin người dùng đã xác thực, trả về từ /auth/login và /auth/me. */
 export interface AuthUser {
   id: string;
@@ -45,6 +60,14 @@ export interface AuthUser {
   organizationId?: string;
   organizationName?: string;
   organizationType?: OrganizationType;
+  points?: number;
+  isCeo: boolean;
+  modules: string[];
+  departmentId?: string;
+  departmentName?: string;
+  jobTitle?: string;
+  permissions?: string[];
+  rbacRoleId?: string;
 }
 
 export type DashboardTone = 'brandOrange' | 'success' | 'warning' | 'danger' | 'brandBlack';
@@ -117,7 +140,17 @@ export interface AdminDashboardData {
 }
 
 export type OrderStatus =
+  | 'DRAFT'
   | 'NEW'
+  | 'NPP_REVIEWING'
+  | 'ADMIN_SENT_NPP'
+  | 'NPP_RECEIVED'
+  | 'CONFIRMED'
+  | 'RESERVED'
+  | 'PICKING'
+  | 'SHIPPED'
+  | 'PARTIALLY_SHIPPED'
+  | 'DELIVERED'
   | 'RECEIVED_BY_NPP'
   | 'SENT_TO_ADMIN'
   | 'PROCESSING'
@@ -126,7 +159,7 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'OVERDUE';
 
-export type OrderSourceType = 'FACTORY' | 'DEALER' | 'NPP' | 'ADMIN';
+export type OrderSourceType = 'FACTORY' | 'DEALER' | 'NPP' | 'ADMIN' | 'ADMIN_TO_NPP';
 
 export type OrganizationType = 'COMPANY' | 'FACTORY' | 'NPP' | 'DEALER';
 
@@ -179,25 +212,54 @@ export interface GiftItem {
 
 export interface LibraryItem {
   id: string;
-  type: 'IMAGE' | 'KNOWLEDGE' | 'PRODUCT' | 'VIDEO';
+  categoryId: string;
+  mediaType: 'IMAGE' | 'VIDEO';
   title: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  tag?: string;
+  mediaUrl: string;
+  description?: string;
 }
 
 export interface Promotion {
   id: string;
   title: string;
-  subtitle: string;
-  imageUrl: string;
-  bannerUrl: string;
-  gallery: string[];
-  content: string;
+  description?: string;
+  imageUrl?: string;
+  gallery?: string[];
+  targetAudience: 'ALL' | 'WORKER' | 'NPP_DEALER';
   active: boolean;
-  startDate?: string;
-  endDate?: string;
 }
+
+// ---------- Quản trị nội dung (Web Admin CRUD) ----------
+
+export interface CreatePromotionInput {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  targetAudience?: 'ALL' | 'WORKER' | 'NPP_DEALER';
+  active?: boolean;
+}
+
+export type UpdatePromotionInput = Partial<CreatePromotionInput>;
+
+export interface CreateLibraryItemInput {
+  categoryId: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  title: string;
+  mediaUrl: string;
+  description?: string;
+}
+
+export type UpdateLibraryItemInput = Partial<CreateLibraryItemInput>;
+
+export interface CreateGiftInput {
+  name: string;
+  points: number;
+  icon?: string;
+  imageUrl?: string;
+  stock?: number;
+}
+
+export type UpdateGiftInput = Partial<CreateGiftInput>;
 
 // ---------- Danh mục hệ nhôm (đặt hàng dạng cây) ----------
 
@@ -221,6 +283,16 @@ export interface CatalogSystem {
   profiles: CatalogProfile[];
 }
 
+export interface DoorModel {
+  id: string;
+  name: string;
+  type: string;
+  imageUrl: string;
+  description: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
 export interface ColorCode {
   id: string;
   code: string;
@@ -239,12 +311,22 @@ export interface CreateOrderItemInput {
 
 export interface CreateOrderInput {
   sourceType: OrderSourceType;
+  clientRequestId?: string;
+  submitToNpp?: boolean;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
   colorCode?: string;
   note?: string;
   accessoriesNote?: string;
+  items: CreateOrderItemInput[];
+}
+
+export interface CreateAdminToNppShipmentInput {
+  nppOrgId: string;
+  invoiceNo?: string;
+  poNo?: string;
+  note?: string;
   items: CreateOrderItemInput[];
 }
 
@@ -319,6 +401,12 @@ export interface ProjectDetail extends ProjectSummary {
   costOther: number;
   extraRevenue: number;
   note: string;
+  estimatedValue: number;
+  incurredValue: number;
+  incurredType: string;
+  settledValue: number;
+  quotationId?: string;
+  images: string[];
 }
 
 export type DebtDirection = 'PAYABLE' | 'RECEIVABLE';
@@ -341,37 +429,164 @@ export interface DebtItem {
   orderCode?: string;
 }
 
-export interface QuotationInput {
-  customerName?: string;
-  doorType?: string;
+export interface QuotationItemInput {
+  name: string;
+  system?: string;
+  doorType: string;
+  templateId?: string;
   widthMm: number;
   heightMm: number;
+  wallHugging?: string;
   quantity: number;
   pricePerM2: number;
-  aluPricePerKg: number;
-  glassPerM2: number;
+  includesAccessories?: boolean;
+  accessoriesPrice?: number;
+  color?: string;
+  glassType?: string;
+  glassColor?: string;
+  requiredInputs?: string[];
+  dynamicInputs?: Record<string, string>;
+}
+
+export interface QuotationExtraProduct {
+  id?: string;
+  name: string;
+  description?: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice?: number;
+}
+
+export interface QuotationInput {
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  notes?: string;
+  isFinalSettlement?: boolean;
+  depositAmount?: number;
+  items: QuotationItemInput[];
+  extraProducts?: QuotationExtraProduct[];
   accessoryCost: number;
   laborCost: number;
   installCost: number;
-  profitPct: number;
   depreciation: number;
+  profitPct: number;
+  vatPct?: number;
+}
+
+export interface QuotationItemResult extends QuotationItemInput {
+  areaM2: number;
+  totalPrice: number;
 }
 
 export interface QuotationResult {
+  items: QuotationItemResult[];
+  extraProducts?: QuotationExtraProduct[];
+  extraProductsAmount?: number;
   areaM2: number;
   baseAmount: number;
   accessoryCost: number;
   laborCost: number;
   installCost: number;
   depreciation: number;
+  profitPct: number;
   profitAmount: number;
+  vatPct?: number;
+  vatAmount?: number;
   totalAmount: number;
+  isFinalSettlement?: boolean;
+  depositAmount?: number;
+  remainingAmount?: number;
 }
 
-export interface QuotationRecord extends QuotationInput, QuotationResult {
+export interface QuotationItemRecord extends QuotationItemResult {
+  id: string;
+}
+
+export interface QuotationRecord extends Omit<QuotationResult, 'items'> {
   id: string;
   code: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  notes?: string;
+  createdById?: string;
+  isFinalSettlement?: boolean;
+  depositAmount?: number;
+  items: QuotationItemRecord[];
+  extraProducts?: QuotationExtraProduct[];
   createdAt: string;
+}
+
+// ---------- Bảo hành ----------
+
+export interface ActivateWarrantyInput {
+  serialCode: string;
+  productName?: string;
+  systemCode?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  projectName?: string;
+  warrantyMonths?: number;
+}
+
+export interface WarrantyRecord {
+  id: string;
+  code: string;
+  serialCode: string;
+  productName: string;
+  systemCode: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  projectName: string;
+  warrantyMonths: number;
+  activatedByName: string;
+  pointsAwarded: number;
+  status: 'ACTIVE' | 'EXPIRED' | 'VOID';
+  activatedAt: string;
+  expiresAt?: string;
+}
+
+export interface ActivateWarrantyResult {
+  warranty: WarrantyRecord;
+  pointsAwarded: number;
+  pointsBalance: number;
+}
+
+// ---------- Tích điểm & đổi quà ----------
+
+export type PointReason = 'WARRANTY' | 'ORDER_COMPLETED' | 'ADMIN_ADJUST' | 'REDEEM';
+
+export interface PointLedgerItem {
+  id: string;
+  delta: number;
+  balanceAfter: number;
+  reason: PointReason;
+  note: string;
+  createdAt: string;
+}
+
+export interface UserPoints {
+  points: number;
+  ledger: PointLedgerItem[];
+}
+
+export interface RedeemGiftInput {
+  giftId: string;
+}
+
+export interface RedeemGiftResult {
+  giftName: string;
+  pointsCost: number;
+  pointsBalance: number;
+}
+
+export interface AdjustPointsInput {
+  delta: number;
+  note?: string;
 }
 
 export interface QuoteWizardInput {
@@ -414,8 +629,64 @@ export interface AdminUserItem {
   organizationId?: string;
   organizationName?: string;
   organizationType?: OrganizationType;
+  departmentId?: string;
+  departmentName?: string;
+  jobTitle: string;
+  isCeo: boolean;
+  modules: string[];
+  points: number;
   createdAt: string;
 }
+
+// ---------- Phòng ban & phân quyền module (RBAC nội bộ Web Admin) ----------
+
+export interface Department {
+  id: string;
+  code: string;
+  name: string;
+  parentId?: string;
+  sortOrder: number;
+  userCount: number;
+}
+
+/** Một module chức năng trong Web Admin — nguồn chân lý cho cả menu lẫn guard API. */
+export interface AdminModule {
+  key: string;
+  label: string;
+  href: string;
+}
+
+/** Danh mục module khớp với navItems của AdminShell. */
+export const ADMIN_MODULES: AdminModule[] = [
+  { key: 'dashboard', label: 'Tổng quan', href: '/' },
+  { key: 'orders', label: 'Đơn hàng', href: '/orders' },
+  { key: 'inventory', label: 'Kho NVL', href: '/inventory' },
+  { key: 'debts', label: 'Công nợ', href: '/debts' },
+  { key: 'cashflow', label: 'Thu chi', href: '/cashflow' },
+  { key: 'reports', label: 'Báo cáo tài chính', href: '/reports' },
+  { key: 'users', label: 'Người dùng', href: '/users' },
+  { key: 'catalog', label: 'Hệ nhôm', href: '/catalog' },
+  { key: 'accounting-pricing', label: 'Bảng giá & Báo giá', href: '/accounting/pricing' },
+  { key: 'sales-projects', label: 'Mảng dự án', href: '/sales/projects' },
+  { key: 'sales-npp', label: 'Nhà phân phối', href: '/sales/distributors' },
+  { key: 'sales-factories', label: 'Xưởng sản xuất', href: '/sales/factories' },
+  { key: 'warranties', label: 'Bảo hành', href: '/warranties' },
+  { key: 'promotions', label: 'Khuyến mãi', href: '/promotions' },
+  { key: 'loyalty', label: 'Loyalty', href: '/loyalty' },
+  { key: 'library', label: 'Thư viện', href: '/library' },
+  { key: 'roles', label: 'Chức danh', href: '/roles' },
+  { key: 'sales-leads', label: 'Xưởng tiềm năng', href: '/sales/leads' },
+  { key: 'sales-reports', label: 'Báo cáo sale', href: '/sales/reports' },
+  { key: 'sales-targets', label: 'Theo dõi doanh số', href: '/sales/targets' },
+  { key: 'payroll', label: 'Bảng lương', href: '/payroll' },
+  { key: 'prod-dashboard', label: 'Dashboard Sản Xuất', href: '/production/dashboard' },
+  { key: 'prod-work-orders', label: 'Lệnh Sản Xuất', href: '/production/work-orders' },
+  { key: 'prod-shop-floor', label: 'Xưởng (Kiosk)', href: '/production/shop-floor' },
+  { key: 'prod-dies', label: 'Khuôn Đùn', href: '/production/dies' },
+  { key: 'formulas', label: 'Mẫu Cửa', href: '/formulas' },
+];
+
+export const ADMIN_MODULE_KEYS: string[] = ADMIN_MODULES.map((m) => m.key);
 
 export interface OrgItem {
   id: string;
@@ -435,12 +706,29 @@ export interface UpdateOrgInput {
   shortLabel?: string | null;
 }
 
+export interface CreateNppInput {
+  name: string;
+  code?: string;
+  shortLabel?: string;
+  province?: string;
+  phone?: string;
+  address?: string;
+  email: string;
+  displayName?: string;
+  password?: string;
+}
+
 export interface CreateUserInput {
   email: string;
   displayName: string;
   phone?: string;
   role: UserRole;
   organizationId?: string;
+  departmentId?: string;
+  jobTitle?: string;
+  isCeo?: boolean;
+  modules?: string[];
+  password?: string; // để trống → dùng mật khẩu mặc định
 }
 
 export interface UpdateUserInput {
@@ -448,6 +736,11 @@ export interface UpdateUserInput {
   phone?: string;
   role?: UserRole;
   organizationId?: string;
+  departmentId?: string | null;
+  jobTitle?: string;
+  isCeo?: boolean;
+  modules?: string[];
+  password?: string; // đặt lại mật khẩu
 }
 
 // ---------- Kho NVL & chi phí sản xuất chung ----------
@@ -582,6 +875,20 @@ export interface PayDebtInput {
   note?: string;
 }
 
+export interface DebtPaymentRequestItem {
+  id: string;
+  code: string;
+  debtId: string;
+  debtPartnerName: string;
+  factoryName: string;
+  orderCode?: string;
+  amount: number;
+  method: CashMethod;
+  note: string;
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
+  createdAt: string;
+}
+
 // ---------- Báo cáo tài chính ----------
 
 export interface MonthlyPnL {
@@ -618,6 +925,119 @@ export interface NppFactoryReconciliation {
   totalKg: number;
 }
 
+export interface NppFactoryItem {
+  id: string;
+  code: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  province?: string;
+  email?: string;
+  shortLabel?: string;
+  userCount: number;
+  createdAt: string;
+}
+
+export interface NppInboundShipment {
+  id: string;
+  code: string;
+  status: string;
+  nppName: string;
+  invoiceNo?: string;
+  poNo?: string;
+  note?: string;
+  totalKg: number;
+  totalAmount: number;
+  createdAt: string;
+  items: {
+    productCode: string;
+    productName: string;
+    colorCode: string;
+    quantity: number;
+    totalKg: number;
+    totalPrice: number;
+  }[];
+}
+
+export interface NppAccessoryItem {
+  id: string;
+  name: string;
+  brand: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  note?: string;
+  createdAt: string;
+}
+
+export interface UpsertNppAccessoryInput {
+  name: string;
+  brand?: string;
+  category?: string;
+  unit?: string;
+  quantity?: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface NppGlassSheetItem {
+  id: string;
+  code: string;
+  glassType: string;
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+  unitCost: number;
+  note?: string;
+  createdAt: string;
+}
+
+export interface UpsertNppGlassSheetInput {
+  code: string;
+  glassType?: string;
+  widthMm: number;
+  heightMm: number;
+  quantity?: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface GlassCutPieceInput {
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+}
+
+export interface GlassCutPlacement {
+  pieceNo: number;
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+  rotated: boolean;
+}
+
+export interface GlassCutPlanResult {
+  sheetId: string;
+  sheetWidthMm: number;
+  sheetHeightMm: number;
+  placements: GlassCutPlacement[];
+  errors: string[];
+  usedAreaMm2: number;
+  wasteAreaMm2: number;
+  wastePercent: number;
+}
+
+export interface CreateNppFactoryInput {
+  name: string;
+  phone?: string;
+  address?: string;
+  province?: string;
+  email?: string;
+  shortLabel?: string;
+}
+
 export interface NppMonthlyReport {
   month: string;
   revenue: number;
@@ -629,4 +1049,38 @@ export interface NppFinancialReportData {
   months: NppMonthlyReport[];
   totalRevenue: number;
   totalDebtOpen: number;
+}
+
+export interface InventoryProfile {
+  id: string;
+  code: string;
+  name: string;
+  systemCode?: string;
+  systemName?: string;
+  stockBars: number;
+  lowStockAlert?: number;
+  pricePerKg?: number;
+}
+
+export interface NppInventorySystemGroup {
+  systemCode: string;
+  systemName: string;
+  stockBars: number;
+  lowStockCount: number;
+  profiles: InventoryProfile[];
+}
+
+export interface InventoryCutoff {
+  id: string;
+  profileId: string;
+  profileCode: string;
+  profileName: string;
+  lengthMm: number;
+  quantity: number;
+}
+
+export interface InventoryData {
+  profiles: InventoryProfile[];
+  cutoffs: InventoryCutoff[];
+  scrapKg: number;
 }

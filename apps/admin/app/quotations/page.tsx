@@ -68,7 +68,7 @@ export default function QuotationsPage() {
                     >
                       <td style={{ ...tableCellStyle, fontWeight: 700 }}>{q.code}</td>
                       <td style={tableCellStyle}>{q.customerName || '—'}</td>
-                      <td style={tableCellStyle}>{q.doorType || '—'}</td>
+                      <td style={tableCellStyle}>{q.items[0]?.doorType || '—'}</td>
                       <td style={tableCellStyle}>{(q.totalAmount / 1000000).toFixed(1)} tr</td>
                       <td style={tableCellStyle}>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</td>
                     </tr>
@@ -85,10 +85,10 @@ export default function QuotationsPage() {
                   <Receipt size={18} color={ui.brand} /> {selected.code}
                 </h2>
                 <p style={{ margin: 0, color: ui.textMuted, fontSize: 13 }}>
-                  {selected.customerName || '—'} · {selected.doorType || '—'}
+                  {selected.customerName || '—'} · {selected.items[0]?.doorType || '—'}
                 </p>
                 <p style={{ margin: '4px 0 16px', color: ui.textFaint, fontSize: 13 }}>
-                  {selected.widthMm} × {selected.heightMm} mm · {selected.quantity} bộ
+                  {selected.items[0]?.widthMm} × {selected.items[0]?.heightMm} mm · {selected.items[0]?.quantity} bộ
                 </p>
 
                 <DetailRow label={`Diện tích (${selected.areaM2} m²)`} value={currency(selected.baseAmount)} />

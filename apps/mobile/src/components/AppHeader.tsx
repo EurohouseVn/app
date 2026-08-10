@@ -18,7 +18,7 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
         <View style={styles.bell}>
-          <Icon name="bell" size={18} color={colors.brandBlack} />
+          <Icon name="bell" size={18} color={colors.brandBlack.main} />
         </View>
       </View>
     </ImageBackground>
@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
   bgImage: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(21,17,16,0.55)' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logoCircle: { width: 46, height: 46, borderRadius: 999, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', padding: 6 },
-  logo: { width: 34, height: 34 },
+  logoCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logo: { width: '150%', height: '150%' },
   title: { color: colors.white, fontSize: 20, fontWeight: '900' },
   subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 },
   bell: { width: 38, height: 38, borderRadius: 999, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center' },

@@ -18,7 +18,19 @@ import {
   ui,
 } from '../../src/ui';
 
-type FormState = Omit<QuotationInput, 'customerName' | 'doorType'> & { customerName: string; doorType: string };
+type FormState = {
+  customerName: string;
+  doorType: string;
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+  pricePerM2: number;
+  accessoryCost: number;
+  laborCost: number;
+  installCost: number;
+  profitPct: number;
+  depreciation: number;
+};
 
 const initial: FormState = {
   customerName: '',
@@ -27,8 +39,6 @@ const initial: FormState = {
   heightMm: 2200,
   quantity: 1,
   pricePerM2: 2_600_000,
-  aluPricePerKg: 92_000,
-  glassPerM2: 320_000,
   accessoryCost: 1_500_000,
   laborCost: 800_000,
   installCost: 500_000,
@@ -64,12 +74,35 @@ export default function QuotePage() {
     setSaved(null);
   }
 
+  function buildPayload(): QuotationInput {
+    return {
+      customerName: form.customerName,
+      items: [
+        {
+          name: form.doorType,
+          doorType: form.doorType,
+          widthMm: form.widthMm,
+          heightMm: form.heightMm,
+          quantity: form.quantity,
+          pricePerM2: form.pricePerM2,
+          includesAccessories: true,
+          accessoriesPrice: 0,
+        },
+      ],
+      accessoryCost: form.accessoryCost,
+      laborCost: form.laborCost,
+      installCost: form.installCost,
+      depreciation: form.depreciation,
+      profitPct: form.profitPct,
+    };
+  }
+
   async function calculate() {
     setError('');
     setLoading(true);
     setSaved(null);
     try {
-      const data = await apiSend<QuotationResult>('/quotations/calc', 'POST', form);
+      const data = await apiSend<QuotationResult>('/quotations/calc', 'POST', buildPayload());
       setResult(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không tính được báo giá.');
@@ -82,7 +115,7 @@ export default function QuotePage() {
     setError('');
     setSaving(true);
     try {
-      const record = await apiSend<QuotationRecord>('/quotations', 'POST', form);
+      const record = await apiSend<QuotationRecord>('/quotations', 'POST', buildPayload());
       setSaved(record);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không lưu được báo giá.');

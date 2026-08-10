@@ -1,32 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Switch, Alert, Modal } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { colors } from '@eurohouse/ui';
-import type { ProjectDetail } from '@eurohouse/types';
+import { LocalProjectsApi, type LocalProject } from '../../src/lib/localProjects';
 import { Icon } from '../../src/components/Icon';
-import { api } from '../../src/lib/api';
+import { api, API_URL, authHeaders } from '../../src/lib/api';
+import { confirmAction } from '../../src/lib/alert';
 
-type FieldKey =
-  | 'contractValue' | 'extraRevenue'
-  | 'costAluminum' | 'costAccessory' | 'costLockHinge' | 'costGasket'
-  | 'costSilicone' | 'costScrew' | 'costGlass' | 'costLabor' | 'costOther' | 'costPartnerPct';
-
-const revenueFields: { key: FieldKey; label: string }[] = [
-  { key: 'contractValue', label: 'Giá nhận với chủ nhà' },
-  { key: 'extraRevenue', label: 'Phát sinh tăng' },
-];
-
-const costFields: { key: FieldKey; label: string }[] = [
-  { key: 'costAluminum', label: 'Thanh nhôm' },
-  { key: 'costAccessory', label: 'Phụ kiện' },
-  { key: 'costLockHinge', label: 'Khóa, bản lề' },
-  { key: 'costGasket', label: 'Zoăng' },
-  { key: 'costSilicone', label: 'Keo silicon' },
-  { key: 'costScrew', label: 'Vít (gồm hao hụt)' },
-  { key: 'costGlass', label: 'Kính' },
-  { key: 'costLabor', label: 'Nhân công' },
-  { key: 'costOther', label: 'Chi phí khác' },
-];
+const PROJECT_TYPES = ['Nhà ống', 'Biệt thự', 'Dân dụng', 'Cải tạo', 'Khác'];
+const CATEGORIES = ['Nhôm kính', 'Sắt thép', 'Inox', 'Mái tôn', 'Cầu thang', 'Lan can', 'Năng lượng mặt trời'];
 
 function num(v: string): number {
   return Number(v.replace(/[^\d.-]/g, '')) || 0;
@@ -35,136 +20,403 @@ function num(v: string): number {
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [form, setForm] = useState<Record<string, string>>({});
-  const [name, setName] = useState('');
-  const [customer, setCustomer] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [project, setProject] = useState<LocalProject | null>(null);
 
-  const load = useCallback(() => {
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [projectType, setProjectType] = useState('');
+  const [isContractSigned, setIsContractSigned] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  // Financial
+  const [estimatedAmount, setEstimatedAmount] = useState('');
+  const [additionalCosts, setAdditionalCosts] = useState('');
+  const [incurredType, setIncurredType] = useState<'INCREASE' | 'DECREASE'>('INCREASE');
+  const [finalAmount, setFinalAmount] = useState('');
+  const [expectedProfit, setExpectedProfit] = useState('');
+  const [quotationCode, setQuotationCode] = useState('');
+
+  // Images
+  const [images, setImages] = useState<string[]>([]);
+
+  // Modal & state
+  const [saved, setSaved] = useState(false);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [quotesList, setQuotesList] = useState<any[]>([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+
+  const load = useCallback(async () => {
     if (!id) return;
-    api.get<ProjectDetail>(`/projects/${id}`).then((p) => {
-      setProject(p);
-      setName(p.name);
-      setCustomer(p.customerName);
-      setForm({
-        contractValue: String(p.contractValue), extraRevenue: String(p.extraRevenue),
-        costAluminum: String(p.costAluminum), costAccessory: String(p.costAccessory),
-        costLockHinge: String(p.costLockHinge), costGasket: String(p.costGasket),
-        costSilicone: String(p.costSilicone), costScrew: String(p.costScrew),
-        costGlass: String(p.costGlass), costLabor: String(p.costLabor),
-        costOther: String(p.costOther), costPartnerPct: String(p.costPartnerPct),
-      });
-    }).catch(() => undefined);
+    const p = await LocalProjectsApi.getOne(id);
+    if (!p) {
+      Alert.alert('Lỗi', 'Không tìm thấy công trình này');
+      router.back();
+      return;
+    }
+    setProject(p);
+    setName(p.name);
+    setAddress(p.address);
+    setCustomerName(p.customerName || '');
+    setCustomerPhone(p.customerPhone || '');
+    setProjectType(p.projectType);
+    setIsContractSigned(p.isContractSigned);
+    setCategories(p.categories || []);
+    setEstimatedAmount(String(p.estimatedAmount || 0));
+    setAdditionalCosts(String(p.additionalCosts || 0));
+    setIncurredType(p.incurredType || 'INCREASE');
+    setFinalAmount(String(p.finalAmount || 0));
+    setExpectedProfit(String(p.expectedProfit || 0));
+    setQuotationCode(p.quotationCode || '');
+    setImages(p.images || []);
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Tính lợi nhuận realtime ngay trên app
-  const revenue = num(form.contractValue) + num(form.extraRevenue);
-  const baseCost = ['costAluminum', 'costAccessory', 'costLockHinge', 'costGasket', 'costSilicone', 'costScrew', 'costGlass', 'costLabor', 'costOther']
-    .reduce((s, k) => s + num(form[k]), 0);
-  const partnerCost = Math.round((revenue * num(form.costPartnerPct)) / 100);
-  const totalCost = baseCost + partnerCost;
-  const profit = revenue - totalCost;
-  const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : '0';
+  const toggleCategory = (cat: string) => {
+    setCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  };
 
-  async function save() {
+  const handleIncurredTypeChange = (type: 'INCREASE' | 'DECREASE') => {
+    setIncurredType(type);
+    const est = num(estimatedAmount);
+    const inc = num(additionalCosts);
+    const calculated = type === 'INCREASE' ? est + inc : est - inc;
+    setFinalAmount(String(calculated > 0 ? calculated : 0));
+  };
+
+  const handleAdditionalCostsChange = (val: string) => {
+    setAdditionalCosts(val);
+    const est = num(estimatedAmount);
+    const inc = num(val);
+    const calculated = incurredType === 'INCREASE' ? est + inc : est - inc;
+    setFinalAmount(String(calculated > 0 ? calculated : 0));
+  };
+
+  const handleEstimatedAmountChange = (val: string) => {
+    setEstimatedAmount(val);
+    const est = num(val);
+    const inc = num(additionalCosts);
+    const calculated = incurredType === 'INCREASE' ? est + inc : est - inc;
+    setFinalAmount(String(calculated > 0 ? calculated : 0));
+  };
+
+  const openQuotationModal = async () => {
+    setQuoteModalOpen(true);
+    setLoadingQuotes(true);
+    try {
+      const res = await api.get<any>('/quotations?mine=true');
+      const list = Array.isArray(res) ? res : (res?.items || res?.data || []);
+      setQuotesList(list);
+    } catch (e) {
+      setQuotesList([]);
+    } finally {
+      setLoadingQuotes(false);
+    }
+  };
+
+  const handleDelete = () => {
     if (!id) return;
-    const payload: Record<string, unknown> = { name, customerName: customer };
-    [...revenueFields, ...costFields, { key: 'costPartnerPct' as FieldKey, label: '' }].forEach(({ key }) => {
-      payload[key] = num(form[key]);
+    confirmAction('Xoá công trình', 'Bạn có chắc chắn muốn xoá công trình này?', async () => {
+      await LocalProjectsApi.delete(id);
+      router.back();
     });
-    await api.patch(`/projects/${id}`, payload);
+  };
+
+  const selectQuotation = (q: any) => {
+    const total = Number(q.totalAmount) || 0;
+    setEstimatedAmount(String(total));
+    setQuotationCode(q.code);
+    if (q.customerName) setCustomerName(q.customerName);
+    if (q.customerPhone) setCustomerPhone(q.customerPhone);
+    const inc = num(additionalCosts);
+    const calculated = incurredType === 'INCREASE' ? total + inc : total - inc;
+    setFinalAmount(String(calculated > 0 ? calculated : 0));
+    setQuoteModalOpen(false);
+    Alert.alert('Đã import', `Đã lấy dữ liệu từ báo giá ${q.code} (${total.toLocaleString('vi-VN')} đ)`);
+  };
+
+  const handlePreviewQuotation = async () => {
+    if (!quotationCode) return;
+    try {
+      const q = await api.get<any>(`/quotations/${quotationCode}`);
+      if (q && q.id) {
+        const target = `${FileSystem.cacheDirectory}bao-gia-${q.code}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${q.id}/pdf`, target, { headers: authHeaders() });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Dự toán / Báo giá ${q.code}` });
+        } else {
+          router.push({ pathname: '/quote', params: { id: q.id } });
+        }
+      }
+    } catch (e) {
+      router.push({ pathname: '/quote', params: { id: quotationCode } });
+    }
+  };
+
+  const pickImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('Giới hạn', 'Tối đa 5 ảnh công trình');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets[0]?.uri) {
+      setImages(prev => [...prev, res.assets[0].uri]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  async function handleSave() {
+    if (!id) return;
+    const est = num(estimatedAmount);
+    const inc = num(additionalCosts);
+    const finalVal = incurredType === 'INCREASE' ? est + inc : est - inc;
+    const profit = num(expectedProfit);
+
+    await LocalProjectsApi.update(id, {
+      name: name || 'Công trình mới',
+      address,
+      customerName,
+      customerPhone,
+      projectType,
+      isContractSigned,
+      categories,
+      estimatedAmount: est,
+      additionalCosts: inc,
+      incurredType,
+      finalAmount: finalVal,
+      expectedProfit: profit,
+      quotationCode,
+      images,
+      status: isContractSigned ? 'IN_PROGRESS' : 'OPEN',
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    load();
-  }
-
-  function field(key: FieldKey, label: string) {
-    return (
-      <View key={key} style={styles.field}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <TextInput
-          value={form[key]}
-          onChangeText={(v) => setForm((cur) => ({ ...cur, [key]: v }))}
-          keyboardType="numeric"
-          style={styles.input}
-          placeholder="0"
-        />
-      </View>
-    );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.white }}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.white} /></Pressable>
-        <Text style={styles.topTitle}>{project?.code ?? 'Công trình'}</Text>
-        <View style={{ width: 38 }} />
+        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.brandOrangeText} /></Pressable>
+        <Text style={styles.topTitle}>{project?.code ?? 'Chi tiết công trình'}</Text>
+        <Pressable onPress={handleDelete} style={[styles.backBtn, { backgroundColor: '#FEE2E2' }]}>
+          <Icon name="trash-2" size={18} color={colors.danger} />
+        </Pressable>
       </View>
+
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.sectionTitle}>Thông tin</Text>
+        <Text style={styles.sectionTitle}>Thông tin chung</Text>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Tên công trình</Text>
-          <TextInput value={name} onChangeText={setName} style={styles.input} />
+          <TextInput value={name} onChangeText={setName} style={styles.input} placeholder="Tên công trình" placeholderTextColor="#94a3b8" />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Khách hàng</Text>
-          <TextInput value={customer} onChangeText={setCustomer} style={styles.input} />
+          <Text style={styles.fieldLabel}>Tên khách hàng</Text>
+          <TextInput value={customerName} onChangeText={setCustomerName} style={styles.input} placeholder="Tên chủ nhà / Khách hàng" placeholderTextColor="#94a3b8" />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Số điện thoại khách hàng</Text>
+          <TextInput value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" style={styles.input} placeholder="SĐT khách hàng" placeholderTextColor="#94a3b8" />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Địa chỉ thi công</Text>
+          <TextInput value={address} onChangeText={setAddress} style={styles.input} placeholder="Địa chỉ công trình" placeholderTextColor="#94a3b8" />
         </View>
 
-        <Text style={styles.sectionTitle}>Doanh thu</Text>
-        {revenueFields.map((f) => field(f.key, f.label))}
+        <Text style={styles.sectionTitle}>Thể loại công trình</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {PROJECT_TYPES.map(pt => (
+            <Pressable key={pt} onPress={() => setProjectType(pt)} style={[styles.chip, projectType === pt && styles.chipActive]}>
+              <Text style={[styles.chipText, projectType === pt && styles.chipTextActive]}>{pt}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
 
-        <Text style={styles.sectionTitle}>Chi phí đầu vào</Text>
-        {costFields.map((f) => field(f.key, f.label))}
-        {field('costPartnerPct', '% chi phí đối tác')}
-
-        {/* Bảng tổng hợp lợi nhuận */}
-        <View style={styles.summary}>
-          <Text style={styles.summaryTitle}>Tổng hợp lợi nhuận</Text>
-          <Row label="Doanh thu" value={revenue} />
-          <Row label="Tổng chi phí" value={totalCost} />
-          <View style={styles.divider} />
-          <Row label="Lợi nhuận" value={profit} bold color={profit >= 0 ? colors.success : colors.danger} />
-          <Text style={styles.margin}>Biên lợi nhuận: {margin}%</Text>
+        <Text style={styles.sectionTitle}>Hạng mục thi công</Text>
+        <View style={styles.tagsGrid}>
+          {CATEGORIES.map(cat => {
+            const active = categories.includes(cat);
+            return (
+              <Pressable key={cat} onPress={() => toggleCategory(cat)} style={[styles.tag, active && styles.tagActive]}>
+                <Text style={[styles.tagText, active && styles.tagTextActive]}>{cat}</Text>
+              </Pressable>
+            )
+          })}
         </View>
 
-        <Pressable style={styles.saveBtn} onPress={save}>
-          <Text style={styles.saveText}>{saved ? '✓ Đã lưu' : 'Lưu công trình'}</Text>
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchTitle}>Đã ký hợp đồng</Text>
+            <Text style={styles.switchDesc}>Xác nhận chốt để bắt đầu thi công</Text>
+          </View>
+          <Switch value={isContractSigned} onValueChange={setIsContractSigned} trackColor={{ true: colors.brandOrange, false: '#EEF0F3' }} />
+        </View>
+
+        <View style={styles.financialHeader}>
+          <Text style={styles.sectionTitle}>Tài chính (VNĐ)</Text>
+          <Pressable style={styles.importBtn} onPress={openQuotationModal}>
+            <Icon name="download" size={14} color={colors.brandOrangeText} />
+            <Text style={styles.importBtnText}>Import từ báo giá</Text>
+          </Pressable>
+        </View>
+
+        {quotationCode ? (
+          <Pressable style={styles.quoteLinkedBanner} onPress={handlePreviewQuotation}>
+            <Icon name="file-text" size={16} color={colors.brandOrangeText} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.quoteLinkedText}>
+                Liên kết báo giá: <Text style={{ fontWeight: '900', textDecorationLine: 'underline' }}>{quotationCode}</Text>
+              </Text>
+            </View>
+            <Text style={{ fontSize: 12, color: colors.brandOrangeText, fontWeight: '800' }}>Xem dự toán ›</Text>
+          </Pressable>
+        ) : null}
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Dự toán ban đầu (Từ báo giá)</Text>
+          <TextInput value={estimatedAmount} onChangeText={handleEstimatedAmountChange} keyboardType="numeric" style={styles.input} placeholder="0" placeholderTextColor="#94a3b8" />
+        </View>
+
+        {/* PHÁT SINH VỚI TÍNH NĂNG TICK TĂNG / GIẢM */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Giá trị phát sinh</Text>
+          <View style={styles.typeRadioGroup}>
+            <Pressable style={[styles.radioBtn, incurredType === 'INCREASE' && styles.radioBtnActive]} onPress={() => handleIncurredTypeChange('INCREASE')}>
+              <View style={[styles.radioDot, incurredType === 'INCREASE' && styles.radioDotActive]} />
+              <Text style={[styles.radioText, incurredType === 'INCREASE' && styles.radioTextActive]}>+ Phát sinh TĂNG</Text>
+            </Pressable>
+            <Pressable style={[styles.radioBtn, incurredType === 'DECREASE' && styles.radioBtnActive]} onPress={() => handleIncurredTypeChange('DECREASE')}>
+              <View style={[styles.radioDot, incurredType === 'DECREASE' && styles.radioDotActive]} />
+              <Text style={[styles.radioText, incurredType === 'DECREASE' && styles.radioTextActive]}>- Phát sinh GIẢM</Text>
+            </Pressable>
+          </View>
+          <TextInput value={additionalCosts} onChangeText={handleAdditionalCostsChange} keyboardType="numeric" style={styles.input} placeholder="Nhập số tiền phát sinh" placeholderTextColor="#94a3b8" />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Giá trị quyết toán (Tự động hoặc tự nhập)</Text>
+          <TextInput value={finalAmount} onChangeText={setFinalAmount} keyboardType="numeric" style={[styles.input, { fontWeight: '900', color: colors.brandOrangeText }]} placeholder="0" placeholderTextColor="#94a3b8" />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Lợi nhuận dự kiến</Text>
+          <TextInput value={expectedProfit} onChangeText={setExpectedProfit} keyboardType="numeric" style={styles.input} placeholder="0" placeholderTextColor="#94a3b8" />
+        </View>
+
+        {/* ẢNH CÔNG TRÌNH (TỐI ĐA 5 ẢNH) */}
+        <Text style={styles.sectionTitle}>Ảnh công trình ({images.length}/5)</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
+          {images.length < 5 && (
+            <Pressable style={styles.addImageBtn} onPress={pickImage}>
+              <Icon name="camera" size={24} color={colors.brandGrey[500]} />
+              <Text style={styles.addImageText}>Thêm ảnh</Text>
+            </Pressable>
+          )}
+          {images.map((img, idx) => (
+            <View key={idx} style={styles.imgWrapper}>
+              <Image source={{ uri: img }} style={styles.previewImage} />
+              <Pressable style={styles.removeImgBtn} onPress={() => removeImage(idx)}>
+                <Icon name="x" size={14} color={colors.white} />
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+
+        <Pressable style={styles.saveBtn} onPress={handleSave}>
+          <Text style={styles.saveText}>{saved ? '✓ Đã lưu thành công' : 'Lưu công trình'}</Text>
         </Pressable>
-        <View style={{ height: 40 }} />
       </ScrollView>
-    </View>
-  );
-}
 
-function Row({ label, value, bold, color }: { label: string; value: number; bold?: boolean; color?: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && { fontWeight: '900', color: colors.brandBlack }]}>{label}</Text>
-      <Text style={[styles.rowValue, bold && { fontSize: 20 }, color ? { color } : null]}>{value.toLocaleString('vi-VN')} đ</Text>
+      {/* MODAL IMPORT BÁO GIÁ */}
+      <Modal visible={quoteModalOpen} transparent animationType="slide" onRequestClose={() => setQuoteModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn báo giá để Import</Text>
+              <Pressable onPress={() => setQuoteModalOpen(false)} style={styles.closeBtn}>
+                <Icon name="x" size={20} color={colors.brandBlack.main} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 350 }}>
+              {loadingQuotes ? (
+                <Text style={{ textAlign: 'center', padding: 20, color: colors.brandGrey[500] }}>Đang tải báo giá...</Text>
+              ) : quotesList.length === 0 ? (
+                <Text style={{ textAlign: 'center', padding: 20, color: colors.brandGrey[500] }}>Không có báo giá nào khả dụng</Text>
+              ) : (
+                quotesList.map(q => (
+                  <Pressable key={q.id} style={styles.quoteItem} onPress={() => selectQuotation(q)}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.quoteCode}>{q.code}</Text>
+                      <Text style={styles.quoteCustomer}>{q.customerName || 'Khách lẻ'} • {q.customerPhone || 'N/A'}</Text>
+                    </View>
+                    <Text style={styles.quoteAmount}>{(q.totalAmount || 0).toLocaleString('vi-VN')} đ</Text>
+                  </Pressable>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topBar: { paddingTop: 50, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: colors.brandBlack, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  topTitle: { color: colors.white, fontWeight: '900', fontSize: 17 },
+  topBar: { paddingTop: 50, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: colors.orangeSoft, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(217, 92, 0, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  topTitle: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 17 },
   container: { padding: 18, paddingBottom: 40 },
-  sectionTitle: { color: colors.brandBlack, fontSize: 16, fontWeight: '900', marginTop: 20, marginBottom: 10 },
-  field: { marginBottom: 12 },
-  fieldLabel: { color: colors.brandBlack, fontWeight: '700', marginBottom: 6, fontSize: 13 },
-  input: { backgroundColor: colors.white, borderRadius: 14, padding: 14, color: colors.brandBlack, shadowColor: colors.brandBlack, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  summary: { backgroundColor: colors.white, borderRadius: 20, padding: 18, marginTop: 24, shadowColor: colors.brandBlack, shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
-  summaryTitle: { color: colors.brandBlack, fontWeight: '900', fontSize: 16, marginBottom: 12 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  rowLabel: { color: colors.brandGrey, fontWeight: '700' },
-  rowValue: { color: colors.brandBlack, fontWeight: '800' },
-  divider: { height: 1, backgroundColor: '#EEF0F3', marginVertical: 8 },
-  margin: { color: colors.brandGrey, marginTop: 6, fontWeight: '700' },
-  saveBtn: { backgroundColor: colors.brandOrange, borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
-  saveText: { color: colors.brandBlack, fontWeight: '900', fontSize: 16 },
+  sectionTitle: { color: colors.brandBlack.main, fontSize: 16, fontWeight: '900', marginTop: 24, marginBottom: 12 },
+  financialHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  importBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.orangeSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  importBtnText: { color: colors.brandOrangeText, fontSize: 12, fontWeight: '800' },
+  quoteLinkedBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF8F0', padding: 12, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: colors.orangeSoft },
+  quoteLinkedText: { color: colors.brandOrangeText, fontSize: 13 },
+  field: { marginBottom: 14 },
+  fieldLabel: { color: colors.brandBlack.main, fontWeight: '700', marginBottom: 8, fontSize: 13 },
+  input: { backgroundColor: '#F7F8FA', borderRadius: 14, padding: 14, color: colors.brandBlack.main },
+  typeRadioGroup: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  radioBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#EEF0F3' },
+  radioBtnActive: { backgroundColor: colors.orangeSoft, borderColor: colors.brandOrange },
+  radioDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: '#ccc' },
+  radioDotActive: { borderColor: colors.brandOrange, backgroundColor: colors.brandOrange },
+  radioText: { fontSize: 13, color: colors.brandGrey[500], fontWeight: '700' },
+  radioTextActive: { color: colors.brandOrangeText, fontWeight: '800' },
+  chipRow: { gap: 10, paddingBottom: 10 },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#EEF0F3' },
+  chipActive: { backgroundColor: colors.orangeSoft, borderColor: colors.brandOrange },
+  chipText: { color: colors.brandGrey[500], fontWeight: '700' },
+  chipTextActive: { color: colors.brandOrangeText, fontWeight: '800' },
+  tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tag: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#EEF0F3' },
+  tagActive: { backgroundColor: colors.orangeSoft, borderColor: colors.brandOrange },
+  tagText: { color: colors.brandGrey[500], fontWeight: '700' },
+  tagTextActive: { color: colors.brandOrangeText, fontWeight: '800' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F8FA', padding: 16, borderRadius: 16, marginTop: 24 },
+  switchTitle: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 15 },
+  switchDesc: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
+  imageRow: { gap: 12, paddingBottom: 10 },
+  addImageBtn: { width: 90, height: 90, borderRadius: 16, backgroundColor: '#F7F8FA', borderWidth: 2, borderColor: '#EEF0F3', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  addImageText: { color: colors.brandGrey[500], fontSize: 12, fontWeight: '700' },
+  imgWrapper: { position: 'relative' },
+  previewImage: { width: 90, height: 90, borderRadius: 16 },
+  removeImgBtn: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  saveBtn: { backgroundColor: colors.brandOrange, borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 32 },
+  saveText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 16, fontWeight: '900', color: colors.brandBlack.main },
+  closeBtn: { padding: 4 },
+  quoteItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
+  quoteCode: { fontWeight: '900', color: colors.brandOrange, fontSize: 14 },
+  quoteCustomer: { fontSize: 12, color: colors.brandGrey[500], marginTop: 2 },
+  quoteAmount: { fontWeight: '900', color: colors.brandBlack.main, fontSize: 14 },
 });

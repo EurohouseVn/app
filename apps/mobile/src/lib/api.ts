@@ -1,4 +1,4 @@
-const fallback = 'http://localhost:3001/api';
+const fallback = 'http://127.0.0.1:3001/api';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? fallback;
 
@@ -22,6 +22,7 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 export function assetUrl(path?: string): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
+  if (path.startsWith('/images/')) return `${SERVER_URL}/static${path}`;
   return `${SERVER_URL}${path}`;
 }
 
@@ -43,7 +44,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string, body?: unknown) => request<T>(path, { method: 'DELETE', body: body ? JSON.stringify(body) : undefined }),
 };
 
 export function authHeaders(): Record<string, string> {

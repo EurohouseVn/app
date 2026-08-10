@@ -5,7 +5,7 @@ import type {
 } from '@eurohouse/types';
 import { PrismaService } from './prisma/prisma.service';
 
-type OrderRow = { code: string; nppName: string; dealerName: string; totalAmount: number; status: string };
+type OrderRow = { code: string; nppName: string; dealerName: string; totalAmount: number; status: string; createdAt?: Date | string };
 
 const statusLabel: Record<string, { label: string; tone: AdminDashboardData['recentOrders'][number]['tone'] }> = {
   NEW: { label: 'Mới', tone: 'brandOrange' },
@@ -40,9 +40,13 @@ export class AppService {
     };
   }
 
-  adminDashboard(orders: OrderRow[]): AdminDashboardData {
+  async adminDashboard(orders: OrderRow[]): Promise<AdminDashboardData> {
     const totalAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
     const newCount = orders.filter((o) => o.status === 'NEW').length;
+    const [warrantyCount, projectCount] = await Promise.all([
+      this.prisma.warranty.count(),
+      this.prisma.project.count(),
+    ]);
     return {
       greeting: 'Tổng quan vận hành Eurohouse',
       lastLoginAt: 'Hôm nay',
@@ -50,8 +54,8 @@ export class AppService {
         { title: 'Doanh số đơn hàng', value: `${(totalAmount / 1000000).toFixed(1)} tr`, description: 'Tổng giá trị đơn trong hệ thống', tone: 'brandOrange', change: `${orders.length} đơn` },
         { title: 'Đơn mới', value: String(newCount), description: 'Đơn chờ NPP tiếp nhận', tone: 'warning', change: `${newCount} chờ` },
         { title: 'Tổng đơn', value: String(orders.length), description: 'Toàn bộ đơn đã tạo', tone: 'success', change: '' },
-        { title: 'Bảo hành QR', value: '0', description: 'Mã kích hoạt', tone: 'brandBlack', change: '' },
-        { title: 'Công trình', value: '0', description: 'Đang theo dõi', tone: 'brandOrange', change: '' },
+        { title: 'Bảo hành QR', value: String(warrantyCount), description: 'Mã đã kích hoạt', tone: 'brandBlack', change: '' },
+        { title: 'Công trình', value: String(projectCount), description: 'Đang theo dõi', tone: 'brandOrange', change: '' },
         { title: 'Ticket CSKH', value: '0', description: 'Đang mở', tone: 'danger', change: '' },
       ],
       modules: [
@@ -66,14 +70,7 @@ export class AppService {
         time: '',
         tone: statusLabel[o.status]?.tone ?? 'brandOrange',
       })),
-      chart: [
-        { label: 'T1', revenue: 0, orders: 0 },
-        { label: 'T2', revenue: 0, orders: 0 },
-        { label: 'T3', revenue: 0, orders: 0 },
-        { label: 'T4', revenue: 0, orders: 0 },
-        { label: 'T5', revenue: 0, orders: 0 },
-        { label: 'T6', revenue: Math.round(totalAmount / 1000000), orders: orders.length },
-      ],
+      chart: this.buildMonthlyChart(orders),
       recentOrders: orders.slice(0, 8).map((o) => ({
         id: o.code,
         dealer: o.dealerName || '—',
@@ -97,5 +94,25 @@ export class AppService {
       apiStatus: 'online',
       quote: this.sampleQuote(),
     };
+  }
+
+  // Doanh thu 6 tháng gần nhất, gộp theo tháng từ ngày tạo đơn thật.
+  private buildMonthlyChart(orders: OrderRow[]): AdminDashboardData['chart'] {
+    const now = new Date();
+    const buckets: { label: string; year: number; month: number; revenue: number; orders: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({ label: `T${d.getMonth() + 1}`, year: d.getFullYear(), month: d.getMonth(), revenue: 0, orders: 0 });
+    }
+    for (const o of orders) {
+      if (!o.createdAt) continue;
+      const d = new Date(o.createdAt);
+      const bucket = buckets.find((b) => b.year === d.getFullYear() && b.month === d.getMonth());
+      if (bucket) {
+        bucket.revenue += o.totalAmount;
+        bucket.orders += 1;
+      }
+    }
+    return buckets.map((b) => ({ label: b.label, revenue: Math.round(b.revenue / 1000000), orders: b.orders }));
   }
 }

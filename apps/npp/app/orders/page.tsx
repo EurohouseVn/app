@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, MapPin, Send } from 'lucide-react';
+import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Printer, Truck, UserRound } from 'lucide-react';
 import type { PaginatedOrders } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
-import { apiGet, apiSend } from '../../src/lib/api';
-import { eyebrowStyle, ghostButtonStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
+import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
+import { currency, eyebrowStyle, ghostButtonStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
 
 type ApiOrder = {
   id: string;
@@ -13,40 +13,49 @@ type ApiOrder = {
   sourceType: string;
   factoryName: string;
   customerName: string;
+  customerPhone?: string;
   deliveryAddress: string;
+  note?: string;
+  accessoriesNote?: string;
   status: string;
   totalKg: number;
   totalAmount: number;
-  items: { productCode: string; productName: string; quantity: number; totalKg: number; colorCode: string }[];
+  createdAt?: string;
+  createdBy?: {
+    displayName: string;
+    phone?: string;
+    email?: string;
+    organization?: { name?: string; address?: string; phone?: string; email?: string };
+  };
+  items: { productCode: string; productName: string; quantity: number; totalKg: number; colorCode: string; totalPrice?: number }[];
   histories: { status: string; title: string; note: string; actor: string; createdAt: string }[];
 };
 
 const statusMeta: Record<string, { label: string; fg: string; soft: string }> = {
   NEW: { label: 'Mới', fg: ui.brand, soft: ui.brandSoft },
-  RECEIVED_BY_NPP: { label: 'NPP tiếp nhận', fg: ui.success, soft: ui.successSoft },
-  SENT_TO_ADMIN: { label: 'Gửi công ty', fg: ui.blue, soft: ui.blueSoft },
-  PROCESSING: { label: 'Đang xử lý', fg: ui.warning, soft: ui.warningSoft },
-  PARTIAL: { label: 'Giao một phần', fg: ui.warning, soft: ui.warningSoft },
+  NPP_REVIEWING: { label: 'NPP tiếp nhận', fg: ui.success, soft: ui.successSoft },
+  CONFIRMED: { label: 'Đã gửi công ty', fg: ui.blue, soft: ui.blueSoft },
+  RESERVED: { label: 'Đã giữ hàng', fg: ui.violet, soft: ui.violetSoft },
+  PICKING: { label: 'Đang soạn', fg: ui.warning, soft: ui.warningSoft },
+  SHIPPED: { label: 'Đã tạo đơn giao', fg: ui.blue, soft: ui.blueSoft },
+  PARTIALLY_SHIPPED: { label: 'Giao một phần', fg: ui.warning, soft: ui.warningSoft },
+  DELIVERED: { label: 'Đã giao', fg: ui.success, soft: ui.successSoft },
   COMPLETED: { label: 'Hoàn tất', fg: ui.success, soft: ui.successSoft },
   CANCELLED: { label: 'Đã hủy', fg: ui.danger, soft: ui.dangerSoft },
-  OVERDUE: { label: 'Chậm xử lý', fg: ui.danger, soft: ui.dangerSoft },
 };
 
 const statusFilters: { key: string; label: string }[] = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'NEW', label: 'Mới' },
-  { key: 'RECEIVED_BY_NPP', label: 'Đã tiếp nhận' },
-  { key: 'SENT_TO_ADMIN', label: 'Đã gửi công ty' },
+  { key: 'NPP_REVIEWING', label: 'Đã tiếp nhận' },
+  { key: 'CONFIRMED', label: 'Đã gửi công ty' },
+  { key: 'SHIPPED', label: 'Đã tạo đơn giao' },
   { key: 'COMPLETED', label: 'Hoàn tất' },
 ];
 
 function StatusChip({ status }: { status: string }) {
   const meta = statusMeta[status] ?? { label: status, fg: ui.text, soft: ui.surfaceMuted };
-  return (
-    <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>
-      {meta.label}
-    </span>
-  );
+  return <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>{meta.label}</span>;
 }
 
 export default function NppOrdersPage() {
@@ -56,7 +65,17 @@ export default function NppOrdersPage() {
   const [status, setStatus] = useState('ALL');
   const [selected, setSelected] = useState<ApiOrder | null>(null);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const pageSize = 10;
+
+  const selectOrder = useCallback((order: ApiOrder | null) => {
+    if (!order) {
+      setSelected(null);
+      return;
+    }
+    setSelected(order);
+    apiGet<ApiOrder>(`/npp/orders/${order.id}`).then(setSelected).catch(() => undefined);
+  }, []);
 
   const load = useCallback((targetPage: number, targetStatus: string) => {
     const query = `?page=${targetPage}&pageSize=${pageSize}${targetStatus !== 'ALL' ? `&status=${targetStatus}` : ''}`;
@@ -65,78 +84,116 @@ export default function NppOrdersPage() {
         setOrders(res.items);
         setTotal(res.total);
         setPage(res.page);
-        setSelected((current) => (current ? res.items.find((o) => o.id === current.id) ?? res.items[0] ?? null : res.items[0] ?? null));
+        selectOrder(res.items[0] ?? null);
       })
-      .catch((e) => setMessage(e instanceof Error ? e.message : 'Không tải được đơn hàng.'));
-  }, []);
+      .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được đơn hàng.'));
+  }, [selectOrder]);
 
   useEffect(() => { load(1, status); }, [load, status]);
 
   async function receive(order: ApiOrder) {
     setMessage('');
-    await apiSend(`/npp/orders/${order.id}/receive`, 'POST');
-    setMessage(`Đã tiếp nhận đơn ${order.code}.`);
-    load(page, status);
+    setError('');
+    try {
+      await apiSend(`/npp/orders/${order.id}/receive`, 'POST');
+      setMessage(`Đã tiếp nhận đơn ${order.code}.`);
+      load(page, status);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không tiếp nhận được đơn.');
+    }
   }
 
-  async function sendAdmin(order: ApiOrder) {
+  async function createDelivery(order: ApiOrder) {
     setMessage('');
-    await apiSend(`/npp/orders/${order.id}/send-admin`, 'POST');
-    setMessage(`Đã gửi đơn ${order.code} lên công ty.`);
-    load(page, status);
+    setError('');
+    try {
+      await apiSend(`/npp/orders/${order.id}/delivery`, 'POST');
+      setMessage(`Đã tạo đơn giao ${order.code}. Tồn kho NPP đã được trừ theo đơn.`);
+      load(page, status);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không tạo được đơn giao.');
+    }
+  }
+
+  async function openDeliveryPdf(order: ApiOrder, mode: 'open' | 'print') {
+    setError('');
+    try {
+      const blob = await apiBlob(`/npp/orders/${order.id}/delivery-pdf`);
+      const url = URL.createObjectURL(blob);
+      if (mode === 'print') {
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed';
+        frame.style.right = '0';
+        frame.style.bottom = '0';
+        frame.style.width = '0';
+        frame.style.height = '0';
+        frame.style.border = '0';
+        frame.src = url;
+        document.body.appendChild(frame);
+        frame.onload = () => {
+          frame.contentWindow?.focus();
+          frame.contentWindow?.print();
+          setTimeout(() => { document.body.removeChild(frame); URL.revokeObjectURL(url); }, 1500);
+        };
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không xuất được PDF.');
+    }
+  }
+
+  async function downloadDeliveryExcel(order: ApiOrder) {
+    setError('');
+    try {
+      const blob = await apiBlob(`/npp/orders/${order.id}/delivery-excel`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `phieu-giao-hang-${order.code}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không xuất được Excel.');
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const factoryContact = selected?.createdBy?.organization;
 
   return (
     <NppPage>
-      <p style={eyebrowStyle}>ĐƠN HÀNG</p>
-      <h1 style={pageTitleStyle}>Đơn hàng từ Xưởng</h1>
-      <p style={subtitleStyle}>Tiếp nhận đơn từ Xưởng và chuyển lên công ty khi đã sẵn sàng.</p>
-      {message ? (
-        <p style={{ color: ui.success, fontWeight: 700, background: ui.successSoft, display: 'inline-block', padding: '6px 12px', borderRadius: 8, fontSize: 13 }}>
-          {message}
-        </p>
-      ) : null}
+      <p style={eyebrowStyle}>Đơn hàng</p>
+      <h1 style={pageTitleStyle}>Đơn hàng từ xưởng</h1>
+      <p style={subtitleStyle}>Tiếp nhận đơn từ cơ sở sản xuất, kiểm tra chi tiết hàng và tạo phiếu giao khi đã sẵn sàng.</p>
+      {message ? <p style={{ color: ui.success, fontWeight: 700, background: ui.successSoft, display: 'inline-block', padding: '6px 12px', borderRadius: 8, fontSize: 13 }}>{message}</p> : null}
+      {error ? <p style={{ color: ui.danger, fontWeight: 700 }}>{error}</p> : null}
 
-      <div style={{ display: 'flex', gap: 8, margin: '12px 0 16px' }}>
+      <div style={{ display: 'flex', gap: 8, margin: '12px 0 16px', flexWrap: 'wrap' }}>
         {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setStatus(f.key)}
-            style={{ ...ghostButtonStyle, background: status === f.key ? ui.brandSoft : ui.surface, color: status === f.key ? ui.brandText : ui.text, borderColor: status === f.key ? ui.brand : ui.borderStrong }}
-          >
+          <button key={f.key} onClick={() => setStatus(f.key)} style={{ ...ghostButtonStyle, background: status === f.key ? ui.brandSoft : ui.surface, color: status === f.key ? ui.brandText : ui.text, borderColor: status === f.key ? ui.brand : ui.borderStrong }}>
             {f.label}
           </button>
         ))}
       </div>
 
       {orders.length === 0 ? (
-        <div style={{ ...panelStyle, marginTop: 16, textAlign: 'center', padding: 48, color: ui.textFaint }}>
-          Chưa có đơn hàng nào ở trạng thái này.
-        </div>
+        <div style={{ ...panelStyle, marginTop: 16, textAlign: 'center', padding: 48, color: ui.textFaint }}>Chưa có đơn hàng nào ở trạng thái này.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginTop: 4, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 20, marginTop: 4, alignItems: 'start' }}>
           <div style={{ ...panelStyle, padding: 0 }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>
-                    {['Mã đơn', 'Xưởng', 'Giá trị', 'Trạng thái'].map((head) => (
-                      <th key={head} style={tableHeadStyle}>{head}</th>
-                    ))}
-                  </tr>
+                  <tr>{['Mã đơn', 'Xưởng', 'Giá trị', 'Trạng thái'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
                 </thead>
                 <tbody>
                   {orders.map((order) => (
-                    <tr
-                      key={order.id}
-                      onClick={() => setSelected(order)}
-                      style={{ cursor: 'pointer', background: selected?.id === order.id ? ui.brandSoft : 'transparent' }}
-                    >
+                    <tr key={order.id} onClick={() => selectOrder(order)} style={{ cursor: 'pointer', background: selected?.id === order.id ? ui.brandSoft : 'transparent' }}>
                       <td style={{ ...tableCellStyle, fontWeight: 700 }}>{order.code}</td>
-                      <td style={tableCellStyle}>{order.factoryName || '—'}</td>
-                      <td style={tableCellStyle}>{(order.totalAmount / 1000000).toFixed(1)} tr</td>
+                      <td style={tableCellStyle}>{order.factoryName || 'Chưa xác định'}</td>
+                      <td style={tableCellStyle}>{currency(order.totalAmount)}</td>
                       <td style={tableCellStyle}><StatusChip status={order.status} /></td>
                     </tr>
                   ))}
@@ -157,60 +214,63 @@ export default function NppOrdersPage() {
               <>
                 <h2 style={{ margin: '0 0 4px', color: ui.text, fontSize: 19, fontWeight: 800 }}>{selected.code}</h2>
                 <p style={{ margin: 0, color: ui.textMuted, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={13} /> {selected.factoryName || '—'}
+                  <MapPin size={13} /> {selected.factoryName || factoryContact?.name || 'Chưa xác định'}
                 </p>
-                <div style={{ display: 'flex', gap: 24, margin: '16px 0' }}>
-                  <div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '16px 0' }}>
+                  <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 10, padding: 12 }}>
                     <small style={{ color: ui.textFaint }}>Tổng kg</small>
                     <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{selected.totalKg.toFixed(1)} kg</p>
                   </div>
-                  <div>
+                  <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 10, padding: 12 }}>
                     <small style={{ color: ui.textFaint }}>Giá trị</small>
-                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{selected.totalAmount.toLocaleString('vi-VN')} đ</p>
+                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{currency(selected.totalAmount)}</p>
                   </div>
                 </div>
 
-                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700 }}>Chi tiết hàng</h3>
+                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><UserRound size={15} /> Thông tin nhận hàng</h3>
+                <div style={{ color: ui.textMuted, fontSize: 13, lineHeight: 1.7 }}>
+                  <div>Khách hàng: <strong style={{ color: ui.text }}>{selected.customerName || 'Không ghi'}</strong></div>
+                  <div>Điện thoại: <strong style={{ color: ui.text }}>{selected.customerPhone || 'Không ghi'}</strong></div>
+                  <div>Địa chỉ: <strong style={{ color: ui.text }}>{selected.deliveryAddress || 'Không ghi'}</strong></div>
+                  {selected.note ? <div>Ghi chú: <strong style={{ color: ui.text }}>{selected.note}</strong></div> : null}
+                </div>
+
+                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}><PackageOpen size={15} /> Chi tiết hàng</h3>
                 {selected.items.map((item, idx) => (
-                  <div key={`${item.productCode}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${ui.border}`, fontSize: 13 }}>
-                    <span style={{ color: ui.text }}>{item.productName} ×{item.quantity}</span>
+                  <div key={`${item.productCode}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, padding: '9px 0', borderBottom: `1px solid ${ui.border}`, fontSize: 13 }}>
+                    <span style={{ color: ui.text }}><strong>{item.productCode}</strong> - {item.productName} {item.colorCode ? `(${item.colorCode})` : ''} x{item.quantity}</span>
                     <span style={{ color: ui.textFaint }}>{item.totalKg.toFixed(1)} kg</span>
                   </div>
                 ))}
 
-                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Clock size={15} /> Lịch sử xử lý
-                </h3>
-                {selected.histories.map((event, index) => {
+                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={15} /> Lịch sử xử lý</h3>
+                {selected.histories.map((event) => {
                   const meta = statusMeta[event.status] ?? { label: event.title, fg: ui.brand };
                   return (
-                    <div key={index} style={{ padding: '7px 0', fontSize: 13 }}>
-                      <strong style={{ color: meta.fg }}>● {event.title}</strong>
-                      <p style={{ margin: '2px 0 0', color: ui.textFaint }}>{event.note} · {event.actor}</p>
+                    <div key={`${event.status}-${event.createdAt}`} style={{ padding: '7px 0', fontSize: 13 }}>
+                      <strong style={{ color: meta.fg }}>{event.title}</strong>
+                      <p style={{ margin: '2px 0 0', color: ui.textFaint }}>{event.note || meta.label} · {event.actor}</p>
                     </div>
                   );
                 })}
 
-                <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18 }}>Xử lý đơn</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
                   {selected.status === 'NEW' ? (
-                    <button
-                      onClick={() => receive(selected)}
-                      style={{ border: `1px solid ${ui.borderStrong}`, background: ui.surface, color: ui.text, borderRadius: 10, padding: '8px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <CheckCircle2 size={14} /> Tiếp nhận
-                    </button>
+                    <button onClick={() => receive(selected)} style={ghostButtonStyle}><CheckCircle2 size={14} /> Tiếp nhận</button>
                   ) : null}
-                  {selected.status === 'RECEIVED_BY_NPP' ? (
-                    <button
-                      onClick={() => sendAdmin(selected)}
-                      style={{ border: `1px solid ${ui.borderStrong}`, background: ui.surface, color: ui.text, borderRadius: 10, padding: '8px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <Send size={14} /> Gửi công ty
-                    </button>
+                  {selected.status === 'NPP_REVIEWING' ? (
+                    <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brandSoft, color: ui.brandText }}><Truck size={14} /> Tạo đơn giao</button>
                   ) : null}
-                  {selected.status !== 'NEW' && selected.status !== 'RECEIVED_BY_NPP' ? (
-                    <p style={{ color: ui.textFaint, fontSize: 13 }}>Đơn đã chuyển sang công ty xử lý.</p>
+                  {selected.status === 'SHIPPED' || selected.status === 'DELIVERED' || selected.status === 'COMPLETED' ? (
+                    <>
+                      <button onClick={() => openDeliveryPdf(selected, 'open')} style={ghostButtonStyle}><FileText size={14} /> PDF</button>
+                      <button onClick={() => openDeliveryPdf(selected, 'print')} style={ghostButtonStyle}><Printer size={14} /> In đơn</button>
+                      <button onClick={() => downloadDeliveryExcel(selected)} style={ghostButtonStyle}><FileSpreadsheet size={14} /> Excel</button>
+                    </>
+                  ) : null}
+                  {selected.status !== 'NEW' && selected.status !== 'NPP_REVIEWING' ? (
+                    <p style={{ color: ui.textFaint, fontSize: 13, margin: 0 }}>Đơn đang ở trạng thái <StatusChip status={selected.status} />.</p>
                   ) : null}
                 </div>
               </>

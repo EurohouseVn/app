@@ -1,29 +1,81 @@
 services:
-  api:
-    type: web
+  - type: web
     name: eurohouse-api
-    env: node
+    runtime: node
     plan: free
-    rootDir: .
-    buildCommand: >
-      npx pnpm@10.13.1 install --frozen-lockfile &&
-      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma generate &&
-      npx pnpm@10.13.1 --filter @eurohouse/api build
-    # Lưu ý: seed.ts KHÔNG chạy ở đây — seed xóa/tạo lại profile + orderItem mỗi lần chạy,
-    # nếu để trong startCommand sẽ mất dữ liệu đơn hàng thật mỗi lần service restart/redeploy.
-    # Chạy seed đúng 1 lần duy nhất qua Render Shell sau khi deploy lần đầu thành công.
-    startCommand: >
-      npx pnpm@10.13.1 --filter @eurohouse/api exec prisma migrate deploy &&
-      npx pnpm@10.13.1 --filter @eurohouse/api start
+    branch: main
+    autoDeploy: true
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @eurohouse/api build
+    startCommand: pnpm --filter @eurohouse/api exec prisma migrate deploy && pnpm --filter @eurohouse/api start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: CORS_ORIGIN
-        sync: false
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: eurohouse-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://eurohouse-admin.onrender.com,https://eurohouse-npp.onrender.com,https://eurohouse-mobile.onrender.com
       - key: DEMO_ADMIN_EMAIL
-        sync: false
+        value: board@eurohouse.vn
       - key: DEMO_ADMIN_PASSWORD
         sync: false
+
+  - type: web
+    name: eurohouse-admin
+    runtime: node
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @eurohouse/admin build
+    startCommand: pnpm --filter @eurohouse/admin exec next start -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://eurohouse-api.onrender.com/api
+      - key: NEXT_PUBLIC_DEMO_EMAIL
+        value: board@eurohouse.vn
+      - key: NEXT_PUBLIC_DEMO_PASSWORD
+        sync: false
+
+  - type: web
+    name: eurohouse-npp
+    runtime: node
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @eurohouse/npp build
+    startCommand: pnpm --filter @eurohouse/npp exec next start -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://eurohouse-api.onrender.com/api
+
+  - type: web
+    name: eurohouse-mobile
+    runtime: static
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @eurohouse/mobile exec expo export --platform web
+    staticPublishPath: apps/mobile/dist
+    envVars:
+      - key: EXPO_PUBLIC_API_URL
+        value: https://eurohouse-api.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: eurohouse-db
+    databaseName: eurohouse
+    user: eurohouse
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: []

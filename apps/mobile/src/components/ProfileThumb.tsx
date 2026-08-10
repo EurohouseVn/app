@@ -18,7 +18,7 @@ export function ProfileThumb({ imageUrl, size = 48 }: { imageUrl?: string; size?
           onError={() => setFailed(true)}
         />
       ) : (
-        <Icon name="box" size={Math.round(size * 0.36)} color={colors.brandGrey} />
+        <Icon name="box" size={Math.round(size * 0.36)} color={colors.brandGrey[500]} />
       )}
     </View>
   );

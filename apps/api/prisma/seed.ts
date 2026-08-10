@@ -5,6 +5,7 @@ import * as path from 'path';
 
 const prisma = new PrismaClient();
 const PROFILES_DIR = path.join(__dirname, '..', 'public', 'profiles');
+const FORMULA_TEMPLATE_BACKUP = path.join(__dirname, '..', 'backups', 'formula-templates-before-prune-2026-08-10T08-33-10-712Z.json');
 
 // Mật khẩu chung cho tài khoản demo (băm bằng bcrypt khi seed)
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Eurohouse@2026';
@@ -227,6 +228,55 @@ const profilesNoImage: [string, string, string, number, number][] = [
   ['EU-MD', 'EMDS38', 'Sập mặt dựng 38 *', 0.2, 10],
 ];
 
+async function seedFormulaTemplates() {
+  if (!fs.existsSync(FORMULA_TEMPLATE_BACKUP)) {
+    console.warn(`Formula template seed file not found: ${FORMULA_TEMPLATE_BACKUP}`);
+    return 0;
+  }
+  const raw = JSON.parse(fs.readFileSync(FORMULA_TEMPLATE_BACKUP, 'utf8')) as {
+    templates?: Array<{
+      templateId: string;
+      numericId: number;
+      systemName: string;
+      windowTypeName: string;
+      templateName: string;
+      imagePath: string;
+      filePath: string;
+      variantCount?: number;
+      isPopular?: boolean;
+    }>;
+  };
+  let count = 0;
+  for (const template of raw.templates ?? []) {
+    await prisma.formulaTemplate.upsert({
+      where: { templateId: template.templateId },
+      update: {
+        numericId: template.numericId,
+        systemName: template.systemName,
+        windowTypeName: template.windowTypeName,
+        templateName: template.templateName,
+        imagePath: template.imagePath,
+        filePath: template.filePath,
+        variantCount: template.variantCount ?? 0,
+        isPopular: template.isPopular ?? true,
+      },
+      create: {
+        templateId: template.templateId,
+        numericId: template.numericId,
+        systemName: template.systemName,
+        windowTypeName: template.windowTypeName,
+        templateName: template.templateName,
+        imagePath: template.imagePath,
+        filePath: template.filePath,
+        variantCount: template.variantCount ?? 0,
+        isPopular: template.isPopular ?? true,
+      },
+    });
+    count += 1;
+  }
+  return count;
+}
+
 async function main() {
   const company = await prisma.organization.upsert({
     where: { code: 'EUROHOUSE' }, update: {},
@@ -245,15 +295,42 @@ async function main() {
     where: { id: factory.id }, data: { managedByNppId: npp.id },
   });
 
+  // Cây phòng ban nội bộ công ty (RBAC Web Admin). CEO là gốc, các phòng ban trực thuộc.
+  const ceoDept = await prisma.department.upsert({
+    where: { code: 'CEO' }, update: {},
+    create: { code: 'CEO', name: 'Ban Giám đốc', sortOrder: 0 },
+  });
+  const departmentSeed: { code: string; name: string; sortOrder: number }[] = [
+    { code: 'SALES', name: 'Phòng Kinh doanh', sortOrder: 1 },
+    { code: 'RETAIL', name: 'Phòng Bán lẻ / Đại lý', sortOrder: 2 },
+    { code: 'ACCOUNTING', name: 'Phòng Kế toán', sortOrder: 3 },
+    { code: 'HR', name: 'Phòng Hành chính - Nhân sự', sortOrder: 4 },
+    { code: 'MATERIAL', name: 'Phòng Vật tư', sortOrder: 5 },
+    { code: 'PROD', name: 'Phòng Sản xuất', sortOrder: 6 },
+    { code: 'WAREHOUSE', name: 'Phòng Kho vận', sortOrder: 7 },
+    { code: 'SECURITY', name: 'Bộ phận Bảo vệ', sortOrder: 8 },
+  ];
+  for (const dept of departmentSeed) {
+    await prisma.department.upsert({
+      where: { code: dept.code }, update: { name: dept.name, sortOrder: dept.sortOrder, parentId: ceoDept.id },
+      create: { ...dept, parentId: ceoDept.id },
+    });
+  }
+
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   await prisma.user.upsert({
     where: { email: 'tho@eurohouse.vn' }, update: { passwordHash },
     create: { email: 'tho@eurohouse.vn', displayName: 'Thợ / Xưởng', passwordHash, role: 'FACTORY', organizationId: factory.id },
   });
+  // Tài khoản CEO gốc — toàn quyền, dùng để đăng nhập và cấp quyền module cho nhân sự khác.
   await prisma.user.upsert({
-    where: { email: 'board@eurohouse.vn' }, update: { passwordHash },
-    create: { email: 'board@eurohouse.vn', displayName: 'Quản trị Eurohouse', passwordHash, role: 'ADMIN', organizationId: company.id },
+    where: { email: 'board@eurohouse.vn' },
+    update: { passwordHash, isCeo: true, jobTitle: 'Tổng Giám đốc', departmentId: ceoDept.id },
+    create: {
+      email: 'board@eurohouse.vn', displayName: 'Quản trị Eurohouse', passwordHash, role: 'ADMIN',
+      organizationId: company.id, isCeo: true, jobTitle: 'Tổng Giám đốc', departmentId: ceoDept.id,
+    },
   });
   await prisma.user.upsert({
     where: { email: 'npp@eurohouse.vn' }, update: { passwordHash },
@@ -322,10 +399,10 @@ async function main() {
 
   if ((await prisma.libraryItem.count()) === 0) {
     const library = [
-      { type: 'IMAGE', title: 'Cửa đi 4 cánh mặt tiền', tag: 'Cửa đi' },
-      { type: 'IMAGE', title: 'Cửa sổ mở quay vân gỗ', tag: 'Cửa sổ' },
-      { type: 'KNOWLEDGE', title: 'Hướng dẫn đo đạc lắp đặt', tag: 'Kỹ thuật' },
-      { type: 'VIDEO', title: 'Quy trình sản xuất Eurohouse', tag: 'Video', videoUrl: 'https://www.youtube.com/@eurohouse' },
+      { title: 'Cửa đi 4 cánh mặt tiền', mediaUrl: '/static/library/1.jpg', mediaType: 'IMAGE' as const, categoryId: 'DOOR_SAMPLE' as const },
+      { title: 'Cửa sổ mở quay vân gỗ', mediaUrl: '/static/library/2.jpg', mediaType: 'IMAGE' as const, categoryId: 'DOOR_SAMPLE' as const },
+      { title: 'Hướng dẫn đo đạc lắp đặt', mediaUrl: '/static/library/3.jpg', mediaType: 'IMAGE' as const, categoryId: 'PROJECT_IMAGE' as const },
+      { title: 'Quy trình sản xuất Eurohouse', mediaUrl: 'https://www.youtube.com/@eurohouse', mediaType: 'VIDEO' as const, categoryId: 'SHORT_VIDEO' as const },
     ];
     for (const item of library) await prisma.libraryItem.create({ data: item });
   }
@@ -358,6 +435,8 @@ async function main() {
   }
 
   console.log(`Seed xong: ${aluSystems.length} hệ nhôm, ${profiles.length + profilesNoImage.length} thanh nhôm, ${colors.length} màu.`);
+  const formulaTemplateCount = await seedFormulaTemplates();
+  console.log(`Seeded ${formulaTemplateCount} formula templates.`);
 }
 
 main()

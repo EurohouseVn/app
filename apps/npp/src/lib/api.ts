@@ -19,7 +19,6 @@ function authHeaders(base: Record<string, string> = {}): Record<string, string> 
 function handleUnauthorized(status: number) {
   if (status === 401) {
     clearSession();
-    if (typeof window !== 'undefined') window.location.reload();
   }
 }
 
@@ -32,7 +31,16 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function apiSend<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    throw new Error(`Khong tai duoc ${path} (${response.status})`);
+  }
+  return response.blob();
+}
+
+export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
     headers: authHeaders({ 'Content-Type': 'application/json' }),

@@ -14,7 +14,7 @@ export const statusText: Record<string, string> = {
 export const statusTone: Record<string, string> = {
   NEW: colors.brandOrange,
   RECEIVED_BY_NPP: colors.success,
-  SENT_TO_ADMIN: colors.brandBlack,
+  SENT_TO_ADMIN: colors.brandBlack.main,
   PROCESSING: colors.warning,
   PARTIAL: colors.warning,
   COMPLETED: colors.success,

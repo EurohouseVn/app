@@ -6,7 +6,7 @@ import { LoginScreen, useDemoAuth } from './auth';
 
 /**
  * Bọc một trang admin: tự xử lý đăng nhập demo + khung sidebar.
- * Dùng cho mọi trang mới để tránh lặp boilerplate auth/shell.
+ * Guard quyền module nằm trong AdminShell (áp cho cả trang dùng AdminShell trực tiếp).
  */
 export function AdminPage({ children }: { children: ReactNode }) {
   const { user, ready, login, logout } = useDemoAuth();

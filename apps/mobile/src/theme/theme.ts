@@ -7,7 +7,7 @@ export const mobileTheme = {
     paddingHorizontal: 20,
   },
   shadow: {
-    shadowColor: colors.brandBlack,
+    shadowColor: colors.brandBlack.main,
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 3,

@@ -7,6 +7,7 @@ import { ui } from './ui';
 
 const storageKey = 'eurohouse-npp-user';
 const allowedRoles = new Set(['NPP', 'ADMIN']);
+const authClearedEvent = 'eurohouse:npp-auth-cleared';
 
 export const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -26,6 +27,7 @@ export function getToken(): string | null {
 export function clearSession() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(storageKey);
+  window.dispatchEvent(new Event(authClearedEvent));
 }
 
 export function useDemoAuth() {
@@ -36,6 +38,9 @@ export function useDemoAuth() {
     const saved = window.localStorage.getItem(storageKey);
     if (saved) setUser(JSON.parse(saved) as DemoAdminUser);
     setReady(true);
+    const handleAuthCleared = () => setUser(null);
+    window.addEventListener(authClearedEvent, handleAuthCleared);
+    return () => window.removeEventListener(authClearedEvent, handleAuthCleared);
   }, []);
 
   function login(value: DemoAdminUser) {

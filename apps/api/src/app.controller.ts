@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
-import { EurohouseService } from './eurohouse/eurohouse.service';
+import { OrdersService } from './modules/orders/orders.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { Roles } from './auth/roles.decorator';
@@ -9,7 +9,7 @@ import { Roles } from './auth/roles.decorator';
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly eurohouse: EurohouseService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   @Get('health')
@@ -26,7 +26,7 @@ export class AppController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
   async adminDashboard() {
-    const orders = await this.eurohouse.listOrders();
+    const orders = await this.ordersService.listOrders();
     return this.appService.adminDashboard(orders);
   }
 
@@ -34,6 +34,6 @@ export class AppController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
   adminOrders() {
-    return this.eurohouse.listOrders();
+    return this.ordersService.listOrders();
   }
 }

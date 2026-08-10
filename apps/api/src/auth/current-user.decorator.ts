@@ -4,8 +4,15 @@ import type { UserRole } from '@eurohouse/types';
 export interface JwtUser {
   sub: string;
   email: string;
+  displayName?: string;
   role: UserRole;
   organizationId?: string;
+  organizationName?: string;
+  isCeo?: boolean;
+  modules?: string[];
+  departmentId?: string;
+  permissions?: string[];
+  rbacRoleId?: string;
 }
 
 export const CurrentUser = createParamDecorator(

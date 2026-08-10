@@ -1,33 +1,40 @@
 import { useEffect, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from 'react-native';
 import { colors } from '@eurohouse/ui';
-import type { LibraryItem } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon, type IconName } from '../src/components/Icon';
 import { api, assetUrl } from '../src/lib/api';
 
-const tabs: { key: LibraryItem['type']; label: string }[] = [
-  { key: 'IMAGE', label: 'Ảnh' },
-  { key: 'KNOWLEDGE', label: 'Kiến thức' },
-  { key: 'VIDEO', label: 'Video' },
+const tabs: { key: string; label: string }[] = [
+  { key: 'PROJECT_IMAGE', label: 'Dự án' },
+  { key: 'DOOR_SAMPLE', label: 'Mẫu cửa' },
+  { key: 'SHORT_VIDEO', label: 'Video' },
 ];
 
-const typeIcon: Record<string, IconName> = { IMAGE: 'home', KNOWLEDGE: 'book-open', PRODUCT: 'grid', VIDEO: 'play-circle' };
-
 export default function LibraryScreen() {
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  const [tab, setTab] = useState<LibraryItem['type']>('IMAGE');
+  const [items, setItems] = useState<any[]>([]);
+  const [tab, setTab] = useState<string>('PROJECT_IMAGE');
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    api.get<any[]>('/content/library').then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    api.get<LibraryItem[]>('/library').then(setItems).catch(() => setItems([]));
+    loadData();
   }, []);
 
-  const visible = items.filter((item) => item.type === tab);
+  const visible = items.filter((item) => item.categoryId === tab);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Thư viện" subtitle="Mẫu cửa & nội dung từ Eurohouse" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <AppHeader title="Thư viện" subtitle="Mẫu cửa & hình ảnh từ Eurohouse" />
+      <ScrollView 
+        contentContainerStyle={styles.container} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
+      >
         <View style={styles.tabRow}>
           {tabs.map((item) => (
             <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.tab, tab === item.key && styles.tabActive]}>
@@ -36,9 +43,9 @@ export default function LibraryScreen() {
           ))}
         </View>
 
-        {visible.length === 0 ? (
+        {visible.length === 0 && !loading ? (
           <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}><Icon name="image" size={26} color={colors.brandGrey} /></View>
+            <View style={styles.emptyIconWrap}><Icon name="image" size={26} color={colors.brandGrey[500]} /></View>
             <Text style={styles.emptyText}>Chưa có nội dung trong mục này.</Text>
           </View>
         ) : null}
@@ -48,20 +55,14 @@ export default function LibraryScreen() {
             <Pressable
               key={item.id}
               style={styles.card}
-              onPress={() => item.videoUrl && Linking.openURL(item.videoUrl)}
+              onPress={() => item.mediaUrl && item.mediaType === 'VIDEO' && Linking.openURL(assetUrl(item.mediaUrl || '') || '')}
             >
-              {item.imageUrl ? (
-                <Image source={{ uri: assetUrl(item.imageUrl) }} style={styles.cardImg} resizeMode="cover" />
+              {item.mediaType === 'IMAGE' ? (
+                <Image source={{ uri: assetUrl(item.mediaUrl || '') || '' }} style={styles.cardImg} resizeMode="cover" />
               ) : (
-                <View style={styles.cardIcon}><Icon name={typeIcon[item.type] ?? 'file'} size={30} color={colors.brandOrange} /></View>
+                <View style={styles.cardIcon}><Icon name="play-circle" size={30} color={colors.brandOrange} /></View>
               )}
               <Text style={styles.title}>{item.title}</Text>
-              {item.tag ? (
-                <View style={styles.tagWrap}>
-                  {item.type === 'VIDEO' ? <Icon name="play" size={11} color={colors.brandOrange} /> : null}
-                  <Text style={styles.tag}>{item.tag}</Text>
-                </View>
-              ) : null}
             </Pressable>
           ))}
         </View>
@@ -73,18 +74,16 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: { padding: 18, paddingBottom: 110 },
   tabRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
-  tab: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, backgroundColor: colors.white, shadowColor: colors.brandBlack, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  tabActive: { backgroundColor: colors.brandBlack },
-  tabText: { color: colors.brandBlack, fontWeight: '700' },
-  tabTextActive: { color: colors.white },
+  tab: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, backgroundColor: colors.white, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  tabActive: { backgroundColor: colors.orangeSoft },
+  tabText: { color: colors.brandBlack.main, fontWeight: '700' },
+  tabTextActive: { color: colors.brandOrangeText },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: colors.brandGrey },
+  emptyText: { color: colors.brandGrey[500] },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '48%', backgroundColor: colors.white, borderRadius: 20, padding: 12, gap: 8, shadowColor: colors.brandBlack, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  card: { width: '48%', backgroundColor: colors.white, borderRadius: 20, padding: 12, gap: 8, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   cardImg: { width: '100%', height: 110, borderRadius: 14, backgroundColor: colors.orangeSoft },
   cardIcon: { width: '100%', height: 110, borderRadius: 14, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  title: { color: colors.brandBlack, fontWeight: '700', fontSize: 13 },
-  tagWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tag: { color: colors.brandOrange, fontWeight: '700', fontSize: 11 },
+  title: { color: colors.brandBlack.main, fontWeight: '700', fontSize: 13 },
 });

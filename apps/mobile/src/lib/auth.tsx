@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import type { AuthUser, LoginResponse } from '@eurohouse/types';
+import type { AuthUser, LoginResponse, RegisterFactoryInput } from '@eurohouse/types';
 import { api, setAuthToken, setUnauthorizedHandler } from './api';
 
 const TOKEN_KEY = 'eurohouse-token';
@@ -34,6 +34,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   ready: boolean;
   login: (identifier: string, password: string) => Promise<void>;
+  registerFactory: (input: RegisterFactoryInput) => Promise<void>;
   logout: () => void;
 }
 
@@ -75,7 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await api.get<AuthUser>('/auth/me'));
   }, []);
 
-  const value = useMemo(() => ({ user, ready, login, logout }), [user, ready, login, logout]);
+  const registerFactory = useCallback(async (input: RegisterFactoryInput) => {
+    const res = await api.post<LoginResponse>('/auth/register-factory', input);
+    setAuthToken(res.user.token);
+    await storage.set(TOKEN_KEY, res.user.token);
+    setUser(await api.get<AuthUser>('/auth/me'));
+  }, []);
+
+  const value = useMemo(() => ({ user, ready, login, registerFactory, logout }), [user, ready, login, registerFactory, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

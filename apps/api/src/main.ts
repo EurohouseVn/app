@@ -21,8 +21,8 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Phục vụ ảnh tĩnh (poster khuyến mãi, thư viện) tại /static
-  app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/static/' });
+  // Phục vụ ảnh tĩnh (poster khuyến mãi, thư viện)
+  app.useStaticAssets(join(process.cwd(), 'public'), { prefix: '/static' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, '0.0.0.0');

@@ -8,6 +8,7 @@ export const serverUrl = apiUrl.replace(/\/api\/?$/, '');
 export function assetUrl(path?: string): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
+  if (path.startsWith('/images/')) return `${serverUrl}/static${path}`;
   return `${serverUrl}${path}`;
 }
 
@@ -32,7 +33,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function apiSend<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
     headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -44,6 +45,18 @@ export async function apiSend<T>(path: string, method: 'POST' | 'PATCH' | 'DELET
     throw new Error(payload?.message ?? `Lỗi ${path} (${response.status})`);
   }
   return (await response.json()) as T;
+}
+
+export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>(path, 'POST', body);
+}
+
+export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>(path, 'PATCH', body);
+}
+
+export function apiDelete<T>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>(path, 'DELETE', body);
 }
 
 // Mở file (PDF...) từ endpoint cần Bearer token bằng cách tải blob rồi mở qua object URL.

@@ -4,12 +4,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Building2,
+  Factory,
   FileBarChart,
+  FileText,
   HandCoins,
   LayoutGrid,
   LogOut,
   Package,
   Scale,
+  Settings,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 import type { DemoAdminUser } from '@eurohouse/types';
@@ -18,9 +23,16 @@ import { ui } from './ui';
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutGrid },
   { label: 'Đơn hàng', href: '/orders', icon: Package },
+  { label: 'Cơ sở SX', href: '/factories', icon: Factory },
+  { label: 'Kho hàng', href: '/inventory', icon: Warehouse },
+  { label: 'Phụ kiện', href: '/accessories', icon: Package },
+  { label: 'Kính', href: '/glass', icon: LayoutGrid },
+  { label: 'Báo giá', href: '/quotations', icon: FileText },
+  { label: 'Công trình', href: '/projects', icon: Building2 },
   { label: 'Đối chiếu', href: '/reconciliation', icon: Scale },
   { label: 'Công nợ', href: '/debts', icon: HandCoins },
   { label: 'Báo cáo', href: '/reports', icon: FileBarChart },
+  { label: 'Tài khoản', href: '/profile', icon: Settings },
 ];
 
 const roleLabel: Record<string, string> = {
@@ -48,31 +60,23 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 6px' }}>
           <Image src="/logo.png" alt="Eurohouse" width={38} height={38} style={{ borderRadius: 10 }} />
           <div>
-            <strong style={{ color: ui.text, fontSize: 17, letterSpacing: -0.3 }}>Eurohouse</strong>
+            <strong style={{ color: ui.text, fontSize: 17 }}>Eurohouse</strong>
             <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>NPP Web Manager</p>
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: 20,
-            padding: 14,
-            borderRadius: 14,
-            background: ui.surfaceMuted,
-            border: `1px solid ${ui.border}`,
-          }}
-        >
+        <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: ui.surfaceMuted, border: `1px solid ${ui.border}` }}>
           <p style={{ margin: 0, fontWeight: 700, color: ui.text, fontSize: 14 }}>{user.displayName}</p>
           <p style={{ margin: '4px 0 0', color: ui.brandText, fontSize: 12, fontWeight: 600 }}>{roleLabel[user.role] ?? user.role}</p>
         </div>
 
         <nav style={{ display: 'grid', gap: 4, marginTop: 20, flex: 1 }}>
-          {navItems.map((item, index) => {
+          {navItems.map((item) => {
             const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
-                key={`${item.label}-${index}`}
+                key={item.href}
                 href={item.href}
                 style={{
                   display: 'flex',

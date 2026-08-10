@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import type { RegisterFactoryInput } from '@eurohouse/types';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser, type JwtUser } from './current-user.decorator';
 
@@ -11,6 +12,11 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body.identifier, body.password);
+  }
+
+  @Post('register-factory')
+  registerFactory(@Body() body: RegisterFactoryInput) {
+    return this.authService.registerFactory(body);
   }
 
   @Get('me')

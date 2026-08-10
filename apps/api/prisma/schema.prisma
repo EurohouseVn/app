@@ -10,41 +10,106 @@ datasource db {
 // ---------- Tổ chức & người dùng ----------
 
 model Organization {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  type      String // COMPANY | FACTORY | NPP | DEALER
-  shortLabel String? // Ký hiệu ngắn dùng để sinh mã đơn, ví dụ "X.MinhViet" (chỉ Xưởng cần đặt)
-  phone     String?
-  address   String?
-  users     User[]
+  id               String         @id @default(cuid())
+  code             String         @unique
+  name             String
+  type             String // COMPANY | FACTORY | NPP | DEALER
+  shortLabel       String? // Ký hiệu ngắn dùng để sinh mã đơn, ví dụ "X.MinhViet" (chỉ Xưởng cần đặt)
+  phone            String?
+  address          String?
+  province         String? // Tỉnh/Thành phố hoạt động (dùng cho Phân vùng)
+  
+  // Profile Fields cho Báo giá
+  productionName   String?
+  logoUrl          String?
+  mainCategories   String?
+  email            String?
+  fanpage          String?
+
+  users            User[]
   managedByNppId   String?
   managedByNpp     Organization?  @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
   managedFactories Organization[] @relation("NppManagesFactory")
   ordersAsNpp      Order[]        @relation("OrderNppOrg")
   debtsAsNpp       Debt[]         @relation("DebtNppOrg")
   debtsAsFactory   Debt[]         @relation("DebtFactoryOrg")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  nppProfileStocks NppProfileStock[] @relation("NppProfileStockOrg")
+  nppStockMovements NppStockMovement[] @relation("NppStockMovementOrg")
+  nppAccessories NppAccessory[] @relation("NppAccessoryOrg")
+  nppGlassSheets NppGlassSheet[] @relation("NppGlassSheetOrg")
+  salesTargets     SalesTarget[]  @relation("NppSalesTarget")
+  tier             String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
+  targetRevenue    Float          @default(0) // Mục tiêu doanh số
+  purchasingPower  String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  displayName    String
-  phone          String?
-  passwordHash   String
-  role           String // ADMIN | STAFF | NPP | DAILY | FACTORY
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  projects       Project[]
-  orders         Order[]
-  stockMovements StockMovement[]
+  id                    String                 @id @default(cuid())
+  email                 String                 @unique
+  displayName           String
+  phone                 String?
+  passwordHash          String
+  role                  String // ADMIN | STAFF | NPP | DAILY | FACTORY
+  organizationId        String?
+  organization          Organization?          @relation(fields: [organizationId], references: [id])
+  // RBAC nội bộ công ty (Web Admin)
+  departmentId          String?
+  department            Department?            @relation(fields: [departmentId], references: [id])
+  jobTitle              String                 @default("") // chức danh: CEO, Kế toán trưởng, Kế toán tạo đơn...
+  isCeo                 Boolean                @default(false) // CEO: toàn quyền, bỏ qua mọi check module
+  moduleAccess          String                 @default("[]") // (Legacy) JSON mảng module key được phép
+  rbacRoleId            String?
+  rbacRole              Role?                  @relation(fields: [rbacRoleId], references: [id])
+  managedProvinces      String                 @default("[]") // JSON mảng Tỉnh/Thành phố mà Sale này quản lý
+  projects              Project[]
+  orders                Order[]
+  stockMovements        StockMovement[]
   profileStockMovements ProfileStockMovement[]
-  cashTransactions CashTransaction[]
-  quotations     Quotation[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  nppStockMovements     NppStockMovement[]     @relation("UserNppStockMovements")
+  cashTransactions      CashTransaction[]
+  quotations            Quotation[]
+  warranties            Warranty[]
+  points                Int                    @default(0) // số dư điểm tích lũy (cache; nguồn sự thật là PointLedger)
+  pointLedgers          PointLedger[]
+  giftRedemptions       GiftRedemption[]
+  leads                 Lead[]                 @relation("LeadManagedBy")
+  saleReports           SaleReport[]           @relation("SaleReportCreatedBy")
+  payrolls              Payroll[]              @relation("UserPayroll")
+  workOrders            WorkOrder[]            @relation("WorkOrderCreator")
+  workerAccessories     WorkerAccessoryPrice[] @relation("WorkerAccessory")
+  scrapKg               Float                  @default(0) // Nhôm phế liệu dự tính (kg)
+  inventoryItems        InventoryItem[]        @relation("UserInventory")
+  profileCutoffs        ProfileCutoff[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([departmentId])
+}
+
+model Department {
+  id        String       @id @default(cuid())
+  code      String       @unique // CEO, SALES, RETAIL, ACCOUNTING, HR, MATERIAL, PROD, WAREHOUSE, SECURITY, KITCHEN, PROD_*
+  name      String
+  parentId  String?
+  parent    Department?  @relation("DeptTree", fields: [parentId], references: [id])
+  children  Department[] @relation("DeptTree")
+  sortOrder Int          @default(0)
+  users     User[]
+  createdAt DateTime     @default(now())
+
+  @@index([parentId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // VD: "Giám đốc Kinh doanh", "Kế toán viên"
+  description String?
+  permissions String   @default("[]") // JSON array các quyền, VD: ["sales:read", "sales:write", "accounting:read"]
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ---------- Danh mục hệ nhôm ----------
@@ -56,28 +121,35 @@ model AluSystem {
   description String?
   sortOrder   Int       @default(0)
   profiles    Profile[]
+  systemFormulas SystemFormula[]
+  knowledgeArticles KnowledgeArticle[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
 
 model Profile {
-  id           String      @id @default(cuid())
-  aluSystemId  String
-  aluSystem    AluSystem   @relation(fields: [aluSystemId], references: [id])
-  code         String // mã cây — không unique toàn cục vì nhiều hệ dùng chung phụ kiện/thanh giống nhau
-  name         String
-  thicknessMm  String? // ví dụ "1.0" hoặc "1 - 1.25"
-  kgPerMeter   Float       @default(0)
-  barLengthMm  Int         @default(6000) // chiều dài cây tiêu chuẩn
-  barsPerBundle Int        @default(0) // quy cách bó
-  pricePerKg   Int         @default(0)
-  imageUrl     String? // ảnh mặt cắt
-  stockBars    Int         @default(0) // tồn hiện tại theo cây
-  lowStockAlert Int        @default(0) // ngưỡng cảnh báo tồn thấp (0 = không cảnh báo)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  orderItems   OrderItem[]
+  id             String                 @id @default(cuid())
+  aluSystemId    String
+  aluSystem      AluSystem              @relation(fields: [aluSystemId], references: [id])
+  code           String // mã cây — không unique toàn cục vì nhiều hệ dùng chung phụ kiện/thanh giống nhau
+  name           String
+  thicknessMm    String? // ví dụ "1.0" hoặc "1 - 1.25"
+  kgPerMeter     Float                  @default(0)
+  barLengthMm    Int                    @default(6000) // chiều dài cây tiêu chuẩn
+  barsPerBundle  Int                    @default(0) // quy cách bó
+  pricePerKg     Int                    @default(0)
+  imageUrl       String? // ảnh mặt cắt
+  stockBars      Int                    @default(0) // tồn hiện tại theo cây
+  lowStockAlert  Int                    @default(0) // ngưỡng cảnh báo tồn thấp (0 = không cảnh báo)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  orderItems     OrderItem[]
   stockMovements ProfileStockMovement[]
+  nppProfileStocks NppProfileStock[]
+  nppStockMovements NppStockMovement[]
+  profileCutoffs ProfileCutoff[]
+  dies           Die[]
+  workOrders     WorkOrder[]
 
   @@unique([aluSystemId, code])
 }
@@ -93,35 +165,37 @@ model ColorCode {
 // ---------- Đơn hàng (đặt hàng theo cây nhôm) ----------
 
 model Order {
-  id              String      @id @default(cuid())
-  code            String      @unique
-  sourceType      String // FACTORY | DEALER | NPP | ADMIN
-  createdById     String?
-  createdBy       User?       @relation(fields: [createdById], references: [id])
-  factoryName     String      @default("")
-  dealerName      String      @default("")
-  nppName         String      @default("")
-  nppOrgId        String?
-  nppOrg          Organization? @relation("OrderNppOrg", fields: [nppOrgId], references: [id])
-  customerName    String      @default("")
-  customerPhone   String      @default("")
-  deliveryAddress String      @default("")
-  colorCode       String      @default("")
-  status          String      @default("NEW")
-  note            String      @default("")
-  accessoriesNote String      @default("")
-  totalKg         Float       @default(0)
-  totalAmount     Int         @default(0)
-  dueNote         String      @default("")
-  customerCode    String      @default("") // Mã khách hàng (admin nhập khi xuất kho)
-  invoiceNo       String      @default("") // Số hóa đơn
-  poNo            String      @default("") // Số đơn đặt hàng
-  items           OrderItem[]
-  histories       OrderStatusHistory[]
+  id                    String                 @id @default(cuid())
+  code                  String                 @unique
+  sourceType            String // FACTORY | DEALER | NPP | ADMIN
+  createdById           String?
+  createdBy             User?                  @relation(fields: [createdById], references: [id])
+  factoryName           String                 @default("")
+  dealerName            String                 @default("")
+  nppName               String                 @default("")
+  nppOrgId              String?
+  nppOrg                Organization?          @relation("OrderNppOrg", fields: [nppOrgId], references: [id])
+  customerName          String                 @default("")
+  customerPhone         String                 @default("")
+  deliveryAddress       String                 @default("")
+  colorCode             String                 @default("")
+  status                String                 @default("NEW")
+  note                  String                 @default("")
+  accessoriesNote       String                 @default("")
+  totalKg               Float                  @default(0)
+  totalAmount           Int                    @default(0)
+  dueNote               String                 @default("")
+  customerCode          String                 @default("") // Mã khách hàng (admin nhập khi xuất kho)
+  invoiceNo             String                 @default("") // Số hóa đơn
+  poNo                  String                 @default("") // Số đơn đặt hàng
+  items                 OrderItem[]
+  histories             OrderStatusHistory[]
   profileStockMovements ProfileStockMovement[]
-  debts           Debt[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  nppStockMovements     NppStockMovement[]     @relation("OrderNppStockMovements")
+  debts                 Debt[]
+  workOrders            WorkOrder[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 }
 
 model OrderItem {
@@ -154,35 +228,60 @@ model OrderStatusHistory {
 // ---------- Quản lý công trình & lợi nhuận (App Xưởng) ----------
 
 model Project {
-  id            String        @id @default(cuid())
-  code          String        @unique
-  name          String
-  ownerId       String?
-  owner         User?         @relation(fields: [ownerId], references: [id])
-  customerName  String        @default("")
-  customerPhone String        @default("")
-  address       String        @default("")
-  status        String        @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
-  // Giá nhận với chủ nhà
-  contractValue Int           @default(0)
+  id               String            @id @default(cuid())
+  code             String            @unique
+  name             String
+  ownerId          String?
+  owner            User?             @relation(fields: [ownerId], references: [id])
+  customerName     String            @default("")
+  customerPhone    String            @default("")
+  address          String            @default("")
+  scale            String            @default("") // Quy mô dự án
+  potentialRating  Int               @default(0) // Mức độ tiềm năng 1-5
+  productsUsed     String            @default("") // Dòng hàng sử dụng chủ đạo
+  status           String            @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
+  startDate        DateTime? // Thời gian bắt đầu
+  endDate          DateTime? // Thời gian kết thúc
+  // Giá trị nhận với chủ nhà / Tổng doanh thu
+  contractValue    Int               @default(0)
+  
+  // Nâng cấp tài chính công trình
+  quotationId      String?           // Lấy giá trị từ báo giá nào
+  estimatedValue   Int               @default(0) // Dự toán ban đầu (Lấy từ báo giá)
+  incurredValue    Int               @default(0) // Phát sinh
+  incurredType     String            @default("INCREASE") // INCREASE | DECREASE
+  settledValue     Int               @default(0) // Quyết toán
+  images           String[]          @default([]) // Danh sách ảnh (tối đa 5 ảnh)
+  
   // Chi phí đầu vào
-  costAluminum  Int           @default(0)
-  costAccessory Int           @default(0)
-  costLockHinge Int           @default(0)
-  costGasket    Int           @default(0) // zoăng
-  costSilicone  Int           @default(0)
-  costScrew     Int           @default(0)
-  costGlass     Int           @default(0)
-  costLabor     Int           @default(0)
-  costPartnerPct Float        @default(0) // % chi phí cho đối tác
-  costOther     Int           @default(0)
-  extraRevenue  Int           @default(0) // phát sinh tăng từ khách
-  note          String        @default("")
-  costs         ProjectCost[]
-  debts         Debt[]
+  costAluminum     Int               @default(0)
+  costAccessory    Int               @default(0)
+  costLockHinge    Int               @default(0)
+  costGlass        Int               @default(0)
+  costGasket       Int               @default(0) // zoăng
+  costSilicone     Int               @default(0)
+  costScrew        Int               @default(0)
+  costLabor        Int               @default(0)
+  costPartnerPct   Float             @default(0) // % chi phí cho đối tác
+  costConsumables  Int               @default(0) // Vật tư phụ
+  costTransport    Int               @default(0) // Vận chuyển
+  costInstallation Int               @default(0) // Nhân công lắp đặt
+  costOther        Int               @default(0) // Chi phí khác
+  extraRevenue     Int               @default(0) // phát sinh tăng từ khách
+  
+  // Nợ đọng
+  debtNpp          Int               @default(0) // Nợ NPP
+  debtAccessory    Int               @default(0) // Nợ NCC Phụ kiện
+  debtGlass        Int               @default(0) // Nợ NCC Kính
+  debtOther        Int               @default(0) // Nợ NCC Khác
+  debtCustomer     Int               @default(0) // Khách nợ mình
+  
+  note             String            @default("")
+  costs            ProjectCost[]
+  debts            Debt[]
   cashTransactions CashTransaction[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model ProjectCost {
@@ -197,29 +296,29 @@ model ProjectCost {
 }
 
 model Debt {
-  id          String   @id @default(cuid())
-  projectId   String?
-  project     Project? @relation(fields: [projectId], references: [id])
-  type        String // NPP | ACCESSORY | CUSTOMER
-  direction   String   @default("PAYABLE") // PAYABLE (phải trả) | RECEIVABLE (phải thu)
-  partnerName String
-  amount      Int      @default(0)
-  paidAmount  Int      @default(0)
-  status      String   @default("OPEN") // OPEN | PARTIAL | PAID
-  bankAccount String   @default("")
-  bankName    String   @default("")
-  note        String   @default("")
-  dueDate     DateTime?
+  id           String            @id @default(cuid())
+  projectId    String?
+  project      Project?          @relation(fields: [projectId], references: [id])
+  type         String // NPP | ACCESSORY | CUSTOMER
+  direction    String            @default("PAYABLE") // PAYABLE (phải trả) | RECEIVABLE (phải thu)
+  partnerName  String
+  amount       Int               @default(0)
+  paidAmount   Int               @default(0)
+  status       String            @default("OPEN") // OPEN | PARTIAL | PAID
+  bankAccount  String            @default("")
+  bankName     String            @default("")
+  note         String            @default("")
+  dueDate      DateTime?
   // Công nợ NPP↔Xưởng: tự động sinh khi đơn hàng chuyển COMPLETED (xem eurohouse.service.ts).
   nppOrgId     String?
-  nppOrg       Organization? @relation("DebtNppOrg", fields: [nppOrgId], references: [id])
+  nppOrg       Organization?     @relation("DebtNppOrg", fields: [nppOrgId], references: [id])
   factoryOrgId String?
-  factoryOrg   Organization? @relation("DebtFactoryOrg", fields: [factoryOrgId], references: [id])
+  factoryOrg   Organization?     @relation("DebtFactoryOrg", fields: [factoryOrgId], references: [id])
   orderId      String?
-  order        Order?        @relation(fields: [orderId], references: [id])
+  order        Order?            @relation(fields: [orderId], references: [id])
   transactions CashTransaction[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([nppOrgId])
   @@index([factoryOrgId])
@@ -228,49 +327,110 @@ model Debt {
 // ---------- Báo giá tự động ----------
 
 model Quotation {
-  id            String   @id @default(cuid())
-  code          String   @unique
-  createdById   String?
-  createdBy     User?    @relation(fields: [createdById], references: [id])
-  customerName  String   @default("")
-  doorType      String   @default("")
-  widthMm       Int      @default(0)
-  heightMm      Int      @default(0)
-  quantity      Int      @default(1)
-  pricePerM2    Int      @default(0)
-  aluPricePerKg Int      @default(0)
-  glassPerM2    Int      @default(0)
-  accessoryCost Int      @default(0)
-  laborCost     Int      @default(0)
-  installCost   Int      @default(0)
-  profitPct     Float    @default(0)
-  depreciation  Int      @default(0)
-  areaM2        Float    @default(0)
-  baseAmount    Int      @default(0)
-  profitAmount  Int      @default(0)
-  totalAmount   Int      @default(0)
-  createdAt     DateTime @default(now())
+  id            String          @id @default(cuid())
+  code          String          @unique
+  createdById     String?
+  createdBy       User?           @relation(fields: [createdById], references: [id])
+  customerName    String          @default("")
+  customerPhone   String          @default("")
+  customerAddress String          @default("")
+  items           QuotationItem[]
 
+  // Tổng hợp chi phí từ các items
+  areaM2        Float           @default(0)
+  baseAmount    Int             @default(0)
+  
+  // Chi phí cộng thêm cho toàn bộ báo giá
+  accessoryCost Int             @default(0)
+  laborCost     Int             @default(0)
+  installCost   Int             @default(0)
+  depreciation  Int             @default(0)
+  profitPct     Float           @default(0)
+  profitAmount  Int             @default(0)
+  vatPct        Float           @default(0)
+  vatAmount     Int             @default(0)
+  totalAmount   Int             @default(0)
+  notes         String?         @default("")
+  extraProducts String?         @db.Text
+  isFinalSettlement Boolean     @default(false)
+  depositAmount     Int         @default(0)
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  
   @@index([createdById])
+}
+
+model QuotationItem {
+  id            String    @id @default(cuid())
+  quotationId   String
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  
+  name                String    @default("") // VD: D1, VK1 (Ký hiệu)
+  system              String    @default("") // Hệ nhôm
+  doorType            String    @default("") // Loại cửa
+  templateId          String?   // Mã template Excel
+  widthMm             Int       @default(0)
+  heightMm            Int       @default(0)
+  wallHugging         String    @default("Non") // Tường 200, 150, 250, Non
+  quantity            Int       @default(1)
+  includesAccessories Boolean   @default(true)
+  accessoriesPrice    Int       @default(0)
+  
+  // Bóc tách của từng bộ
+  areaM2        Float     @default(0)
+  pricePerM2    Int       @default(0) // Đơn giá / m2
+  totalPrice    Int       @default(0) // Thành tiền
+
+  // Thêm mới
+  color         String?
+  glassType     String?
+  glassColor    String?
+  dynamicInputs Json?
+}
+
+// ---------- Bảo hành ----------
+
+model Warranty {
+  id              String    @id @default(cuid())
+  code            String    @unique // BH-YYMMDD-NN
+  serialCode      String    @unique // mã QR/serial trên sản phẩm — mỗi mã chỉ kích hoạt 1 lần
+  productName     String    @default("")
+  systemCode      String    @default("")
+  customerName    String    @default("")
+  customerPhone   String    @default("")
+  customerAddress String    @default("")
+  projectName     String    @default("")
+  warrantyMonths  Int       @default(24)
+  activatedById   String?
+  activatedBy     User?     @relation(fields: [activatedById], references: [id])
+  activatedByName String    @default("")
+  pointsAwarded   Int       @default(0)
+  status          String    @default("ACTIVE") // ACTIVE | EXPIRED | VOID
+  activatedAt     DateTime  @default(now())
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([activatedById])
 }
 
 // ---------- Kho NVL & chi phí sản xuất chung ----------
 
 model Material {
-  id            String   @id @default(cuid())
-  code          String   @unique
+  id            String          @id @default(cuid())
+  code          String          @unique
   name          String
   category      String // DIRECT_MATERIAL | OVERHEAD
   group         String // BILLET|PAINT|LABEL|NYLON|PACKAGING|ACCESSORY_HW|ELECTRICITY|GAS|WATER|FUEL|MAINTENANCE
-  unit          String   @default("kg")
-  unitPrice     Int      @default(0)
-  stockQty      Float    @default(0)
-  lowStockAlert Float    @default(0)
-  note          String   @default("")
-  active        Boolean  @default(true)
+  unit          String          @default("kg")
+  unitPrice     Int             @default(0)
+  stockQty      Float           @default(0)
+  lowStockAlert Float           @default(0)
+  note          String          @default("")
+  active        Boolean         @default(true)
   movements     StockMovement[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([category])
 }
@@ -310,6 +470,97 @@ model ProfileStockMovement {
   @@index([profileId])
 }
 
+model NppProfileStock {
+  id            String       @id @default(cuid())
+  nppOrgId      String
+  nppOrg        Organization @relation("NppProfileStockOrg", fields: [nppOrgId], references: [id])
+  profileId     String
+  profile       Profile      @relation(fields: [profileId], references: [id])
+  stockBars     Int          @default(0)
+  lowStockAlert Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([nppOrgId, profileId])
+  @@index([nppOrgId])
+  @@index([profileId])
+}
+
+model NppStockMovement {
+  id          String       @id @default(cuid())
+  nppOrgId    String
+  nppOrg      Organization @relation("NppStockMovementOrg", fields: [nppOrgId], references: [id])
+  profileId   String
+  profile     Profile      @relation(fields: [profileId], references: [id])
+  direction   String // IN | OUT
+  quantity    Int
+  reason      String       @default("")
+  orderId     String?
+  order       Order?       @relation("OrderNppStockMovements", fields: [orderId], references: [id])
+  createdById String?
+  createdBy   User?        @relation("UserNppStockMovements", fields: [createdById], references: [id])
+  note        String       @default("")
+  createdAt   DateTime     @default(now())
+
+  @@index([nppOrgId])
+  @@index([profileId])
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+model NppAccessory {
+  id        String       @id @default(cuid())
+  nppOrgId  String
+  nppOrg    Organization @relation("NppAccessoryOrg", fields: [nppOrgId], references: [id])
+  name      String
+  brand     String       @default("")
+  category  String       @default("")
+  unit      String       @default("cai")
+  quantity  Int          @default(0)
+  unitCost  Int          @default(0)
+  note      String       @default("")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([nppOrgId])
+  @@index([category])
+  @@index([brand])
+}
+
+model NppGlassSheet {
+  id        String       @id @default(cuid())
+  nppOrgId  String
+  nppOrg    Organization @relation("NppGlassSheetOrg", fields: [nppOrgId], references: [id])
+  code      String
+  glassType String       @default("")
+  widthMm   Int
+  heightMm  Int
+  quantity  Int          @default(0)
+  unitCost  Int          @default(0)
+  note      String       @default("")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([nppOrgId])
+  @@index([glassType])
+}
+
+model ProfileCutoff {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id])
+  lengthMm    Int // Chiều dài đoạn Đề xê còn lại
+  quantity    Int      @default(1)
+  projectId   String? // Ghi nhận sinh ra từ công trình nào (nếu có)
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([profileId])
+  @@index([createdById])
+}
+
 // ---------- Thu chi ----------
 
 model CashTransaction {
@@ -338,37 +589,367 @@ model CashTransaction {
 // ---------- Nội dung từ Web Admin ----------
 
 model Promotion {
+  id        String    @id @default(cuid())
+  title     String
+  subtitle  String    @default("")
+  imageUrl  String
+  bannerUrl String    @default("")
+  gallery   String    @default("[]") // JSON danh sách ảnh poster
+  content   String    @default("") // mô tả chi tiết
+  active    Boolean   @default(true)
+  startDate DateTime?
+  endDate   DateTime?
+  sortOrder      Int       @default(0)
+  targetAudience AudienceTarget @default(ALL)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Gift {
+  id          String           @id @default(cuid())
+  name        String
+  points      Int
+  icon        String           @default("")
+  imageUrl    String           @default("")
+  stock       Int              @default(0)
+  redemptions GiftRedemption[]
+  createdAt   DateTime         @default(now())
+}
+
+// ---------- Tích điểm & đổi quà ----------
+
+model PointLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  delta        Int // + cộng điểm, - trừ điểm
+  balanceAfter Int // số dư sau giao dịch
+  reason       String // WARRANTY | ORDER_COMPLETED | ADMIN_ADJUST | REDEEM
+  refType      String   @default("") // WARRANTY | ORDER | GIFT
+  refId        String   @default("")
+  note         String   @default("")
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([reason, refId])
+}
+
+model GiftRedemption {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  giftId     String
+  gift       Gift     @relation(fields: [giftId], references: [id])
+  giftName   String
+  pointsCost Int
+  status     String   @default("PENDING") // PENDING | FULFILLED | CANCELLED
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- CRM & Sales (Mới bổ sung) ----------
+
+model Lead {
+  id              String   @id @default(cuid())
+  name            String // Tên cơ sở/xưởng
+  address         String   @default("")
+  province        String   @default("") // Tỉnh
+  phone           String   @default("")
+  imageUrl        String   @default("") // Ảnh chụp cơ sở
+  currentBrand    String   @default("") // Hãng nhôm đang làm
+  scale           String   @default("") // Quy mô
+  potentialRating Int      @default(0) // Đánh giá tiềm năng (1-5 sao)
+  status          String   @default("NEW") // NEW | CONTACTED | CONVERTED | REJECTED
+  managedById     String?
+  managedBy       User?    @relation("LeadManagedBy", fields: [managedById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([managedById])
+  @@index([province])
+}
+
+model SaleReport {
   id          String   @id @default(cuid())
-  title       String
-  subtitle    String   @default("")
-  imageUrl    String
-  bannerUrl   String   @default("")
-  gallery     String   @default("[]") // JSON danh sách ảnh poster
-  content     String   @default("") // mô tả chi tiết
-  active      Boolean  @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
-  sortOrder   Int      @default(0)
+  type        String // DAILY | WEEKLY
+  date        DateTime // Ngày báo cáo
+  content     String // Nội dung chi tiết
+  createdById String
+  createdBy   User     @relation("SaleReportCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([date])
+}
+
+model SalesTarget {
+  id        String       @id @default(cuid())
+  nppOrgId  String
+  nppOrg    Organization @relation("NppSalesTarget", fields: [nppOrgId], references: [id])
+  year      Int
+  month     Int
+  targetKg  Float        @default(0) // Chỉ tiêu bằng kg
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([nppOrgId, year, month])
+}
+
+model Payroll {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation("UserPayroll", fields: [userId], references: [id])
+  month      String // YYYY-MM
+  baseSalary Int      @default(0)
+  commission Int      @default(0)
+  bonus      Int      @default(0)
+  deductions Int      @default(0)
+  netPay     Int      @default(0)
+  status     String   @default("DRAFT") // DRAFT | PUBLISHED | PAID
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, month])
+}
+
+// ---------- Sản Xuất (MES) ----------
+
+model Die {
+  id               String      @id @default(cuid())
+  code             String      @unique // Mã khuôn, VD: K-1025-01
+  profileId        String? // Khuôn đùn cho thanh nhôm nào
+  profile          Profile?    @relation(fields: [profileId], references: [id])
+  status           String      @default("ACTIVE") // ACTIVE | MAINTENANCE | RETIRED
+  totalExtrusions  Int         @default(0) // Số lần đã đùn
+  totalKg          Float       @default(0) // Tổng số kg đã đùn
+  maintenanceAlert Int         @default(500) // Ngưỡng số lần đùn để cảnh báo bảo trì
+  location         String      @default("") // Vị trí lưu kho khuôn
+  workOrders       WorkOrder[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([profileId])
+}
+
+model WorkOrder {
+  id          String          @id @default(cuid())
+  code        String          @unique // Mã lệnh SX, VD: WO-2607-001
+  orderId     String? // Liên kết với đơn đặt hàng NPP
+  order       Order?          @relation(fields: [orderId], references: [id])
+  profileId   String
+  profile     Profile         @relation(fields: [profileId], references: [id])
+  colorCode   String          @default("") // Xử lý bề mặt
+  targetKg    Float           @default(0) // Mục tiêu sản xuất (Kg)
+  actualKg    Float           @default(0) // Thực đạt (Kg)
+  scrapKg     Float           @default(0) // Phế phẩm (Kg)
+  status      String          @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | CANCELLED
+  dieId       String?
+  die         Die?            @relation(fields: [dieId], references: [id])
+  createdById String
+  createdBy   User            @relation("WorkOrderCreator", fields: [createdById], references: [id])
+  steps       WorkOrderStep[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([profileId])
+  @@index([dieId])
+}
+
+model WorkOrderStep {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  stepName    String // EXTRUSION | AGING | COATING | PACKING
+  status      String    @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED
+  inputKg     Float     @default(0) // Số Kg nguyên liệu đưa vào
+  outputKg    Float     @default(0) // Số Kg thành phẩm đạt QC
+  scrapKg     Float     @default(0) // Số Kg phế phẩm
+  machineCode String    @default("") // Mã máy (Tổ đùn 1, Lò sơn 2...)
+  workerName  String    @default("") // Người phụ trách
+  startedAt   DateTime?
+  completedAt DateTime?
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workOrderId, stepName])
+}
+
+model AluminumPrice {
+  id          String   @id @default(cuid())
+  brand       String // EUROQUEEN, KOLLHAM TITANIUM, ECENTOPLUS...
+  color       String // CAFE, TRẮNG SỨ...
+  retailPrice Float // Đơn giá bán lẻ (vnd/kg)
+  dealerPrice Float // Đơn giá Đại Lý (vnd/kg)
+  nppPrice    Float // Đơn giá NPP (vnd/kg)
+  note        String   @default("")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-model LibraryItem {
-  id        String   @id @default(cuid())
-  type      String // IMAGE | KNOWLEDGE | PRODUCT | VIDEO
-  title     String
-  imageUrl  String   @default("")
-  videoUrl  String   @default("")
-  tag       String   @default("")
-  createdAt DateTime @default(now())
+// ---------- Công thức cắt & Dự toán của Thợ (App Mobile) ----------
+
+model DoorModel {
+  id          String           @id @default(cuid())
+  name        String // VD: Cửa sổ lùa 2 cánh hệ 55, Cửa đi 1 cánh mở quay
+  type        String // WINDOW_SLIDING, DOOR_OPEN...
+  imageUrl    String           @default("") // Ảnh minh hoạ kiểu dáng cửa
+  description String           @default("")
+  formulas    CuttingFormula[]
+  systemFormulas SystemFormula[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
-model Gift {
+model CuttingFormula {
+  id            String    @id @default(cuid())
+  doorModelId   String
+  doorModel     DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
+  aluSystem     String // VD: EUROQUEEN Hệ 55
+  profileName   String // VD: Khung bao đứng, Cánh, Nẹp kính
+  lengthFormula String // VD: "H - 50" (chiều cao trừ 50mm)
+  widthFormula  String    @default("") // Tuỳ chọn, nếu cắt theo chiều rộng "W/2 - 10"
+  quantity      Int       @default(1) // Cần mấy thanh này cho 1 bộ cửa (VD: 2)
+  cutAngle      String    @default("90-90") // Góc cắt: 45-45, 90-90
+  note          String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([doorModelId])
+}
+
+model WorkerAccessoryPrice {
   id        String   @id @default(cuid())
-  name      String
-  points    Int
-  icon      String   @default("")
-  imageUrl  String   @default("")
-  stock     Int      @default(0)
+  workerId  String // ID của user thợ
+  worker    User     @relation("WorkerAccessory", fields: [workerId], references: [id], onDelete: Cascade)
+  type      String // Khoá tay gạt, Bản lề 3D, Ke ép góc...
+  brand     String // Kinlong, Draho, Bogo...
+  costPrice Float // Đơn giá nhập của thợ
+  sellPrice Float // Đơn giá báo cho chủ nhà (có thể giống costPrice + profit)
+  note      String   @default("")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+}
+
+// ---------- Tồn kho & Tối ưu cắt (Giai đoạn 3) ----------
+
+enum InventoryType {
+  FULL_BAR
+  DE_XE
+}
+
+model InventoryItem {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation("UserInventory", fields: [userId], references: [id])
+  materialCode String        // Mã nhôm
+  lengthMm     Int           // Chiều dài (mm)
+  quantity     Int           @default(0)
+  type         InventoryType
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model FormulaTemplate {
+  id               String   @id @default(cuid())
+  templateId       String   @unique // ID gốc từ hệ thống cũ (6a1c4105c...)
+  numericId        Int
+  systemName       String
+  windowTypeName   String
+  templateName     String
+  imagePath        String
+  filePath         String
+  variantCount     Int      @default(0)
+  isPopular        Boolean  @default(false) // Đánh dấu mẫu thông dụng
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([systemName])
+  @@index([windowTypeName])
+}
+
+model SystemFormula {
+  id           String    @id @default(cuid())
+  aluSystemId  String
+  aluSystem    AluSystem @relation(fields: [aluSystemId], references: [id], onDelete: Cascade)
+  doorModelId  String
+  doorModel    DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
+  excelFilePath String   @default("") // Đường dẫn tới file Excel chứa công thức
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([aluSystemId, doorModelId])
+}
+
+// ---------- Truyền thông & Khuyến mại ----------
+
+enum AudienceTarget {
+  WORKER
+  NPP_DEALER
+  ALL
+}
+
+enum KnowledgeCategory {
+  PRODUCT_INFO
+  CONSTRUCTION_GUIDE
+  CUTTING_GUIDE
+  CREATIVE_GUIDE
+}
+
+model KnowledgeArticle {
+  id          String            @id @default(cuid())
+  title       String
+  content     String            @db.Text
+  imageUrl    String?
+  categoryId  KnowledgeCategory
+  aluSystemId String?
+  aluSystem   AluSystem?        @relation(fields: [aluSystemId], references: [id], onDelete: SetNull)
+  isShared    Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+enum LibraryCategory {
+  PROJECT_IMAGE
+  DOOR_SAMPLE
+  SHORT_VIDEO
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model LibraryItem {
+  id          String          @id @default(cuid())
+  title       String
+  description String?         @db.Text
+  mediaUrl    String
+  mediaType   MediaType
+  categoryId  LibraryCategory
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+// ---------- Thông báo & Sự kiện ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String   // ORDER_STATUS | POINT_EARNED | WARRANTY_ACTIVATED | PROMO | SYSTEM
+  refId     String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

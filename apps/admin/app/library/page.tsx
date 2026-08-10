@@ -1,104 +1,105 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Image as ImageIcon, PlayCircle, Video } from 'lucide-react';
-import type { LibraryItem } from '@eurohouse/types';
-import { AdminPage } from '../../src/AdminPage';
-import { apiGet, assetUrl } from '../../src/lib/api';
-import { eyebrowStyle, pageTitleStyle, panelStyle, subtitleStyle, ui } from '../../src/ui';
-
-const typeMeta: Record<LibraryItem['type'], { label: string; fg: string; soft: string; icon: typeof ImageIcon }> = {
-  IMAGE: { label: 'Ảnh', fg: ui.brand, soft: ui.brandSoft, icon: ImageIcon },
-  KNOWLEDGE: { label: 'Kiến thức', fg: ui.success, soft: ui.successSoft, icon: BookOpen },
-  PRODUCT: { label: 'Sản phẩm', fg: ui.teal, soft: ui.tealSoft, icon: ImageIcon },
-  VIDEO: { label: 'Video', fg: ui.danger, soft: ui.dangerSoft, icon: Video },
-};
-
-const filters: { value: 'ALL' | LibraryItem['type']; label: string }[] = [
-  { value: 'ALL', label: 'Tất cả' },
-  { value: 'IMAGE', label: 'Ảnh' },
-  { value: 'KNOWLEDGE', label: 'Kiến thức' },
-  { value: 'PRODUCT', label: 'Sản phẩm' },
-  { value: 'VIDEO', label: 'Video' },
-];
+import { useState, useEffect } from 'react';
+import { apiGet, apiPost, apiDelete } from '../../src/lib/api';
+import { Plus, Trash2, Image as ImageIcon, Video } from 'lucide-react';
+import { pageTitleStyle, eyebrowStyle, glassPanelStyle, ui } from '../../src/ui';
 
 export default function LibraryPage() {
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  const [filter, setFilter] = useState<'ALL' | LibraryItem['type']>('ALL');
-  const [error, setError] = useState('');
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<LibraryItem[]>('/library').then(setItems).catch((e) => setError(e instanceof Error ? e.message : 'Lỗi tải thư viện.'));
+    loadItems();
   }, []);
 
-  const visible = useMemo(() => (filter === 'ALL' ? items : items.filter((item) => item.type === filter)), [items, filter]);
+  const loadItems = async () => {
+    try {
+      setLoading(true);
+      const data = await apiGet<any[]>('/content/admin/library');
+      setItems(data);
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi tải danh sách thư viện');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    const title = prompt('Tiêu đề media:');
+    if (!title) return;
+    
+    try {
+      await apiPost('/content/admin/library', {
+        title,
+        mediaUrl: '/images/placeholder.jpg', // Should be replaced with actual file upload in a real app
+        mediaType: 'IMAGE',
+        categoryId: 'PROJECT_IMAGE'
+      });
+      loadItems();
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi khi tạo mới');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Bạn có chắc muốn xoá?')) return;
+    try {
+      await apiDelete(`/content/admin/library/${id}`);
+      loadItems();
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi khi xoá');
+    }
+  };
 
   return (
-    <AdminPage>
-      <p style={eyebrowStyle}>THƯ VIỆN</p>
-      <h1 style={pageTitleStyle}>Thư viện nội dung</h1>
-      <p style={subtitleStyle}>Ảnh, kiến thức kỹ thuật và video hiển thị trong app cho thợ và đại lý.</p>
-      {error ? <p style={{ color: ui.danger }}>{error}</p> : null}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, margin: '12px 0 20px' }}>
-        {filters.map((option) => {
-          const selected = filter === option.value;
-          return (
-            <button
-              key={option.value}
-              onClick={() => setFilter(option.value)}
-              style={{
-                border: `1px solid ${selected ? ui.brand : ui.borderStrong}`,
-                background: selected ? ui.brandSoft : ui.surface,
-                color: selected ? ui.brandText : ui.text,
-                borderRadius: 10,
-                padding: '9px 14px',
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: 'pointer',
-              }}
-            >
-              {option.label}
-            </button>
-          );
-        })}
+    <div>
+      <p style={eyebrowStyle}>MARKETING</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={pageTitleStyle}>Thư viện Hình ảnh / Video</h1>
+        <button
+          onClick={handleCreate}
+          style={{
+            background: ui.brand, color: '#fff', border: 'none', padding: '10px 20px',
+            borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+            fontWeight: 600
+          }}
+        >
+          <Plus size={18} />
+          Thêm Media
+        </button>
       </div>
 
-      {visible.length === 0 ? (
-        <div style={{ ...panelStyle, textAlign: 'center', padding: 48, color: ui.textFaint }}>Chưa có nội dung phù hợp.</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
-          {visible.map((item) => {
-            const meta = typeMeta[item.type];
-            const Icon = meta?.icon ?? ImageIcon;
-            return (
-              <article key={item.id} style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
-                {item.imageUrl ? (
-                  <img src={assetUrl(item.imageUrl)} alt={item.title} style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
-                ) : (
-                  <div style={{ height: 160, background: meta?.soft ?? ui.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {item.type === 'VIDEO' ? <PlayCircle size={36} color={meta?.fg} /> : <Icon size={32} color={meta?.fg} />}
-                  </div>
-                )}
-                <div style={{ padding: 16 }}>
-                  <span style={{ color: meta?.fg, fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Icon size={13} /> {meta?.label ?? item.type}
-                  </span>
-                  <strong style={{ display: 'block', margin: '8px 0 4px', color: ui.text, fontSize: 14 }}>{item.title}</strong>
-                  {item.tag ? <small style={{ color: ui.textFaint }}>#{item.tag}</small> : null}
-                  {item.videoUrl ? (
-                    <p style={{ margin: '8px 0 0' }}>
-                      <a href={item.videoUrl} target="_blank" rel="noreferrer" style={{ color: ui.brandText, fontWeight: 700, fontSize: 13 }}>
-                        Mở video →
-                      </a>
-                    </p>
-                  ) : null}
+      <div style={{ ...glassPanelStyle, marginTop: 24, padding: 24 }}>
+        {loading ? <p>Đang tải...</p> : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
+            {items.map(item => (
+              <div key={item.id} style={{ border: `1px solid ${ui.border}`, borderRadius: 12, overflow: 'hidden', background: ui.surface }}>
+                <div style={{ height: 160, background: ui.surfaceMuted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {item.mediaType === 'VIDEO' ? <Video size={48} color={ui.textFaint} /> : <ImageIcon size={48} color={ui.textFaint} />}
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </AdminPage>
+                <div style={{ padding: 16 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 600, color: ui.text }}>{item.title}</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                    <span style={{ fontSize: 12, color: ui.textMuted, background: ui.surfaceMuted, padding: '4px 8px', borderRadius: 4 }}>
+                      {item.categoryId}
+                    </span>
+                    <button onClick={() => handleDelete(item.id)} style={{ background: 'none', border: 'none', color: ui.danger, cursor: 'pointer' }}>
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <p style={{ color: ui.textMuted, gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0' }}>Không có dữ liệu</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
