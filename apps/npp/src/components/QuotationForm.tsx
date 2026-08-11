@@ -27,9 +27,9 @@ type ExtraItem = {
 };
 
 const defaultItem: QuoteItem = {
-  name: 'Cửa đi chính',
+  name: 'D1-Cửa chính',
   system: 'Hệ Ecento 70',
-  doorType: 'Cửa đi mở quay 2 cánh',
+  doorType: 'Cửa 2 cánh 110',
   widthMm: 2200,
   heightMm: 2400,
   quantity: 1,
@@ -37,6 +37,48 @@ const defaultItem: QuoteItem = {
   color: '',
   glassType: '',
 };
+
+const QUOTE_NAMES = ['D1-Cửa chính', 'D2', 'D3', 'CS1', 'CS2', 'CS3', 'VK1', 'VK2', 'VK3', 'OFix 1', 'OFix 2', 'Khác'];
+const SYSTEM_OPTIONS = ['Hệ 55 Euroqueen', 'Hệ 55 Preco', 'Hệ trượt Châu Âu', 'Hệ Trượt quay', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ Thuỷ lực', 'Hệ nội thất', 'Hệ chấn song', 'Hệ phào đại hội', 'Hệ mặt dựng'];
+const COLORS = ['Màu Café Metalic', 'Màu Café thường', 'Màu Xám Ngọc Trai', 'Màu Vân gỗ Cẩm Lai', 'Màu vân gỗ Olak', 'Màu Xám Rita (dự án)'];
+const GLASS_TYPES = ['Kính dán 6.38', 'Kính dán 8.38', 'Kính cường lực 8mm', 'Kính cường lực 10mm', 'Kính cường lực 12mm', 'Kính hộp thường', 'Kính hộp nan đồng', 'Tấm nhôm liền 10mm', 'Tấm nhôm liền 18mm'];
+
+function getSystemOptions(name: string, color?: string) {
+  const upper = (name || '').trim().toUpperCase();
+  if (upper.startsWith('CS')) return ['Hệ cửa sổ 55', 'Hệ cửa sổ Ecento 70', 'Hệ cửa sổ Ecento Plus', 'Hệ chấn song'];
+  if (upper.startsWith('VK')) return ['Vách hệ 55', 'Vách hệ Ecento 70', 'Vách hệ Ecento Plus', 'Hệ mặt dựng'];
+  let options = SYSTEM_OPTIONS.filter((system) => !['Hệ nội thất', 'Hệ chấn song', 'Hệ phào đại hội', 'Hệ mặt dựng'].includes(system));
+  if (name !== 'D1-Cửa chính' && name !== 'D2') options = options.filter((system) => system !== 'Hệ Thuỷ lực');
+  if (color === 'Màu Xám Rita (dự án)' || color === 'Màu Café thường') {
+    options = options.filter((system) => !['Hệ Thuỷ lực', 'Hệ Trượt quay', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ trượt Châu Âu'].includes(system));
+  }
+  return options;
+}
+
+function getDoorTypeOptions(name: string, system: string) {
+  const upperName = (name || '').trim().toUpperCase();
+  const upperSystem = (system || '').trim().toUpperCase();
+  if (upperName.startsWith('CS') || upperSystem.includes('CỬA SỔ')) {
+    return ['Cửa lùa 2 cánh', 'Cửa lùa 4 cánh', 'Cửa mở hất 1 cánh', 'Cửa mở hất 2 cánh + Vách', 'Cửa mở hất 3 cánh', 'Cửa 2 cánh quay-2 cánh hất', 'Cửa 1 cánh quay', 'Cửa 2 cánh quay + Vách', 'Cửa 2 cánh quay - 1 cánh hất'];
+  }
+  if (upperName.startsWith('VK') || upperSystem.includes('VÁCH') || upperSystem.includes('MẶT DỰNG')) {
+    if (upperSystem.includes('MẶT DỰNG')) return ['Mặt dựng hệ 65', 'Mặt dựng hệ 65 (Gồm cửa)', 'Mặt dựng hệ 120', 'Mặt dựng hệ 120 (Gồm cửa)'];
+    return ['Vách kính độc lập', 'Vách kính kèm cửa sổ'];
+  }
+  switch (system) {
+    case 'Hệ Thuỷ lực': return ['Cửa TL 1 cánh 140', 'Cửa TL 1 cánh 180', 'Cửa TL 2 cánh 140', 'Cửa TL 2 cánh 180'];
+    case 'Hệ Ecento 70': return ['Cửa 1 cánh 110', 'Cửa 2 cánh 110', 'Cửa 4 cánh 110', 'Cửa 1 cánh 150', 'Cửa 2 cánh 150', 'Cửa 4 cánh 150', 'Cửa 1 cánh 190', 'Cửa 2 cánh 190', 'Cửa 4 cánh 190'];
+    case 'Hệ Ecento Plus': return ['Cửa 1 cánh 98', 'Cửa 2 cánh 98', 'Cửa 4 cánh 98', 'Cửa 1 cánh 138', 'Cửa 2 cánh 138', 'Cửa 4 cánh 138', 'Cửa 1 cánh liền phào 138', 'Cửa 2 cánh liền phào 138', 'Cửa 4 cánh liền phào 138'];
+    case 'Hệ Trượt quay': return ['Trượt quay 2 cánh', 'Trượt quay 4 cánh'];
+    case 'Hệ trượt Châu Âu': return ['Cửa trượt ray đơn 1 cánh', 'Cửa trượt ray đôi 2 cánh', 'Cửa trượt ray đôi 4 cánh', 'Cửa trượt 3 ray - 3 cánh', 'Cửa trượt 3 ray - 6 cánh'];
+    case 'Hệ 55 Euroqueen': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91', 'Cửa 1 cánh VIP 118', 'Cửa 2 cánh VIP 118', 'Cửa 4 cánh VIP 118', 'Cửa 1 cánh liền phào 125', 'Cửa 2 cánh liền phào 125', 'Cửa 4 cánh liền phào 125'];
+    case 'Hệ 55 Preco': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91'];
+    case 'Hệ chấn song': return ['Chấn song cửa sổ', 'Chấn song trang trí'];
+    case 'Hệ nội thất': return ['Cánh nội thất', 'Khung nội thất', 'Vách nội thất'];
+    case 'Hệ phào đại hội': return ['Phào cửa đi', 'Phào cửa sổ', 'Phào trang trí'];
+    default: return ['Cửa 1 cánh', 'Cửa 2 cánh', 'Cửa 4 cánh'];
+  }
+}
 
 function toPayload(items: QuoteItem[], extras: ExtraItem[], form: { customerName: string; customerPhone: string; customerAddress: string; notes: string; vatPct: number; depositAmount: number; isFinalSettlement: boolean }): QuotationInput {
   return {
@@ -142,10 +184,22 @@ export function QuotationForm({ initialId = null }: { initialId?: string | null 
   }
 
   function updateItem(index: number, key: keyof QuoteItem, value: string) {
-    setItems((current) => current.map((item, idx) => idx === index ? {
-      ...item,
-      [key]: ['widthMm', 'heightMm', 'quantity', 'pricePerM2'].includes(key) ? Number(value) : value,
-    } : item));
+    setItems((current) => current.map((item, idx) => {
+      if (idx !== index) return item;
+      const next: QuoteItem = {
+        ...item,
+        [key]: ['widthMm', 'heightMm', 'quantity', 'pricePerM2'].includes(key) ? Number(value) : value,
+      } as QuoteItem;
+      if (key === 'name' || key === 'color') {
+        const systems = getSystemOptions(next.name, next.color);
+        if (!systems.includes(next.system)) next.system = systems[0] ?? next.system;
+      }
+      if (key === 'name' || key === 'system' || key === 'color') {
+        const doorTypes = getDoorTypeOptions(next.name, next.system);
+        if (!doorTypes.includes(next.doorType)) next.doorType = doorTypes[0] ?? next.doorType;
+      }
+      return next;
+    }));
   }
 
   function updateExtra(index: number, key: keyof ExtraItem, value: string) {
@@ -236,17 +290,17 @@ export function QuotationForm({ initialId = null }: { initialId?: string | null 
           {items.map((item, index) => (
             <div key={index} style={{ border: `1px solid ${ui.border}`, borderRadius: 10, padding: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: 10 }}>
-                <label style={labelStyle}>Ký hiệu<input style={inputStyle} value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)} /></label>
-                <label style={labelStyle}>Hệ nhôm<input style={inputStyle} value={item.system} onChange={(e) => updateItem(index, 'system', e.target.value)} /></label>
-                <label style={labelStyle}>Loại cửa<input style={inputStyle} value={item.doorType} onChange={(e) => updateItem(index, 'doorType', e.target.value)} /></label>
-                <label style={labelStyle}>Màu<input style={inputStyle} value={item.color} onChange={(e) => updateItem(index, 'color', e.target.value)} /></label>
+                <label style={labelStyle}>Ký hiệu<select style={inputStyle} value={item.name} onChange={(e) => updateItem(index, 'name', e.target.value)}>{QUOTE_NAMES.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label style={labelStyle}>Hệ nhôm<select style={inputStyle} value={item.system} onChange={(e) => updateItem(index, 'system', e.target.value)}>{getSystemOptions(item.name, item.color).map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label style={labelStyle}>Loại cửa<select style={inputStyle} value={item.doorType} onChange={(e) => updateItem(index, 'doorType', e.target.value)}>{getDoorTypeOptions(item.name, item.system).map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label style={labelStyle}>Màu<select style={inputStyle} value={item.color} onChange={(e) => updateItem(index, 'color', e.target.value)}><option value="">Chọn màu</option>{COLORS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr) auto', gap: 10, marginTop: 10, alignItems: 'end' }}>
                 <label style={labelStyle}>Rộng mm<input style={inputStyle} type="number" value={item.widthMm} onChange={(e) => updateItem(index, 'widthMm', e.target.value)} /></label>
                 <label style={labelStyle}>Cao mm<input style={inputStyle} type="number" value={item.heightMm} onChange={(e) => updateItem(index, 'heightMm', e.target.value)} /></label>
                 <label style={labelStyle}>Số lượng<input style={inputStyle} type="number" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} /></label>
                 <label style={labelStyle}>Đơn giá/m2<input style={inputStyle} type="number" value={item.pricePerM2} onChange={(e) => updateItem(index, 'pricePerM2', e.target.value)} /></label>
-                <label style={labelStyle}>Kính<input style={inputStyle} value={item.glassType} onChange={(e) => updateItem(index, 'glassType', e.target.value)} /></label>
+                <label style={labelStyle}>Kính<select style={inputStyle} value={item.glassType} onChange={(e) => updateItem(index, 'glassType', e.target.value)}><option value="">Chọn kính</option>{GLASS_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
                 <button onClick={() => setItems((current) => current.filter((_, idx) => idx !== index))} style={{ border: `1px solid ${ui.border}`, background: ui.surface, color: ui.danger, borderRadius: 8, padding: 10, cursor: 'pointer' }}><Trash2 size={16} /></button>
               </div>
             </div>

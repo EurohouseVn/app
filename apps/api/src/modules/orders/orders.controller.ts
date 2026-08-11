@@ -295,6 +295,13 @@ export class OrdersController {
     return this.service.createNppDelivery(id, user);
   }
 
+  @Post('npp/orders/:id/complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  completeNppDelivery(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.service.completeNppDelivery(id, user);
+  }
+
   @Get('npp/factories')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')

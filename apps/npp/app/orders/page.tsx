@@ -115,6 +115,18 @@ export default function NppOrdersPage() {
     }
   }
 
+  async function completeDelivery(order: ApiOrder) {
+    setMessage('');
+    setError('');
+    try {
+      await apiSend(`/npp/orders/${order.id}/complete`, 'POST');
+      setMessage(`Đã hoàn thành đơn ${order.code}.`);
+      load(page, status);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không hoàn thành được đơn.');
+    }
+  }
+
   async function openDeliveryPdf(order: ApiOrder, mode: 'open' | 'print') {
     setError('');
     try {
@@ -267,6 +279,9 @@ export default function NppOrdersPage() {
                       <button onClick={() => openDeliveryPdf(selected, 'open')} style={ghostButtonStyle}><FileText size={14} /> PDF</button>
                       <button onClick={() => openDeliveryPdf(selected, 'print')} style={ghostButtonStyle}><Printer size={14} /> In đơn</button>
                       <button onClick={() => downloadDeliveryExcel(selected)} style={ghostButtonStyle}><FileSpreadsheet size={14} /> Excel</button>
+                      {selected.status !== 'COMPLETED' ? (
+                        <button onClick={() => completeDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.successSoft, color: ui.success }}><CheckCircle2 size={14} /> Hoàn thành đơn</button>
+                      ) : null}
                     </>
                   ) : null}
                   {selected.status !== 'NEW' && selected.status !== 'NPP_REVIEWING' ? (

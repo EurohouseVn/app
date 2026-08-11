@@ -679,6 +679,30 @@ export class OrdersService {
     return this.getOrder(id, user);
   }
 
+  async completeNppDelivery(id: string, user: JwtUser) {
+    const order = await this.getOrder(id, user);
+    if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền hoàn thành đơn giao.');
+    if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new BadRequestException('Chỉ hoàn thành đơn sau khi đã tạo đơn giao.');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          status: 'COMPLETED',
+          title: 'Hoàn thành đơn',
+          actor: await this.actorNameForUser(user, 'NPP'),
+          note: 'NPP xác nhận đơn giao đã hoàn tất.',
+        },
+      });
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'COMPLETED', dueNote: 'NPP đã hoàn thành đơn giao' },
+      });
+    });
+
+    return this.getOrder(id, user);
+  }
+
   async nppOrderReconciliation(nppOrgId: string, filter?: { month?: string }): Promise<NppFactoryReconciliation[]> {
     let dateRange: { gte: Date; lt: Date } | undefined;
     if (filter?.month) {

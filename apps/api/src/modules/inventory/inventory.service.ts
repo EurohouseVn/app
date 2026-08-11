@@ -17,6 +17,16 @@ import type {
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
 
+const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
+  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-TRUOT': 'Hệ trượt Châu Âu',
+};
+
+function displaySystemName(code?: string, fallback?: string) {
+  if (!code) return fallback || 'Khác';
+  return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback ?? code;
+}
+
 @Injectable()
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
@@ -284,6 +294,7 @@ export class InventoryService {
 
   async listNppProfiles(nppOrgId: string) {
     const profiles = await this.prisma.profile.findMany({
+      where: { aluSystem: { code: { startsWith: 'EU-' } } },
       include: { aluSystem: true, nppProfileStocks: { where: { nppOrgId } } },
       orderBy: [{ aluSystem: { code: 'asc' } }, { code: 'asc' }],
     });
@@ -291,8 +302,8 @@ export class InventoryService {
       id: profile.id,
       code: profile.code,
       name: profile.name,
-      systemCode: profile.aluSystem.code,
-      systemName: profile.aluSystem.name,
+      systemCode: profile.aluSystem?.code ?? 'KHAC',
+      systemName: displaySystemName(profile.aluSystem?.code, profile.aluSystem?.name),
       stockBars: profile.nppProfileStocks[0]?.stockBars ?? 0,
       lowStockAlert: profile.nppProfileStocks[0]?.lowStockAlert ?? profile.lowStockAlert,
       pricePerKg: profile.pricePerKg,

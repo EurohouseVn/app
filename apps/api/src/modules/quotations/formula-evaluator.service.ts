@@ -237,7 +237,7 @@ export class FormulaEvaluatorService {
         templateCount,
         referenceSource: 'phanmemcua',
       };
-    }).filter((system) => system.templateCount > 0);
+    });
   }
 
   public async getTemplateWindowTypes(eurohouseSystemId?: string) {
