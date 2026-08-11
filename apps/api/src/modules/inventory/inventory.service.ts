@@ -293,21 +293,28 @@ export class InventoryService {
   }
 
   async listNppProfiles(nppOrgId: string) {
-    const profiles = await this.prisma.profile.findMany({
-      where: { aluSystem: { code: { startsWith: 'EU-' } } },
-      include: { aluSystem: true, nppProfileStocks: { where: { nppOrgId } } },
-      orderBy: [{ aluSystem: { code: 'asc' } }, { code: 'asc' }],
-    });
-    return profiles.map((profile) => ({
+    const [systems, profiles, stocks] = await Promise.all([
+      this.prisma.aluSystem.findMany({ where: { code: { startsWith: 'EU-' } }, orderBy: { sortOrder: 'asc' } }),
+      this.prisma.profile.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.nppProfileStock.findMany({ where: { nppOrgId } }),
+    ]);
+    const systemById = new Map(systems.map((system) => [system.id, system]));
+    const stockByProfileId = new Map(stocks.map((stock) => [stock.profileId, stock]));
+
+    return profiles.filter((profile) => systemById.has(profile.aluSystemId)).map((profile) => {
+      const system = systemById.get(profile.aluSystemId);
+      const stock = stockByProfileId.get(profile.id);
+      return ({
       id: profile.id,
       code: profile.code,
       name: profile.name,
-      systemCode: profile.aluSystem?.code ?? 'KHAC',
-      systemName: displaySystemName(profile.aluSystem?.code, profile.aluSystem?.name),
-      stockBars: profile.nppProfileStocks[0]?.stockBars ?? 0,
-      lowStockAlert: profile.nppProfileStocks[0]?.lowStockAlert ?? profile.lowStockAlert,
+      systemCode: system?.code ?? 'KHAC',
+      systemName: displaySystemName(system?.code, system?.name),
+      stockBars: stock?.stockBars ?? 0,
+      lowStockAlert: stock?.lowStockAlert ?? profile.lowStockAlert,
       pricePerKg: profile.pricePerKg,
-    }));
+      });
+    }).sort((a, b) => a.systemCode.localeCompare(b.systemCode) || a.code.localeCompare(b.code));
   }
 
   async listNppProfileMovements(nppOrgId: string, profileId?: string): Promise<ProfileStockMovementItem[]> {
