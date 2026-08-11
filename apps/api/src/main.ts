@@ -13,7 +13,9 @@ function getCorsOrigins(): string[] {
 function isAllowedOrigin(origin?: string) {
   if (!origin) return true;
   const configuredOrigins = getCorsOrigins();
+  if (configuredOrigins.length === 0) return true;
   if (configuredOrigins.includes(origin)) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return /^https:\/\/eurohouse-(api|admin|npp|mobile)\.onrender\.com$/.test(origin);
 }
 

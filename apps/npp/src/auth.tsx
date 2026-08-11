@@ -1,11 +1,12 @@
 'use client';
 
 import { FormEvent, useEffect, useState, type CSSProperties } from 'react';
-import { Building2, Lock, LogIn, Mail } from 'lucide-react';
+import { Building2, Eye, EyeOff, Lock, LogIn, Mail, Trash2 } from 'lucide-react';
 import type { DemoAdminUser, LoginResponse } from '@eurohouse/types';
 import { ui } from './ui';
 
 const storageKey = 'eurohouse-npp-user';
+const rememberedLoginKey = 'eurohouse-npp-remember-login';
 const allowedRoles = new Set(['NPP', 'ADMIN']);
 const authClearedEvent = 'eurohouse:npp-auth-cleared';
 
@@ -59,8 +60,23 @@ export function useDemoAuth() {
 export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) => void }) {
   const [identifier, setIdentifier] = useState('npp@eurohouse.vn');
   const [password, setPassword] = useState('Eurohouse@2026');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(rememberedLoginKey);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved) as { identifier?: string; password?: string };
+      if (parsed.identifier) setIdentifier(parsed.identifier);
+      if (parsed.password) setPassword(parsed.password);
+      setRememberPassword(true);
+    } catch {
+      window.localStorage.removeItem(rememberedLoginKey);
+    }
+  }, []);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,6 +95,11 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
       const payload = (await response.json()) as LoginResponse;
       if (!allowedRoles.has(payload.user.role)) {
         throw new Error('Tài khoản này không có quyền truy cập NPP Web Manager.');
+      }
+      if (rememberPassword) {
+        window.localStorage.setItem(rememberedLoginKey, JSON.stringify({ identifier: identifier.trim(), password }));
+      } else {
+        window.localStorage.removeItem(rememberedLoginKey);
       }
       onSuccess(payload.user);
     } catch (loginError) {
@@ -105,6 +126,16 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
     width: '100%',
     color: ui.text,
     background: 'transparent',
+  };
+  const fieldAction: CSSProperties = {
+    border: 0,
+    background: 'transparent',
+    color: ui.textMuted,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
   };
 
   return (
@@ -146,7 +177,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
             Email hoặc số điện thoại
             <div style={fieldWrap}>
               <Mail size={18} color={ui.textFaint} />
-              <input value={identifier} onChange={(event) => setIdentifier(event.target.value)} style={fieldInput} placeholder="npp@eurohouse.vn" />
+              <input value={identifier} onChange={(event) => setIdentifier(event.target.value)} style={fieldInput} placeholder="npp@eurohouse.vn" autoComplete="username" onFocus={(event) => event.currentTarget.select()} />
             </div>
           </label>
 
@@ -154,8 +185,19 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
             Mật khẩu
             <div style={fieldWrap}>
               <Lock size={18} color={ui.textFaint} />
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} style={fieldInput} placeholder="••••••••" />
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} style={fieldInput} placeholder="••••••••" autoComplete="current-password" onFocus={(event) => event.currentTarget.select()} />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} style={fieldAction} title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              <button type="button" onClick={() => setPassword('')} style={fieldAction} title="Xóa mật khẩu">
+                <Trash2 size={17} />
+              </button>
             </div>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: ui.textMuted, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            <input type="checkbox" checked={rememberPassword} onChange={(event) => setRememberPassword(event.target.checked)} />
+            Nhớ email và mật khẩu cho lần đăng nhập sau
           </label>
 
           {error ? (
