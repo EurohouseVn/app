@@ -35,7 +35,7 @@ export async function apiBlob(path: string): Promise<Blob> {
   const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
   if (!response.ok) {
     handleUnauthorized(response.status);
-    throw new Error(`Khong tai duoc ${path} (${response.status})`);
+    throw new Error(`Không tải được ${path} (lỗi ${response.status})`);
   }
   return response.blob();
 }
