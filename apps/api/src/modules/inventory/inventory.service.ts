@@ -47,6 +47,19 @@ function displaySystemName(code?: string, fallback?: string) {
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private nppColorSchemaReady = false;
+
+  private async ensureNppColorSchema() {
+    if (this.nppColorSchemaReady) return;
+    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppProfileStock" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
+    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppStockMovement" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
+    await this.prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "NppProfileStock_nppOrgId_profileId_key"');
+    await this.prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NppProfileStock_nppOrgId_profileId_colorCode_key" ON "NppProfileStock"("nppOrgId", "profileId", "colorCode")');
+    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppProfileStock_colorCode_idx" ON "NppProfileStock"("colorCode")');
+    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppStockMovement_colorCode_idx" ON "NppStockMovement"("colorCode")');
+    this.nppColorSchemaReady = true;
+  }
+
   private toNppAccessory(item: {
     id: string; name: string; brand: string; category: string; unit: string; quantity: number; unitCost: number; note: string; createdAt: Date;
   }): NppAccessoryItem {
@@ -309,6 +322,7 @@ export class InventoryService {
   }
 
   async listNppProfiles(nppOrgId: string) {
+    await this.ensureNppColorSchema();
     const [systems, profiles, stocks] = await Promise.all([
       this.prisma.aluSystem.findMany({ where: { code: { startsWith: 'EU-' } }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.profile.findMany({ orderBy: { code: 'asc' } }),
@@ -353,6 +367,7 @@ export class InventoryService {
   }
 
   async listNppProfileMovements(nppOrgId: string, profileId?: string): Promise<ProfileStockMovementItem[]> {
+    await this.ensureNppColorSchema();
     const list = await this.prisma.nppStockMovement.findMany({
       where: { nppOrgId, profileId },
       orderBy: { createdAt: 'desc' },
@@ -366,6 +381,7 @@ export class InventoryService {
   }
 
   async adjustNppProfileStock(nppOrgId: string, profileId: string, input: AdjustProfileStockInput, userId?: string): Promise<ProfileStockMovementItem> {
+    await this.ensureNppColorSchema();
     const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
     if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
     const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
@@ -441,6 +457,7 @@ export class InventoryService {
   }
 
   async receiveNppInboundShipment(orderId: string, nppOrgId: string, userId: string): Promise<NppInboundShipment> {
+    await this.ensureNppColorSchema();
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, sourceType: 'ADMIN_TO_NPP', nppOrgId },
       include: { items: true },

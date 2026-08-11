@@ -48,6 +48,18 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   private readonly createOrderRequests = new Map<string, { expiresAt: number; promise: Promise<any> }>();
+  private nppColorSchemaReady = false;
+
+  private async ensureNppColorSchema() {
+    if (this.nppColorSchemaReady) return;
+    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppProfileStock" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
+    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppStockMovement" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
+    await this.prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "NppProfileStock_nppOrgId_profileId_key"');
+    await this.prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NppProfileStock_nppOrgId_profileId_colorCode_key" ON "NppProfileStock"("nppOrgId", "profileId", "colorCode")');
+    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppProfileStock_colorCode_idx" ON "NppProfileStock"("colorCode")');
+    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppStockMovement_colorCode_idx" ON "NppStockMovement"("colorCode")');
+    this.nppColorSchemaReady = true;
+  }
 
   private hasGlobalOrderAccess(user?: JwtUser): boolean {
     return !user || user.isCeo === true || user.role === 'ADMIN' || user.role === 'STAFF';
@@ -649,6 +661,7 @@ export class OrdersService {
   }
 
   async createNppDelivery(id: string, user: JwtUser) {
+    await this.ensureNppColorSchema();
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền tạo đơn giao.');
     if (!['NPP_REVIEWING', 'CONFIRMED', 'RESERVED'].includes(order.status)) throw new BadRequestException('Chỉ tạo đơn giao khi NPP đã tiếp nhận hoặc xác nhận đơn.');
