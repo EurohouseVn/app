@@ -9,6 +9,15 @@ import * as path from 'path';
 
 import { FormulaEvaluatorService } from './formula-evaluator.service';
 
+const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
+  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-TRUOT': 'Hệ trượt Châu Âu',
+};
+
+function displaySystemName(code: string, fallback: string) {
+  return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback;
+}
+
 @Controller('system-formulas')
 export class SystemFormulasController {
   constructor(
@@ -18,9 +27,13 @@ export class SystemFormulasController {
 
   @Get('systems')
   async getSystems() {
-    return this.prisma.aluSystem.findMany({
+    const systems = await this.prisma.aluSystem.findMany({
       orderBy: { sortOrder: 'asc' },
     });
+    return systems.map((system) => ({
+      ...system,
+      name: displaySystemName(system.code, system.name),
+    }));
   }
 
   @Get('template-systems')

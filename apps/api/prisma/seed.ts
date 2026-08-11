@@ -14,9 +14,9 @@ const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Eurohouse@2026';
 // Còn 3 hệ (Ecento Plus, Phào đại hội, Mặt dựng) đang chờ cắt lại ảnh nguồn — xem
 // tools/profile-crop/out/{ecento-plus,phao-dai-hoi,mat-dung}/ (segment.mjs cắt sai số ô).
 const aluSystems = [
-  { code: 'EU-55', name: 'Hệ 55 mở quay', description: 'Cửa đi & cửa sổ mở quay hệ 55', sortOrder: 1 },
+  { code: 'EU-55', name: 'Hệ 55 Euroqueen', description: 'Cửa đi & cửa sổ mở quay hệ 55', sortOrder: 1 },
   { code: 'EU-PRECO', name: 'Hệ Preco', description: 'Hệ cửa đi & cửa sổ dòng Preco', sortOrder: 2 },
-  { code: 'EU-TRUOT', name: 'Hệ trượt Xingfa', description: 'Cửa trượt lùa, trượt quay kiểu châu Âu', sortOrder: 3 },
+  { code: 'EU-TRUOT', name: 'Hệ trượt Châu Âu', description: 'Cửa trượt lùa, trượt quay kiểu châu Âu', sortOrder: 3 },
   { code: 'EU-TQ', name: 'Hệ trượt quay', description: 'Cửa trượt quay đa điểm', sortOrder: 4 },
   { code: 'EU-70', name: 'Hệ 70 Ecento', description: 'Cửa đi & cửa sổ hệ 70', sortOrder: 5 },
   { code: 'EU-TL', name: 'Hệ thủy lực', description: 'Khung thủy lực, mặt dựng', sortOrder: 6 },

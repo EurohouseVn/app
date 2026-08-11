@@ -40,6 +40,53 @@ const SOURCE_WINDOW_TYPES = {
   supplement: ['Bổ sung'],
 } as const;
 
+const SELECTED_TEMPLATE_BACKUP = 'formula-templates-before-prune-2026-08-10T08-33-10-712Z.json';
+
+const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
+  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-TRUOT': 'Hệ trượt Châu Âu',
+};
+
+function resolveApiPublicPath(...segments: string[]) {
+  const candidates = [
+    path.join(process.cwd(), 'apps', 'api', 'public', ...segments),
+    path.join(process.cwd(), 'public', ...segments),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
+}
+
+function resolveApiBackupPath(fileName: string) {
+  const candidates = [
+    path.join(process.cwd(), 'apps', 'api', 'backups', fileName),
+    path.join(process.cwd(), 'backups', fileName),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
+function loadSelectedTemplateIds() {
+  const backupPath = resolveApiBackupPath(SELECTED_TEMPLATE_BACKUP);
+  if (!backupPath) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+    if (!Array.isArray(data?.templates)) return [];
+    return data.templates
+      .map((template: any) => template?.templateId)
+      .filter((templateId: any): templateId is string => typeof templateId === 'string' && templateId.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+const SELECTED_TEMPLATE_IDS = loadSelectedTemplateIds();
+
+function selectedTemplateWhere() {
+  return SELECTED_TEMPLATE_IDS.length > 0 ? { templateId: { in: SELECTED_TEMPLATE_IDS } } : {};
+}
+
+function displaySystemName(code: string, fallback: string) {
+  return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback;
+}
+
 type QuoteDoorType = {
   name: string;
   sourceWindowTypes: string[];
@@ -134,13 +181,13 @@ const CURTAIN_WALL: QuoteDoorType[] = [
 @Injectable()
 export class FormulaEvaluatorService {
   private readonly logger = new Logger(FormulaEvaluatorService.name);
-  private templatesDir = path.join(process.cwd(), 'public', 'templates');
-  private doorImagesDir = path.join(process.cwd(), 'public', 'images', 'doors');
+  private templatesDir = resolveApiPublicPath('templates');
+  private doorImagesDir = resolveApiPublicPath('images', 'doors');
 
   constructor(private readonly prisma: PrismaService) {}
 
   public async getTemplates(keyword?: string, systemName?: string, windowTypeName?: string, onlyPopular?: boolean) {
-    const where: any = {};
+    const where: any = { ...selectedTemplateWhere() };
     if (keyword) {
       where.templateName = { contains: keyword, mode: 'insensitive' };
     }
@@ -157,42 +204,53 @@ export class FormulaEvaluatorService {
     const templates = await this.prisma.formulaTemplate.findMany({
       where,
       take: 200,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isPopular: 'desc' }, { createdAt: 'desc' }],
     });
 
     return templates.map((template) => this.toTemplateDto(template));
   }
 
   public async getTemplateSystems() {
-    const [systems, templateCount] = await Promise.all([
+    const [systems, groups] = await Promise.all([
       this.prisma.aluSystem.findMany({
         orderBy: { sortOrder: 'asc' },
         include: { _count: { select: { profiles: true } } },
       }),
-      this.prisma.formulaTemplate.count(),
+      this.prisma.formulaTemplate.groupBy({
+        by: ['windowTypeName'],
+        where: selectedTemplateWhere(),
+        _count: { _all: true },
+      }),
     ]);
+    const countsBySourceType = new Map(groups.map((group) => [group.windowTypeName, group._count._all]));
 
-    return systems.map((system) => ({
-      id: system.id,
-      name: system.name,
-      code: system.code,
-      description: system.description,
-      profileCount: system._count.profiles,
-      templateCount,
-      referenceSource: 'phanmemcua',
-    }));
+    return systems.map((system) => {
+      const quoteTypes = this.getQuoteDoorTypesForSystem(system.code);
+      const sourceTypes = [...new Set(quoteTypes.flatMap((type) => type.sourceWindowTypes))];
+      const templateCount = sourceTypes.reduce((sum, sourceType) => sum + (countsBySourceType.get(sourceType) ?? 0), 0);
+      return {
+        id: system.id,
+        name: displaySystemName(system.code, system.name),
+        code: system.code,
+        description: system.description,
+        profileCount: system._count.profiles,
+        templateCount,
+        referenceSource: 'phanmemcua',
+      };
+    });
   }
 
   public async getTemplateWindowTypes(eurohouseSystemId?: string) {
     const groups = await this.prisma.formulaTemplate.groupBy({
       by: ['windowTypeName'],
+      where: selectedTemplateWhere(),
       _count: { _all: true },
       orderBy: { windowTypeName: 'asc' },
     });
 
     const popularGroups = await this.prisma.formulaTemplate.groupBy({
       by: ['windowTypeName'],
-      where: { isPopular: true },
+      where: { ...selectedTemplateWhere(), isPopular: true },
       _count: { _all: true },
     });
     const popularByType = new Map(popularGroups.map((group) => [group.windowTypeName, group._count._all]));
@@ -221,7 +279,7 @@ export class FormulaEvaluatorService {
   }
 
   public async getTemplatesForSystem(windowTypeName: string, options: { eurohouseSystemId?: string; sourceSystemName?: string; onlyPopular?: boolean; preferPopular?: boolean } = {}) {
-    const baseWhere: any = {};
+    const baseWhere: any = { ...selectedTemplateWhere() };
     if (options.sourceSystemName) baseWhere.systemName = options.sourceSystemName;
     if (windowTypeName) {
       const system = options.eurohouseSystemId ? await this.prisma.aluSystem.findUnique({ where: { id: options.eurohouseSystemId } }) : null;
