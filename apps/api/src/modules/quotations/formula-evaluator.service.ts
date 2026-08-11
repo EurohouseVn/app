@@ -224,7 +224,7 @@ export class FormulaEvaluatorService {
     ]);
     const countsBySourceType = new Map(groups.map((group) => [group.windowTypeName, group._count._all]));
 
-    return systems.map((system) => {
+    return systems.filter((system) => system.code.toUpperCase().startsWith('EU-')).map((system) => {
       const quoteTypes = this.getQuoteDoorTypesForSystem(system.code);
       const sourceTypes = [...new Set(quoteTypes.flatMap((type) => type.sourceWindowTypes))];
       const templateCount = sourceTypes.reduce((sum, sourceType) => sum + (countsBySourceType.get(sourceType) ?? 0), 0);
@@ -237,7 +237,7 @@ export class FormulaEvaluatorService {
         templateCount,
         referenceSource: 'phanmemcua',
       };
-    });
+    }).filter((system) => system.templateCount > 0);
   }
 
   public async getTemplateWindowTypes(eurohouseSystemId?: string) {

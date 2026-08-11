@@ -17,6 +17,7 @@ export class CatalogService {
 
   async catalog(): Promise<CatalogSystem[]> {
     const systems = await this.prisma.aluSystem.findMany({
+      where: { code: { startsWith: 'EU-' } },
       orderBy: { sortOrder: 'asc' },
       include: { profiles: { orderBy: { code: 'asc' } } },
     });

@@ -28,6 +28,7 @@ export class SystemFormulasController {
   @Get('systems')
   async getSystems() {
     const systems = await this.prisma.aluSystem.findMany({
+      where: { code: { startsWith: 'EU-' } },
       orderBy: { sortOrder: 'asc' },
     });
     return systems.map((system) => ({
