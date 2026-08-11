@@ -4,19 +4,24 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
-function getCorsOrigins() {
-  const origins = process.env.CORS_ORIGIN?.split(',')
+function getCorsOrigins(): string[] {
+  return process.env.CORS_ORIGIN?.split(',')
     .map((origin) => origin.trim())
-    .filter(Boolean);
+    .filter(Boolean) ?? [];
+}
 
-  return origins?.length ? origins : true;
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true;
+  const configuredOrigins = getCorsOrigins();
+  if (configuredOrigins.includes(origin)) return true;
+  return /^https:\/\/eurohouse-(api|admin|npp|mobile)\.onrender\.com$/.test(origin);
 }
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: getCorsOrigins(),
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
