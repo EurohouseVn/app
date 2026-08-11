@@ -68,7 +68,7 @@ export default function NppInventoryPage() {
         setSelected((current) => current ? items.find((item) => item.id === current.id) ?? items[0] ?? null : items[0] ?? null);
       })
       .catch(() => {
-        apiGet<CatalogSystem[]>('/catalog')
+        apiGet<CatalogSystem[]>('/catalog/systems')
           .then((systems) => {
             const fallback = systems.flatMap((system) => system.profiles.map((profile) => ({
               id: profile.id,
