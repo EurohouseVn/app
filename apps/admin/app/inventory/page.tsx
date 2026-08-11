@@ -172,7 +172,7 @@ export default function InventoryPage() {
             </label>
             <label style={labelStyle}>Mau
               <select style={inputStyle} value={colorCode} onChange={(e) => setColorCode(e.target.value)}>
-                {colors.map((color) => <option key={color.id} value={color.code}>{color.code}</option>)}
+                {colors.map((color) => <option key={color.id} value={color.code}>{color.name}</option>)}
               </select>
             </label>
             <label style={labelStyle}>So cay<input style={inputStyle} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" /></label>
@@ -195,7 +195,7 @@ export default function InventoryPage() {
                   <tr key={`${line.profileId}-${index}`}>
                     <td style={{ ...tableCellStyle, fontWeight: 800 }}>{line.productCode}</td>
                     <td style={tableCellStyle}>{line.productName}</td>
-                    <td style={tableCellStyle}>{line.colorCode}</td>
+                    <td style={tableCellStyle}>{colors.find((color) => color.code === line.colorCode)?.name ?? line.colorCode}</td>
                     <td style={tableCellStyle}>{line.quantity.toLocaleString('vi-VN')}</td>
                     <td style={tableCellStyle}>{kg.toFixed(1)} kg</td>
                     <td style={tableCellStyle}>{currency(Math.round(kg * line.pricePerKg))}</td>

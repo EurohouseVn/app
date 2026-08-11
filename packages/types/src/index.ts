@@ -159,7 +159,7 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'OVERDUE';
 
-export type OrderSourceType = 'FACTORY' | 'DEALER' | 'NPP' | 'ADMIN' | 'ADMIN_TO_NPP';
+export type OrderSourceType = 'FACTORY' | 'DEALER' | 'NPP' | 'ADMIN' | 'ADMIN_TO_NPP' | 'NPP_TO_ADMIN';
 
 export type OrganizationType = 'COMPANY' | 'FACTORY' | 'NPP' | 'DEALER';
 
@@ -822,6 +822,7 @@ export interface CreateStockMovementInput {
 export interface ProfileStockMovementItem {
   id: string;
   profileId: string;
+  colorCode?: string;
   direction: StockDirection;
   quantity: number;
   reason: string;
@@ -833,6 +834,7 @@ export interface ProfileStockMovementItem {
 export interface AdjustProfileStockInput {
   direction: StockDirection;
   quantity: number;
+  colorCode?: string;
   reason?: string;
   note?: string;
 }
@@ -1058,6 +1060,8 @@ export interface InventoryProfile {
   systemCode?: string;
   systemName?: string;
   stockBars: number;
+  kgPerMeter?: number;
+  stockByColor?: { colorCode: string; colorName: string; stockBars: number; tons: number }[];
   lowStockAlert?: number;
   pricePerKg?: number;
 }

@@ -22,6 +22,22 @@ const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-TRUOT': 'Hệ trượt Châu Âu',
 };
 
+const ALUMINUM_COLORS = [
+  { code: 'CAFE_METALIC', name: 'Màu Café Metalic' },
+  { code: 'CAFE_THUONG', name: 'Màu Café thường' },
+  { code: 'XAM_NGOC_TRAI', name: 'Màu Xám Ngọc Trai' },
+  { code: 'VAN_GO_CAM_LAI', name: 'Màu Vân gỗ Cẩm Lai' },
+  { code: 'VAN_GO_OLAK', name: 'Màu vân gỗ Olak' },
+  { code: 'XAM_RITA', name: 'Màu Xám Rita (dự án)' },
+] as const;
+
+function normalizeColorCode(colorCode?: string) {
+  const value = (colorCode || '').trim();
+  if (!value) return ALUMINUM_COLORS[0].code;
+  const found = ALUMINUM_COLORS.find((color) => color.code === value || color.name === value);
+  return found?.code ?? value;
+}
+
 function displaySystemName(code?: string, fallback?: string) {
   if (!code) return fallback || 'Khác';
   return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback ?? code;
@@ -286,7 +302,7 @@ export class InventoryService {
       orderBy: { createdAt: 'desc' },
     });
     return list.map((m) => ({
-      id: m.id, profileId: m.profileId, direction: m.direction as ProfileStockMovementItem['direction'],
+      id: m.id, profileId: m.profileId, colorCode: (m as any).colorCode || undefined, direction: m.direction as ProfileStockMovementItem['direction'],
       quantity: m.quantity, reason: m.reason, orderId: m.orderId ?? undefined, note: m.note,
       createdAt: m.createdAt.toISOString(),
     }));
@@ -299,19 +315,38 @@ export class InventoryService {
       this.prisma.nppProfileStock.findMany({ where: { nppOrgId } }),
     ]);
     const systemById = new Map(systems.map((system) => [system.id, system]));
-    const stockByProfileId = new Map(stocks.map((stock) => [stock.profileId, stock]));
+    const stocksByProfileId = new Map<string, typeof stocks>();
+    for (const stock of stocks) {
+      const list = stocksByProfileId.get(stock.profileId) ?? [];
+      list.push(stock);
+      stocksByProfileId.set(stock.profileId, list);
+    }
 
     return profiles.filter((profile) => systemById.has(profile.aluSystemId)).map((profile) => {
       const system = systemById.get(profile.aluSystemId);
-      const stock = stockByProfileId.get(profile.id);
+      const profileStocks = stocksByProfileId.get(profile.id) ?? [];
+      const stockByColor = ALUMINUM_COLORS.map((color) => {
+        const bars = profileStocks
+          .filter((stock) => normalizeColorCode((stock as any).colorCode) === color.code)
+          .reduce((sum, stock) => sum + stock.stockBars, 0);
+        return {
+          colorCode: color.code,
+          colorName: color.name,
+          stockBars: bars,
+          tons: Number(((bars * (profile.kgPerMeter ?? 0) * 6) / 1000).toFixed(3)),
+        };
+      });
+      const stockBars = stockByColor.reduce((sum, item) => sum + item.stockBars, 0);
       return ({
       id: profile.id,
       code: profile.code,
       name: profile.name,
       systemCode: system?.code ?? 'KHAC',
       systemName: displaySystemName(system?.code, system?.name),
-      stockBars: stock?.stockBars ?? 0,
-      lowStockAlert: stock?.lowStockAlert ?? profile.lowStockAlert,
+      stockBars,
+      kgPerMeter: profile.kgPerMeter,
+      stockByColor,
+      lowStockAlert: profileStocks[0]?.lowStockAlert ?? profile.lowStockAlert,
       pricePerKg: profile.pricePerKg,
       });
     }).sort((a, b) => a.systemCode.localeCompare(b.systemCode) || a.code.localeCompare(b.code));
@@ -324,7 +359,7 @@ export class InventoryService {
       take: 80,
     });
     return list.map((m) => ({
-      id: m.id, profileId: m.profileId, direction: m.direction as ProfileStockMovementItem['direction'],
+      id: m.id, profileId: m.profileId, colorCode: (m as any).colorCode || undefined, direction: m.direction as ProfileStockMovementItem['direction'],
       quantity: m.quantity, reason: m.reason, orderId: m.orderId ?? undefined, note: m.note,
       createdAt: m.createdAt.toISOString(),
     }));
@@ -334,23 +369,25 @@ export class InventoryService {
     const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
     if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
     const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
+    const colorCode = normalizeColorCode(input.colorCode);
 
     const created = await this.prisma.$transaction(async (tx) => {
       if (input.direction === 'OUT') {
-        const stock = await tx.nppProfileStock.findUnique({ where: { nppOrgId_profileId: { nppOrgId, profileId } } });
+        const stock = await tx.nppProfileStock.findUnique({ where: { nppOrgId_profileId_colorCode: { nppOrgId, profileId, colorCode } } });
         if (!stock || stock.stockBars < input.quantity) {
           throw new BadRequestException('Ton kho NPP khong du de xuat.');
         }
       }
       await tx.nppProfileStock.upsert({
-        where: { nppOrgId_profileId: { nppOrgId, profileId } },
+        where: { nppOrgId_profileId_colorCode: { nppOrgId, profileId, colorCode } },
         update: { stockBars: { increment: delta } },
-        create: { nppOrgId, profileId, stockBars: Math.max(0, delta), lowStockAlert: profile.lowStockAlert },
+        create: { nppOrgId, profileId, colorCode, stockBars: Math.max(0, delta), lowStockAlert: profile.lowStockAlert },
       });
       return tx.nppStockMovement.create({
         data: {
           nppOrgId,
           profileId,
+          colorCode,
           direction: input.direction,
           quantity: input.quantity,
           reason: input.reason ?? 'Điều chỉnh kiểm kê',
@@ -360,7 +397,7 @@ export class InventoryService {
       });
     });
     return {
-      id: created.id, profileId: created.profileId, direction: created.direction as ProfileStockMovementItem['direction'],
+      id: created.id, profileId: created.profileId, colorCode: (created as any).colorCode || undefined, direction: created.direction as ProfileStockMovementItem['direction'],
       quantity: created.quantity, reason: created.reason, orderId: created.orderId ?? undefined, note: created.note,
       createdAt: created.createdAt.toISOString(),
     };
@@ -415,15 +452,17 @@ export class InventoryService {
     const updated = await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
         if (!item.profileId) continue;
+        const colorCode = normalizeColorCode(item.colorCode);
         await tx.nppProfileStock.upsert({
-          where: { nppOrgId_profileId: { nppOrgId, profileId: item.profileId } },
+          where: { nppOrgId_profileId_colorCode: { nppOrgId, profileId: item.profileId, colorCode } },
           update: { stockBars: { increment: item.quantity } },
-          create: { nppOrgId, profileId: item.profileId, stockBars: item.quantity },
+          create: { nppOrgId, profileId: item.profileId, colorCode, stockBars: item.quantity },
         });
         await tx.nppStockMovement.create({
           data: {
             nppOrgId,
             profileId: item.profileId,
+            colorCode,
             direction: 'IN',
             quantity: item.quantity,
             reason: 'Nhập từ phiếu công ty giao',

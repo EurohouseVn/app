@@ -14,6 +14,22 @@ import type {
 import type { JwtUser } from '../../auth/current-user.decorator';
 
 const STD_BAR_M = 6;
+
+const ALUMINUM_COLORS = [
+  { code: 'CAFE_METALIC', name: 'Màu Café Metalic' },
+  { code: 'CAFE_THUONG', name: 'Màu Café thường' },
+  { code: 'XAM_NGOC_TRAI', name: 'Màu Xám Ngọc Trai' },
+  { code: 'VAN_GO_CAM_LAI', name: 'Màu Vân gỗ Cẩm Lai' },
+  { code: 'VAN_GO_OLAK', name: 'Màu vân gỗ Olak' },
+  { code: 'XAM_RITA', name: 'Màu Xám Rita (dự án)' },
+] as const;
+
+function normalizeColorCode(colorCode?: string) {
+  const value = (colorCode || '').trim();
+  if (!value) return ALUMINUM_COLORS[0].code;
+  const found = ALUMINUM_COLORS.find((color) => color.code === value || color.name === value);
+  return found?.code ?? value;
+}
 const ORDER_KG_PER_BLOCK = 100;
 const ORDER_POINTS_PER_KG_BLOCK = 10;
 
@@ -644,8 +660,9 @@ export class OrdersService {
 
     for (const item of order.items) {
       if (!item.profileId) continue;
+      const colorCode = normalizeColorCode(item.colorCode);
       const stock = await this.prisma.nppProfileStock.findUnique({
-        where: { nppOrgId_profileId: { nppOrgId: user.organizationId, profileId: item.profileId } },
+        where: { nppOrgId_profileId_colorCode: { nppOrgId: user.organizationId, profileId: item.profileId, colorCode } },
       });
       if (!stock || stock.stockBars < item.quantity) throw new BadRequestException(`Kho NPP không đủ ${item.productCode}.`);
     }
@@ -653,14 +670,16 @@ export class OrdersService {
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
         if (!item.profileId) continue;
+        const colorCode = normalizeColorCode(item.colorCode);
         await tx.nppProfileStock.update({
-          where: { nppOrgId_profileId: { nppOrgId: user.organizationId!, profileId: item.profileId } },
+          where: { nppOrgId_profileId_colorCode: { nppOrgId: user.organizationId!, profileId: item.profileId, colorCode } },
           data: { stockBars: { decrement: item.quantity } },
         });
         await tx.nppStockMovement.create({
           data: {
             nppOrgId: user.organizationId!,
             profileId: item.profileId,
+            colorCode,
             direction: 'OUT',
             quantity: item.quantity,
             reason: 'Xuất giao CSSX',

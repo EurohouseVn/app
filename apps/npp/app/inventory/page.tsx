@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, FileScan, History, Layers3, PackageCheck, Warehouse } from 'lucide-react';
-import type { AdjustProfileStockInput, InventoryProfile, NppInboundShipment, ProfileStockMovementItem, StockDirection } from '@eurohouse/types';
+import type { AdjustProfileStockInput, CatalogSystem, CreateOrderInput, InventoryProfile, NppFactoryItem, NppInboundShipment, ProfileStockMovementItem, StockDirection } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiGet, apiSend } from '../../src/lib/api';
 import { chipStyle, currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, primaryButtonStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
@@ -14,6 +14,29 @@ type SystemGroup = {
   stockBars: number;
 };
 
+const ALUMINUM_COLORS = [
+  { code: 'CAFE_METALIC', name: 'Màu Café Metalic' },
+  { code: 'CAFE_THUONG', name: 'Màu Café thường' },
+  { code: 'XAM_NGOC_TRAI', name: 'Màu Xám Ngọc Trai' },
+  { code: 'VAN_GO_CAM_LAI', name: 'Màu Vân gỗ Cẩm Lai' },
+  { code: 'VAN_GO_OLAK', name: 'Màu vân gỗ Olak' },
+  { code: 'XAM_RITA', name: 'Màu Xám Rita (dự án)' },
+];
+
+function profileBarsForColors(profile: InventoryProfile, colorCodes: string[]) {
+  const stockByColor = profile.stockByColor ?? [];
+  if (stockByColor.length === 0) return colorCodes.length === ALUMINUM_COLORS.length ? profile.stockBars : 0;
+  return stockByColor.filter((item) => colorCodes.includes(item.colorCode)).reduce((sum, item) => sum + item.stockBars, 0);
+}
+
+function profileTonsForColors(profile: InventoryProfile, colorCodes: string[]) {
+  const stockByColor = profile.stockByColor ?? [];
+  if (stockByColor.length > 0) {
+    return stockByColor.filter((item) => colorCodes.includes(item.colorCode)).reduce((sum, item) => sum + item.tons, 0);
+  }
+  return ((profileBarsForColors(profile, colorCodes) * (profile.kgPerMeter ?? 0) * 6) / 1000);
+}
+
 function statusLabel(status: string) {
   if (status === 'ADMIN_SENT_NPP') return 'Cho NPP nhan';
   if (status === 'NPP_RECEIVED') return 'Da nhan du';
@@ -22,9 +45,13 @@ function statusLabel(status: string) {
 
 export default function NppInventoryPage() {
   const [profiles, setProfiles] = useState<InventoryProfile[]>([]);
+  const [factories, setFactories] = useState<NppFactoryItem[]>([]);
   const [inbound, setInbound] = useState<NppInboundShipment[]>([]);
   const [movements, setMovements] = useState<ProfileStockMovementItem[]>([]);
   const [selectedSystem, setSelectedSystem] = useState('ALL');
+  const [selectedColors, setSelectedColors] = useState<string[]>(ALUMINUM_COLORS.map((color) => color.code));
+  const [adjustColor, setAdjustColor] = useState(ALUMINUM_COLORS[0].code);
+  const [selectedFactoryId, setSelectedFactoryId] = useState('');
   const [selected, setSelected] = useState<InventoryProfile | null>(null);
   const [direction, setDirection] = useState<StockDirection>('IN');
   const [quantity, setQuantity] = useState('');
@@ -36,16 +63,46 @@ export default function NppInventoryPage() {
   function loadProfiles() {
     apiGet<InventoryProfile[]>('/npp/inventory/profiles')
       .then((items) => {
+        setError('');
         setProfiles(items);
         setSelected((current) => current ? items.find((item) => item.id === current.id) ?? items[0] ?? null : items[0] ?? null);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Khong tai duoc ton kho.'));
+      .catch(() => {
+        apiGet<CatalogSystem[]>('/catalog')
+          .then((systems) => {
+            const fallback = systems.flatMap((system) => system.profiles.map((profile) => ({
+              id: profile.id,
+              code: profile.code,
+              name: profile.name,
+              systemCode: system.code,
+              systemName: system.name,
+              stockBars: 0,
+              kgPerMeter: profile.kgPerMeter,
+              lowStockAlert: 0,
+              pricePerKg: profile.pricePerKg,
+              stockByColor: ALUMINUM_COLORS.map((color) => ({ colorCode: color.code, colorName: color.name, stockBars: 0, tons: 0 })),
+            })));
+            setProfiles(fallback);
+            setSelected((current) => current ? fallback.find((item) => item.id === current.id) ?? fallback[0] ?? null : fallback[0] ?? null);
+            setError('API tồn kho đang lỗi, tạm hiển thị danh sách mã cây từ catalog. Nhập/xuất kho sẽ hoạt động sau khi API tồn kho redeploy xong.');
+          })
+          .catch((e) => setError(e instanceof Error ? e.message : 'Khong tai duoc ton kho.'));
+      });
   }
 
   function loadInbound() {
     apiGet<NppInboundShipment[]>('/npp/inventory/inbound-shipments')
       .then(setInbound)
       .catch(() => setInbound([]));
+  }
+
+  function loadFactories() {
+    apiGet<NppFactoryItem[]>('/npp/factories')
+      .then((items) => {
+        setFactories(items);
+        setSelectedFactoryId((current) => current || items[0]?.id || '');
+      })
+      .catch(() => setFactories([]));
   }
 
   function loadMovements(profileId?: string) {
@@ -57,6 +114,7 @@ export default function NppInventoryPage() {
     loadProfiles();
     loadInbound();
     loadMovements(profileId);
+    loadFactories();
   }
 
   useEffect(() => {
@@ -85,11 +143,22 @@ export default function NppInventoryPage() {
   }, [profiles, selectedSystem]);
 
   const totals = useMemo(() => {
-    const stockBars = profiles.reduce((sum, item) => sum + item.stockBars, 0);
-    const lowCount = profiles.filter((item) => item.lowStockAlert !== undefined && item.lowStockAlert > 0 && item.stockBars <= item.lowStockAlert).length;
+    const stockBars = profiles.reduce((sum, item) => sum + profileBarsForColors(item, selectedColors), 0);
+    const totalTons = profiles.reduce((sum, item) => sum + profileTonsForColors(item, selectedColors), 0);
+    const lowCount = profiles.filter((item) => item.lowStockAlert !== undefined && item.lowStockAlert > 0 && profileBarsForColors(item, selectedColors) <= item.lowStockAlert).length;
     const inboundPending = inbound.filter((item) => item.status === 'ADMIN_SENT_NPP').length;
-    return { stockBars, lowCount, inboundPending };
-  }, [profiles, inbound]);
+    return { stockBars, totalTons, lowCount, inboundPending };
+  }, [profiles, inbound, selectedColors]);
+
+  function toggleColor(code: string) {
+    setSelectedColors((current) => {
+      if (current.includes(code)) {
+        const next = current.filter((item) => item !== code);
+        return next.length ? next : current;
+      }
+      return [...current, code];
+    });
+  }
 
   async function adjustStock() {
     if (!selected) return;
@@ -98,7 +167,7 @@ export default function NppInventoryPage() {
       setError('Nhap so cay hop le.');
       return;
     }
-    const body: AdjustProfileStockInput = { direction, quantity: amount, reason, note };
+    const body: AdjustProfileStockInput = { direction, quantity: amount, colorCode: adjustColor, reason, note };
     setError('');
     setMessage('');
     try {
@@ -109,6 +178,71 @@ export default function NppInventoryPage() {
       refreshAll(selected.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Khong cap nhat duoc ton kho.');
+    }
+  }
+
+  async function createManualFactoryOrder() {
+    if (!selected) return;
+    const amount = Number(quantity);
+    if (!amount || amount <= 0) {
+      setError('Nhap so cay hop le.');
+      return;
+    }
+    const factory = factories.find((item) => item.id === selectedFactoryId);
+    if (!factory) {
+      setError('Chon xuong tho can xuat hang.');
+      return;
+    }
+    const body: CreateOrderInput = {
+      sourceType: 'NPP',
+      customerName: factory.name,
+      customerPhone: factory.phone,
+      deliveryAddress: factory.address,
+      colorCode: adjustColor,
+      note: `NPP tao don thu cong cho ${factory.code}`,
+      items: [{
+        profileId: selected.id,
+        productCode: selected.code,
+        productName: selected.name,
+        colorCode: adjustColor,
+        quantity: amount,
+        kgPerMeter: selected.kgPerMeter,
+      }],
+    };
+    try {
+      const created = await apiSend<{ code: string }>('/orders', 'POST', body);
+      setMessage(`Da tao don thu cong ${created.code} cho ${factory.name}.`);
+      refreshAll(selected.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Khong tao duoc don thu cong.');
+    }
+  }
+
+  async function createCompanyPurchaseOrder() {
+    if (!selected) return;
+    const amount = Number(quantity);
+    if (!amount || amount <= 0) {
+      setError('Nhap so cay hop le.');
+      return;
+    }
+    const body: CreateOrderInput = {
+      sourceType: 'NPP_TO_ADMIN',
+      colorCode: adjustColor,
+      note: note || 'NPP dat hang cong ty tu WebNPP',
+      items: [{
+        profileId: selected.id,
+        productCode: selected.code,
+        productName: selected.name,
+        colorCode: adjustColor,
+        quantity: amount,
+        kgPerMeter: selected.kgPerMeter,
+      }],
+    };
+    try {
+      const created = await apiSend<{ code: string }>('/orders', 'POST', body);
+      setMessage(`Da tao yeu cau dat hang cong ty ${created.code}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Khong tao duoc yeu cau dat hang cong ty.');
     }
   }
 
@@ -133,10 +267,22 @@ export default function NppInventoryPage() {
       {error ? <p style={{ color: ui.danger, fontWeight: 700 }}>{error}</p> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginTop: 18 }}>
-        <div style={{ ...panelStyle, padding: 18 }}><Warehouse size={18} color={ui.brand} /><p style={{ margin: '10px 0 0', color: ui.textMuted, fontSize: 12, fontWeight: 700 }}>Tong ton NPP</p><strong style={{ color: ui.text, fontSize: 24 }}>{totals.stockBars.toLocaleString('vi-VN')} cay</strong></div>
+        <div style={{ ...panelStyle, padding: 18 }}><Warehouse size={18} color={ui.brand} /><p style={{ margin: '10px 0 0', color: ui.textMuted, fontSize: 12, fontWeight: 700 }}>Tong ton NPP</p><strong style={{ color: ui.text, fontSize: 24 }}>{totals.stockBars.toLocaleString('vi-VN')} cay</strong><p style={{ margin: '4px 0 0', color: ui.textMuted, fontSize: 12 }}>{totals.totalTons.toLocaleString('vi-VN', { maximumFractionDigits: 3 })} tan</p></div>
         <div style={{ ...panelStyle, padding: 18 }}><Layers3 size={18} color={ui.teal} /><p style={{ margin: '10px 0 0', color: ui.textMuted, fontSize: 12, fontWeight: 700 }}>He nhom</p><strong style={{ color: ui.text, fontSize: 24 }}>{groups.length}</strong></div>
         <div style={{ ...panelStyle, padding: 18 }}><PackageCheck size={18} color={ui.warning} /><p style={{ margin: '10px 0 0', color: ui.textMuted, fontSize: 12, fontWeight: 700 }}>Phieu cho nhan</p><strong style={{ color: totals.inboundPending ? ui.warning : ui.success, fontSize: 24 }}>{totals.inboundPending}</strong></div>
       </div>
+
+      <section style={{ ...panelStyle, marginTop: 18, padding: 16 }}>
+        <h2 style={{ margin: '0 0 12px', color: ui.text, fontSize: 18 }}>Loc ton kho theo mau nhom</h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {ALUMINUM_COLORS.map((color) => (
+            <button key={color.code} onClick={() => toggleColor(color.code)} style={{ ...ghostButtonStyle, background: selectedColors.includes(color.code) ? ui.brandSoft : ui.surface, color: selectedColors.includes(color.code) ? ui.brandText : ui.text }}>
+              {selectedColors.includes(color.code) ? '✓ ' : ''}{color.name}
+            </button>
+          ))}
+          <button onClick={() => setSelectedColors(ALUMINUM_COLORS.map((color) => color.code))} style={ghostButtonStyle}>Chon ca 6 mau</button>
+        </div>
+      </section>
 
       <section style={{ ...panelStyle, marginTop: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -184,17 +330,20 @@ export default function NppInventoryPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['He', 'Ma thanh', 'Ten thanh', 'Ton NPP', 'Canh bao'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
+                <tr>{['He', 'Ma thanh', 'Ten thanh', 'Ton NPP', 'Tan', 'Canh bao'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
               </thead>
               <tbody>
                 {visibleProfiles.map((profile) => {
-                  const low = (profile.lowStockAlert ?? 0) > 0 && profile.stockBars <= (profile.lowStockAlert ?? 0);
+                  const visibleBars = profileBarsForColors(profile, selectedColors);
+                  const visibleTons = profileTonsForColors(profile, selectedColors);
+                  const low = (profile.lowStockAlert ?? 0) > 0 && visibleBars <= (profile.lowStockAlert ?? 0);
                   return (
                     <tr key={profile.id} onClick={() => setSelected(profile)} style={{ cursor: 'pointer', background: selected?.id === profile.id ? ui.brandSoft : 'transparent' }}>
                       <td style={tableCellStyle}>{profile.systemCode || '-'}</td>
                       <td style={{ ...tableCellStyle, fontWeight: 800 }}>{profile.code}</td>
                       <td style={tableCellStyle}>{profile.name}</td>
-                      <td style={tableCellStyle}>{profile.stockBars.toLocaleString('vi-VN')} cay</td>
+                      <td style={tableCellStyle}>{visibleBars.toLocaleString('vi-VN')} cay</td>
+                      <td style={tableCellStyle}>{visibleTons.toLocaleString('vi-VN', { maximumFractionDigits: 3 })}</td>
                       <td style={tableCellStyle}><span style={chipStyle(low ? 'danger' : 'success')}>{low ? 'Sap het' : 'On dinh'}</span></td>
                     </tr>
                   );
@@ -212,9 +361,15 @@ export default function NppInventoryPage() {
           </div>
           <div style={{ display: 'grid', gap: 10 }}>
             <label style={labelStyle}>So cay<input style={inputStyle} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Nhap so cay" /></label>
+            <label style={labelStyle}>Mau nhom<select style={inputStyle} value={adjustColor} onChange={(e) => setAdjustColor(e.target.value)}>{ALUMINUM_COLORS.map((color) => <option key={color.code} value={color.code}>{color.name}</option>)}</select></label>
+            <label style={labelStyle}>Xuong tho<select style={inputStyle} value={selectedFactoryId} onChange={(e) => setSelectedFactoryId(e.target.value)}><option value="">Chon xuong tho</option>{factories.map((factory) => <option key={factory.id} value={factory.id}>{factory.code} - {factory.name}</option>)}</select></label>
             <label style={labelStyle}>Ly do<input style={inputStyle} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nhap kho truc tiep / xuat dieu chinh / kiem ke" /></label>
             <label style={labelStyle}>Ghi chu<input style={inputStyle} value={note} onChange={(e) => setNote(e.target.value)} placeholder="So phieu, ma don hoac ghi chu noi bo" /></label>
             <button disabled={!selected} onClick={adjustStock} style={{ ...primaryButtonStyle, opacity: selected ? 1 : 0.6 }}>Ghi nhan vao kho NPP</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button disabled={!selected || !selectedFactoryId} onClick={createManualFactoryOrder} style={{ ...ghostButtonStyle, justifyContent: 'center', opacity: selected && selectedFactoryId ? 1 : 0.6 }}>Tao don cho tho</button>
+              <button disabled={!selected} onClick={createCompanyPurchaseOrder} style={{ ...ghostButtonStyle, justifyContent: 'center', background: ui.brandSoft, color: ui.brandText, opacity: selected ? 1 : 0.6 }}>Dat hang cong ty</button>
+            </div>
           </div>
 
           <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 800, marginTop: 20, display: 'flex', gap: 6, alignItems: 'center' }}><History size={15} /> Lich su gan nhat</h3>

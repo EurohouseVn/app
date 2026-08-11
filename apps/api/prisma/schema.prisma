@@ -476,14 +476,16 @@ model NppProfileStock {
   nppOrg        Organization @relation("NppProfileStockOrg", fields: [nppOrgId], references: [id])
   profileId     String
   profile       Profile      @relation(fields: [profileId], references: [id])
+  colorCode     String       @default("")
   stockBars     Int          @default(0)
   lowStockAlert Int          @default(0)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  @@unique([nppOrgId, profileId])
+  @@unique([nppOrgId, profileId, colorCode])
   @@index([nppOrgId])
   @@index([profileId])
+  @@index([colorCode])
 }
 
 model NppStockMovement {
@@ -492,6 +494,7 @@ model NppStockMovement {
   nppOrg      Organization @relation("NppStockMovementOrg", fields: [nppOrgId], references: [id])
   profileId   String
   profile     Profile      @relation(fields: [profileId], references: [id])
+  colorCode   String       @default("")
   direction   String // IN | OUT
   quantity    Int
   reason      String       @default("")
@@ -504,6 +507,7 @@ model NppStockMovement {
 
   @@index([nppOrgId])
   @@index([profileId])
+  @@index([colorCode])
   @@index([orderId])
   @@index([createdAt])
 }

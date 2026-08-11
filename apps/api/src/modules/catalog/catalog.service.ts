@@ -7,6 +7,15 @@ const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-TRUOT': 'Hệ trượt Châu Âu',
 };
 
+const COMPANY_COLORS: ColorCode[] = [
+  { id: 'CAFE_METALIC', code: 'CAFE_METALIC', name: 'Màu Café Metalic', hex: '#4A3A2E' },
+  { id: 'CAFE_THUONG', code: 'CAFE_THUONG', name: 'Màu Café thường', hex: '#3A2B20' },
+  { id: 'XAM_NGOC_TRAI', code: 'XAM_NGOC_TRAI', name: 'Màu Xám Ngọc Trai', hex: '#9CA3AF' },
+  { id: 'VAN_GO_CAM_LAI', code: 'VAN_GO_CAM_LAI', name: 'Màu Vân gỗ Cẩm Lai', hex: '#5A3320' },
+  { id: 'VAN_GO_OLAK', code: 'VAN_GO_OLAK', name: 'Màu vân gỗ Olak', hex: '#8A5A2B' },
+  { id: 'XAM_RITA', code: 'XAM_RITA', name: 'Màu Xám Rita (dự án)', hex: '#6C7176' },
+];
+
 function displaySystemName(code: string, fallback: string) {
   return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback;
 }
@@ -33,6 +42,7 @@ export class CatalogService {
 
   async colors(): Promise<ColorCode[]> {
     const list = await this.prisma.colorCode.findMany({ orderBy: { name: 'asc' } });
-    return list.map((c) => ({ id: c.id, code: c.code, name: c.name, hex: c.hex ?? undefined }));
+    const byCode = new Map(list.map((c) => [c.code, { id: c.id, code: c.code, name: c.name, hex: c.hex ?? undefined }]));
+    return COMPANY_COLORS.map((color) => byCode.get(color.code) ?? color);
   }
 }
