@@ -5,6 +5,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private toStaticUrl(url?: string | null) {
+    if (!url) return url;
+    if (/^(https?:)?\/\//.test(url) || url.startsWith('data:') || url.startsWith('/static/')) return url;
+    return url.startsWith('/') ? `/static${url}` : `/static/${url}`;
+  }
+
   private toPromotion(promotion: any) {
     let gallery: string[] = [];
     if (Array.isArray(promotion.gallery)) {
@@ -17,8 +23,10 @@ export class ContentService {
         gallery = promotion.imageUrl ? [promotion.imageUrl] : [];
       }
     }
-    if (gallery.length === 0 && promotion.imageUrl) gallery = [promotion.imageUrl];
-    return { ...promotion, gallery };
+    const imageUrl = this.toStaticUrl(promotion.imageUrl);
+    gallery = gallery.map((item) => this.toStaticUrl(item)).filter((item): item is string => typeof item === 'string');
+    if (gallery.length === 0 && imageUrl) gallery = [imageUrl];
+    return { ...promotion, imageUrl, gallery };
   }
 
   // --- Promotions ---
