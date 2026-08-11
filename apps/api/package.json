@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "start": "node dist/apps/api/src/main.js",
+    "start": "node prisma/ensure-runtime-schema.cjs && node dist/apps/api/src/main.js",
     "build": "prisma generate && nest build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
