@@ -322,12 +322,26 @@ export class InventoryService {
   }
 
   async listNppProfiles(nppOrgId: string) {
-    await this.ensureNppColorSchema();
-    const [systems, profiles, stocks] = await Promise.all([
+    const [systems, profiles] = await Promise.all([
       this.prisma.aluSystem.findMany({ where: { code: { startsWith: 'EU-' } }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.profile.findMany({ orderBy: { code: 'asc' } }),
-      this.prisma.nppProfileStock.findMany({ where: { nppOrgId } }),
     ]);
+    let stocks: { profileId: string; colorCode?: string | null; stockBars: number; lowStockAlert: number }[] = [];
+    try {
+      await this.ensureNppColorSchema();
+      stocks = await this.prisma.nppProfileStock.findMany({ where: { nppOrgId } });
+    } catch (error) {
+      console.warn('Falling back to legacy NPP profile stock query.', error);
+      try {
+        stocks = await this.prisma.$queryRawUnsafe(
+          'SELECT "profileId", \'\' AS "colorCode", "stockBars", "lowStockAlert" FROM "NppProfileStock" WHERE "nppOrgId" = $1',
+          nppOrgId,
+        );
+      } catch (fallbackError) {
+        console.warn('Legacy NPP profile stock query failed.', fallbackError);
+        stocks = [];
+      }
+    }
     const systemById = new Map(systems.map((system) => [system.id, system]));
     const stocksByProfileId = new Map<string, typeof stocks>();
     for (const stock of stocks) {

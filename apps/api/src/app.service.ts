@@ -23,7 +23,7 @@ export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
   health() {
-    return { name: 'Eurohouse API', status: 'ok', timestamp: new Date().toISOString() };
+    return { name: 'Eurohouse API', status: 'ok', build: 'npp-color-schema-guard-v2', timestamp: new Date().toISOString() };
   }
 
   sampleQuote(): QuoteCalculationResult {
