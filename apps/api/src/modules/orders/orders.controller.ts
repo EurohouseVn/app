@@ -69,7 +69,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'NPP')
   updateOrderStatus(@Param('id') id: string, @Body() body: { status: string; note?: string }, @CurrentUser() user: JwtUser) {
-    return this.service.updateOrderStatus(id, body.status, user.organizationName || user.displayName || 'Há»‡ thá»‘ng', 'Cáº­p nháº­t tráº¡ng thÃ¡i', body.note, user);
+    return this.service.updateOrderStatus(id, body.status, user.organizationName || user.displayName || 'Hệ thống', 'Cập nhật trạng thái', body.note, user);
   }
 
   @Post('orders/:id/submit-npp')
@@ -282,14 +282,14 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
   receiveNppOrder(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.service.updateOrderStatus(id, 'NPP_REVIEWING', user.organizationName || user.displayName || 'NPP', 'NPP tiáº¿p nháº­n', 'NPP Ä‘Ã£ tiáº¿p nháº­n Ä‘Æ¡n hÃ ng.', user);
+    return this.service.updateOrderStatus(id, 'NPP_REVIEWING', user.organizationName || user.displayName || 'NPP', 'NPP tiếp nhận', 'NPP đã tiếp nhận đơn hàng.', user);
   }
 
   @Post('npp/orders/:id/send-admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
   sendNppOrderToAdmin(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.service.updateOrderStatus(id, 'CONFIRMED', user.organizationName || user.displayName || 'NPP', 'Gá»­i cÃ´ng ty', 'NPP Ä‘Ã£ gá»­i Ä‘Æ¡n lÃªn cÃ´ng ty xá»­ lÃ½.', user);
+    return this.service.updateOrderStatus(id, 'CONFIRMED', user.organizationName || user.displayName || 'NPP', 'Gửi công ty', 'NPP đã gửi đơn lên công ty xử lý.', user);
   }
 
   @Post('npp/orders/:id/delivery')

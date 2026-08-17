@@ -38,9 +38,11 @@ function normalizeCodePart(value: string): string {
     .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
     .replace(/Ä‘/g, 'd')
     .replace(/Ä/g, 'D');
-  return noMarks.toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 18) || 'CSSX';
+  return noMarks.toUpperCase().replace(/[^A-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'CSSX';
 }
 
 @Injectable()
@@ -87,7 +89,7 @@ export class OrdersService {
     if (this.hasGlobalOrderAccess(user)) return;
     if (user?.role === 'NPP' && user.organizationId && order.nppOrgId === user.organizationId) return;
     if ((user?.role === 'FACTORY' || user?.role === 'DAILY') && order.createdById === user.sub) return;
-    throw new ForbiddenException('KhÃ´ng cÃ³ quyá»n truy cáº­p Ä‘Æ¡n hÃ ng nÃ y.');
+    throw new ForbiddenException('Không có quyền truy cập đơn hàng này.');
   }
 
   private maskNppStockForWorker(order: any, user?: JwtUser) {
@@ -116,10 +118,10 @@ export class OrdersService {
     return user.displayName || fallback;
   }
 
-  private async nextOrderCode(organization?: { id: string; code: string; shortLabel: string | null } | null): Promise<string> {
+  private async nextOrderCode(organization?: { id: string; code: string; shortLabel: string | null; name?: string | null } | null): Promise<string> {
     const now = new Date();
     const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const prefix = organization?.shortLabel || organization?.code || 'EH';
+    const prefix = normalizeCodePart(organization?.code || organization?.shortLabel || organization?.name || 'CSSX');
 
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -171,7 +173,7 @@ export class OrdersService {
       totalAmount += itemPrice;
       return {
         profileId: profile?.id ?? null, productCode: item.productCode, productName: item.productName,
-        colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cÃ¢y', totalKg: itemKg,
+        colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cây', totalKg: itemKg,
         theoreticalTotalKg,
         unitPrice: pricePerKg, totalPrice: itemPrice,
       };
@@ -193,7 +195,7 @@ export class OrdersService {
         const npp = await this.prisma.organization.findUnique({ where: { id: managedByNppId } });
         if (npp) { nppOrgId = npp.id; nppName = npp.name; }
       } else {
-        nppWarning = 'XÆ°á»Ÿng chÆ°a Ä‘Æ°á»£c gÃ¡n NPP quáº£n lÃ½ â€” Ä‘Æ¡n chÆ°a thá»ƒ chuyá»ƒn tá»›i NPP nÃ o.';
+        nppWarning = 'Xưởng chưa được gán NPP quản lý - đơn chưa thể chuyển tới NPP nào.';
       }
     } else if (creator?.organization?.type === 'NPP') {
       nppOrgId = creator.organization.id;
@@ -278,7 +280,7 @@ export class OrdersService {
         histories: { orderBy: { createdAt: 'desc' } },
       },
     });
-    if (!order) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng.');
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
     this.assertCanAccessOrder(order, user);
     return this.maskNppStockForWorker(order, user);
   }
@@ -287,7 +289,7 @@ export class OrdersService {
     const existing = await this.prisma.order.findFirst({
       where: { OR: [{ id }, { code: id }] },
     });
-    if (!existing) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng.');
+    if (!existing) throw new NotFoundException('Không tìm thấy đơn hàng.');
 
     this.assertCanAccessOrder(existing, user);
 
@@ -335,7 +337,7 @@ export class OrdersService {
 
     const allowed = validTransitions[order.status];
     if (allowed && !allowed.includes(status) && order.status !== status) {
-      throw new BadRequestException(`KhÃ´ng thá»ƒ chuyá»ƒn Ä‘Æ¡n hÃ ng tá»« tráº¡ng thÃ¡i ${order.status} sang ${status}.`);
+      throw new BadRequestException(`Không thể chuyển đơn hàng từ trạng thái ${order.status} sang ${status}.`);
     }
 
     await this.prisma.orderStatusHistory.create({
@@ -348,18 +350,18 @@ export class OrdersService {
 
     if (order.createdById) {
       const statusTextMap: Record<string, string> = {
-        CONFIRMED: 'NPP Ä‘Ã£ xÃ¡c nháº­n Ä‘Æ¡n hÃ ng',
-        SHIPPED: 'ÄÆ¡n hÃ ng Ä‘ang Ä‘Æ°á»£c váº­n chuyá»ƒn',
-        PARTIALLY_SHIPPED: 'ÄÆ¡n hÃ ng Ä‘Ã£ Ä‘Æ°á»£c giao má»™t pháº§n',
-        DELIVERED: 'ÄÆ¡n hÃ ng Ä‘Ã£ giao tá»›i xÆ°á»Ÿng',
-        COMPLETED: 'ÄÆ¡n hÃ ng Ä‘Ã£ hoÃ n thÃ nh',
-        CANCELLED: 'ÄÆ¡n hÃ ng Ä‘Ã£ bá»‹ há»§y'
+        CONFIRMED: 'NPP đã xác nhận đơn hàng',
+        SHIPPED: 'Đơn hàng đang được vận chuyển',
+        PARTIALLY_SHIPPED: 'Đơn hàng đã được giao một phần',
+        DELIVERED: 'Đơn hàng đã giao tới xưởng',
+        COMPLETED: 'Đơn hàng đã hoàn thành',
+        CANCELLED: 'Đơn hàng đã bị hủy'
       };
-      const textMsg = statusTextMap[status] || `ÄÆ¡n hÃ ng chuyá»ƒn sang ${status}`;
+      const textMsg = statusTextMap[status] || `Đơn hàng chuyển sang ${status}`;
       await this.prisma.notification.create({
         data: {
           userId: order.createdById,
-          title: `ÄÆ¡n hÃ ng ${order.code}`,
+          title: `Đơn hàng ${order.code}`,
           body: textMsg,
           type: 'ORDER_STATUS',
           refId: order.id,
@@ -394,7 +396,7 @@ export class OrdersService {
       await tx.pointLedger.create({
         data: {
           userId: order.createdById!, delta: points, balanceAfter, reason: 'ORDER_COMPLETED',
-          refType: 'ORDER', refId: order.id, note: `ÄÆ¡n hoÃ n táº¥t ${order.code} Â· ${order.totalKg.toFixed(0)}kg`,
+          refType: 'ORDER', refId: order.id, note: `Đơn hoàn tất ${order.code} - ${order.totalKg.toFixed(0)}kg`,
         },
       });
     });
@@ -415,16 +417,16 @@ export class OrdersService {
     await this.prisma.debt.create({
       data: {
         type: 'NPP', direction: 'RECEIVABLE', partnerName: factoryOrg.name, amount: order.totalAmount,
-        note: `CÃ´ng ná»£ Ä‘Æ¡n ${order.code}`, nppOrgId: order.nppOrgId, factoryOrgId: factoryOrg.id, orderId: order.id,
+        note: `Công nợ đơn ${order.code}`, nppOrgId: order.nppOrgId, factoryOrgId: factoryOrg.id, orderId: order.id,
       },
     });
   }
 
   async updateOrder(id: string, input: UpdateOrderInput, userId: string) {
     const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
-    if (!order) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng.');
-    if (!['DRAFT', 'NEW'].includes(order.status)) throw new BadRequestException('Chá»‰ cÃ³ thá»ƒ sá»­a Ä‘Æ¡n khi tráº¡ng thÃ¡i lÃ  Má»›i (NEW).');
-    if (order.createdById !== userId) throw new BadRequestException('KhÃ´ng cÃ³ quyá»n sá»­a Ä‘Æ¡n nÃ y.');
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+    if (!['DRAFT', 'NEW'].includes(order.status)) throw new BadRequestException('Chỉ có thể sửa đơn khi trạng thái là Mới (NEW).');
+    if (order.createdById !== userId) throw new BadRequestException('Không có quyền sửa đơn này.');
 
     const profileIds = (input.items ?? []).map((i) => i.profileId).filter(Boolean);
     const profiles = profileIds.length ? await this.prisma.profile.findMany({ where: { id: { in: profileIds } } }) : [];
@@ -445,7 +447,7 @@ export class OrdersService {
       totalAmount += itemPrice;
       return {
         profileId: profile?.id ?? null, productCode: item.productCode, productName: item.productName,
-        colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cÃ¢y', totalKg: itemKg,
+        colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cây', totalKg: itemKg,
         theoreticalTotalKg,
         unitPrice: pricePerKg, totalPrice: itemPrice,
       };
@@ -554,7 +556,7 @@ export class OrdersService {
 
   private async nextNppFactoryCode(nppOrgId: string, factoryName: string): Promise<string> {
     const npp = await this.prisma.organization.findUnique({ where: { id: nppOrgId }, select: { code: true, shortLabel: true } });
-    if (!npp) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y NPP.');
+    if (!npp) throw new NotFoundException('Không tìm thấy NPP.');
 
     const prefix = normalizeCodePart(npp.shortLabel || npp.code || 'NPP');
     const namePart = normalizeCodePart(factoryName);
@@ -564,12 +566,12 @@ export class OrdersService {
       const existing = await this.prisma.organization.findUnique({ where: { code } });
       if (!existing) return code;
     }
-    throw new BadRequestException('KhÃ´ng sinh Ä‘Æ°á»£c mÃ£ CSSX, vui lÃ²ng thá»­ láº¡i.');
+    throw new BadRequestException('Không sinh được mã CSSX, vui lòng thử lại.');
   }
 
   async createNppFactory(nppOrgId: string, input: CreateNppFactoryInput): Promise<NppFactoryItem> {
     const name = input.name.trim();
-    if (!name) throw new BadRequestException('TÃªn cÆ¡ sá»Ÿ sáº£n xuáº¥t khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+    if (!name) throw new BadRequestException('Tên cơ sở sản xuất không được để trống.');
 
     const code = await this.nextNppFactoryCode(nppOrgId, name);
     const created = await this.prisma.organization.create({
@@ -698,13 +700,25 @@ export class OrdersService {
     });
     if (existingMovement) return this.getOrder(id, user);
 
+    const requiredStocks = new Map<string, { profileId: string; colorCode: string; productCode: string; quantity: number }>();
     for (const item of order.items) {
       if (!item.profileId) continue;
       const colorCode = normalizeColorCode(item.colorCode);
-      const stock = await this.prisma.nppProfileStock.findUnique({
-        where: { nppOrgId_profileId_colorCode: { nppOrgId: user.organizationId, profileId: item.profileId, colorCode } },
+      const key = `${item.profileId}:${colorCode}`;
+      const current = requiredStocks.get(key);
+      if (current) current.quantity += item.quantity;
+      else requiredStocks.set(key, { profileId: item.profileId, colorCode, productCode: item.productCode, quantity: item.quantity });
+    }
+
+    const stocksByKey = new Map<string, { id: string; stockBars: number }>();
+    for (const [key, required] of requiredStocks) {
+      const stock = await this.prisma.nppProfileStock.findFirst({
+        where: { nppOrgId: user.organizationId, profileId: required.profileId, colorCode: required.colorCode },
       });
-      if (!stock || stock.stockBars < item.quantity) throw new BadRequestException(`Kho NPP không đủ ${item.productCode}.`);
+      if (!stock || stock.stockBars < required.quantity) {
+        throw new BadRequestException(`Kho NPP không đủ ${required.productCode} màu ${required.colorCode}.`);
+      }
+      stocksByKey.set(key, { id: stock.id, stockBars: stock.stockBars });
     }
 
     const theoreticalTotalKg = order.items.reduce((sum: number, item: any) => sum + (item.totalKg || 0), 0) || order.totalKg;
@@ -713,20 +727,21 @@ export class OrdersService {
     const actualTotalAmount = this.amountForActualWeight(actualTotalKg, theoreticalTotalKg, theoreticalAmount);
 
     await this.prisma.$transaction(async (tx) => {
-      for (const item of order.items) {
-        if (!item.profileId) continue;
-        const colorCode = normalizeColorCode(item.colorCode);
+      for (const required of requiredStocks.values()) {
+        const key = `${required.profileId}:${required.colorCode}`;
+        const stock = stocksByKey.get(key);
+        if (!stock) throw new BadRequestException(`Kho NPP không đủ ${required.productCode} màu ${required.colorCode}.`);
         await tx.nppProfileStock.update({
-          where: { nppOrgId_profileId_colorCode: { nppOrgId: user.organizationId!, profileId: item.profileId, colorCode } },
-          data: { stockBars: { decrement: item.quantity } },
+          where: { id: stock.id },
+          data: { stockBars: { decrement: required.quantity } },
         });
         await tx.nppStockMovement.create({
           data: {
             nppOrgId: user.organizationId!,
-            profileId: item.profileId,
-            colorCode,
+            profileId: required.profileId,
+            colorCode: required.colorCode,
             direction: 'OUT',
-            quantity: item.quantity,
+            quantity: required.quantity,
             reason: 'Xuất giao CSSX',
             orderId: order.id,
             createdById: user.sub,
@@ -787,7 +802,7 @@ export class OrdersService {
       const key = factoryOrg?.id ?? '__unknown__';
       let group = groups.get(key);
       if (!group) {
-        group = { factoryOrgId: factoryOrg?.id, factoryName: factoryOrg?.name ?? order.factoryName ?? 'KhÃ´ng xÃ¡c Ä‘á»‹nh', counts: {}, totalAmount: 0, totalKg: 0 };
+        group = { factoryOrgId: factoryOrg?.id, factoryName: factoryOrg?.name ?? order.factoryName ?? 'Không xác định', counts: {}, totalAmount: 0, totalKg: 0 };
         groups.set(key, group);
       }
       group.counts[order.status] = (group.counts[order.status] ?? 0) + 1;

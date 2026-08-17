@@ -53,9 +53,20 @@ const statusFilters: { key: string; label: string }[] = [
   { key: 'COMPLETED', label: 'Hoàn tất' },
 ];
 
+function fixVietnamese(value?: string) {
+  if (!value) return '';
+  if (!/[ÃÄÂÆáºá»]/.test(value)) return value;
+  try {
+    const bytes = Uint8Array.from(Array.from(value, (char) => char.charCodeAt(0) & 0xff));
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch {
+    return value;
+  }
+}
+
 function StatusChip({ status }: { status: string }) {
   const meta = statusMeta[status] ?? { label: status, fg: ui.text, soft: ui.surfaceMuted };
-  return <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>{meta.label}</span>;
+  return <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>{fixVietnamese(meta.label)}</span>;
 }
 
 export default function NppOrdersPage() {
@@ -269,10 +280,13 @@ export default function NppOrdersPage() {
                 <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={15} /> Lịch sử xử lý</h3>
                 {selected.histories.map((event) => {
                   const meta = statusMeta[event.status] ?? { label: event.title, fg: ui.brand };
+                  const title = fixVietnamese(event.title || meta.label);
+                  const note = fixVietnamese(event.note || meta.label);
+                  const actor = fixVietnamese(event.actor);
                   return (
                     <div key={`${event.status}-${event.createdAt}`} style={{ padding: '7px 0', fontSize: 13 }}>
-                      <strong style={{ color: meta.fg }}>{event.title}</strong>
-                      <p style={{ margin: '2px 0 0', color: ui.textFaint }}>{event.note || meta.label} · {event.actor}</p>
+                      <strong style={{ color: meta.fg }}>{title}</strong>
+                      <p style={{ margin: '2px 0 0', color: ui.textFaint }}>{note} · {actor}</p>
                     </div>
                   );
                 })}
@@ -283,7 +297,7 @@ export default function NppOrdersPage() {
                   ) : null}
                   {selected.status === 'NPP_REVIEWING' ? (
                     <>
-                      <label style={{ ...labelStyle, display: 'inline-grid', minWidth: 180 }}>Kg thuc can don giao
+                      <label style={{ ...labelStyle, display: 'inline-grid', minWidth: 180 }}>Kg thực cân đơn giao
                         <input style={{ ...inputStyle, height: 38 }} type="number" step="0.1" value={deliveryActualKg} onChange={(e) => setDeliveryActualKg(e.target.value)} placeholder={selected.totalKg.toFixed(1)} />
                       </label>
                       <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brandSoft, color: ui.brandText }}><Truck size={14} /> Tạo đơn giao</button>
