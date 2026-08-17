@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Layers, Palette, Save } from 'lucide-react';
+import { Layers, Palette } from 'lucide-react';
 import type { CatalogSystem, ColorCode } from '@eurohouse/types';
 import { AdminPage } from '../../src/AdminPage';
-import { apiGet, apiSend } from '../../src/lib/api';
+import { apiGet } from '../../src/lib/api';
 import { ProfileImage } from '../../src/ProfileImage';
 import {
   currency,
-  ghostButtonStyle,
-  inputStyle,
   eyebrowStyle,
   pageTitleStyle,
   panelStyle,
@@ -24,8 +22,6 @@ export default function CatalogPage() {
   const [systems, setSystems] = useState<CatalogSystem[]>([]);
   const [palette, setPalette] = useState<ColorCode[]>([]);
   const [activeId, setActiveId] = useState<string>('');
-  const [draftWeights, setDraftWeights] = useState<Record<string, string>>({});
-  const [savingId, setSavingId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -40,41 +36,8 @@ export default function CatalogPage() {
       .catch(() => undefined);
   }, []);
 
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    systems.forEach((system) => {
-      system.profiles.forEach((profile) => {
-        const fallback = profile.kgPerMeter * (profile.barLengthMm / 1000);
-        next[profile.id] = String(profile.actualKgPerBar ?? Number(fallback.toFixed(3)));
-      });
-    });
-    setDraftWeights((current) => ({ ...next, ...current }));
-  }, [systems]);
-
   const active = useMemo(() => systems.find((s) => s.id === activeId) ?? null, [systems, activeId]);
   const totalProfiles = useMemo(() => systems.reduce((sum, s) => sum + s.profiles.length, 0), [systems]);
-
-  async function saveActualWeight(profileId: string) {
-    const value = Number(draftWeights[profileId]);
-    if (!Number.isFinite(value) || value <= 0) {
-      setError('Kg thuc te/cay phai lon hon 0.');
-      return;
-    }
-    setSavingId(profileId);
-    setError('');
-    try {
-      const updated = await apiSend<{ id: string; actualKgPerBar: number }>(`/catalog/profiles/${profileId}`, 'PATCH', { actualKgPerBar: value });
-      setSystems((current) => current.map((system) => ({
-        ...system,
-        profiles: system.profiles.map((profile) => profile.id === profileId ? { ...profile, actualKgPerBar: updated.actualKgPerBar } : profile),
-      })));
-      setDraftWeights((current) => ({ ...current, [profileId]: String(updated.actualKgPerBar) }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong luu duoc kg thuc te.');
-    } finally {
-      setSavingId('');
-    }
-  }
 
   return (
     <AdminPage>
@@ -158,7 +121,6 @@ export default function CatalogPage() {
                     {head}
                   </th>
                 ))}
-                <th style={tableHeadStyle}>Kg thuc te/cay</th>
               </tr>
             </thead>
             <tbody>
@@ -174,20 +136,6 @@ export default function CatalogPage() {
                   <td style={tableCellStyle}>{profile.barLengthMm} mm</td>
                   <td style={tableCellStyle}>{profile.barsPerBundle || '—'}</td>
                   <td style={tableCellStyle}>{currency(profile.pricePerKg)}</td>
-                  <td style={tableCellStyle}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 150 }}>
-                      <input
-                        style={{ ...inputStyle, height: 34, padding: '6px 10px', width: 88 }}
-                        type="number"
-                        step="0.001"
-                        value={draftWeights[profile.id] ?? ''}
-                        onChange={(e) => setDraftWeights((current) => ({ ...current, [profile.id]: e.target.value }))}
-                      />
-                      <button onClick={() => saveActualWeight(profile.id)} disabled={savingId === profile.id} style={{ ...ghostButtonStyle, padding: '7px 10px' }}>
-                        <Save size={14} /> Luu
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

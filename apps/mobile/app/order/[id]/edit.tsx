@@ -10,9 +10,9 @@ import { api } from '../../../src/lib/api';
 
 const STD_BAR_M = 6;
 
-function actualKgPerBar(profile: Pick<CatalogProfile, 'actualKgPerBar' | 'kgPerMeter' | 'barLengthMm'>) {
+function theoreticalKgPerBar(profile: Pick<CatalogProfile, 'kgPerMeter' | 'barLengthMm'>) {
   const fallback = profile.kgPerMeter * ((profile.barLengthMm ?? STD_BAR_M * 1000) / 1000);
-  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback;
+  return fallback;
 }
 
 type GlassLine = {
@@ -106,7 +106,7 @@ export default function EditOrderScreen() {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
-      const kg = actualKgPerBar(p) * q;
+      const kg = theoreticalKgPerBar(p) * q;
       const amount = kg * p.pricePerKg;
       lines += 1; totalKg += kg; totalAmount += amount;
       items.push({ id, code: p.code, name: p.name, quantity: q, kg, amount });

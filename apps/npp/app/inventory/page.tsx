@@ -34,11 +34,7 @@ function profileTonsForColors(profile: InventoryProfile, colorCodes: string[]) {
   if (stockByColor.length > 0) {
     return stockByColor.filter((item) => colorCodes.includes(item.colorCode)).reduce((sum, item) => sum + item.tons, 0);
   }
-  return ((profileBarsForColors(profile, colorCodes) * actualKgPerBar(profile)) / 1000);
-}
-
-function actualKgPerBar(profile: InventoryProfile) {
-  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : (profile.kgPerMeter ?? 0) * 6;
+  return ((profileBarsForColors(profile, colorCodes) * (profile.kgPerMeter ?? 0) * 6) / 1000);
 }
 
 function statusLabel(status: string) {
@@ -57,8 +53,6 @@ export default function NppInventoryPage() {
   const [adjustColor, setAdjustColor] = useState(ALUMINUM_COLORS[0].code);
   const [selectedFactoryId, setSelectedFactoryId] = useState('');
   const [selected, setSelected] = useState<InventoryProfile | null>(null);
-  const [actualKgInput, setActualKgInput] = useState('');
-  const [savingActualKg, setSavingActualKg] = useState(false);
   const [direction, setDirection] = useState<StockDirection>('IN');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('Nhập trực tiếp ngoài luồng');
@@ -84,7 +78,6 @@ export default function NppInventoryPage() {
               systemName: system.name,
               stockBars: 0,
               kgPerMeter: profile.kgPerMeter,
-              actualKgPerBar: profile.actualKgPerBar,
               lowStockAlert: 0,
               pricePerKg: profile.pricePerKg,
               stockByColor: ALUMINUM_COLORS.map((color) => ({ colorCode: color.code, colorName: color.name, stockBars: 0, tons: 0 })),
@@ -131,10 +124,6 @@ export default function NppInventoryPage() {
   useEffect(() => {
     loadMovements(selected?.id);
   }, [selected?.id]);
-
-  useEffect(() => {
-    setActualKgInput(selected ? actualKgPerBar(selected).toFixed(3) : '');
-  }, [selected]);
 
   const groups = useMemo<SystemGroup[]>(() => {
     const map = new Map<string, SystemGroup>();
@@ -192,29 +181,6 @@ export default function NppInventoryPage() {
     }
   }
 
-  async function saveActualWeight() {
-    if (!selected) return;
-    const value = Number(actualKgInput);
-    if (!Number.isFinite(value) || value <= 0) {
-      setError('Kg thuc te/cay phai lon hon 0.');
-      return;
-    }
-    setSavingActualKg(true);
-    setError('');
-    setMessage('');
-    try {
-      const updated = await apiSend<{ id: string; actualKgPerBar: number }>(`/catalog/profiles/${selected.id}`, 'PATCH', { actualKgPerBar: value });
-      setProfiles((current) => current.map((profile) => profile.id === selected.id ? { ...profile, actualKgPerBar: updated.actualKgPerBar } : profile));
-      setSelected((current) => current && current.id === selected.id ? { ...current, actualKgPerBar: updated.actualKgPerBar } : current);
-      setActualKgInput(String(updated.actualKgPerBar));
-      setMessage('Da luu kg thuc te/cay cho ma thanh.');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong luu duoc kg thuc te/cay.');
-    } finally {
-      setSavingActualKg(false);
-    }
-  }
-
   async function createManualFactoryOrder() {
     if (!selected) return;
     const amount = Number(quantity);
@@ -241,7 +207,6 @@ export default function NppInventoryPage() {
         colorCode: adjustColor,
         quantity: amount,
         kgPerMeter: selected.kgPerMeter,
-        actualKgPerBar: actualKgPerBar(selected),
       }],
     };
     try {
@@ -271,7 +236,6 @@ export default function NppInventoryPage() {
         colorCode: adjustColor,
         quantity: amount,
         kgPerMeter: selected.kgPerMeter,
-        actualKgPerBar: actualKgPerBar(selected),
       }],
     };
     try {
@@ -396,12 +360,6 @@ export default function NppInventoryPage() {
             <button onClick={() => { setDirection('OUT'); setReason('Xuất điều chỉnh'); }} style={{ ...ghostButtonStyle, background: direction === 'OUT' ? ui.dangerSoft : ui.surface, color: direction === 'OUT' ? ui.danger : ui.text }}><ArrowUpFromLine size={14} /> Xuất</button>
           </div>
           <div style={{ display: 'grid', gap: 10 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
-              <label style={labelStyle}>Kg thuc te/cay
-                <input style={inputStyle} type="number" step="0.001" value={actualKgInput} onChange={(e) => setActualKgInput(e.target.value)} placeholder="0" />
-              </label>
-              <button disabled={!selected || savingActualKg} onClick={saveActualWeight} style={{ ...ghostButtonStyle, height: 44, opacity: selected ? 1 : 0.6 }}>Luu kg</button>
-            </div>
             <label style={labelStyle}>Số cây<input style={inputStyle} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Nhập số cây" /></label>
             <label style={labelStyle}>Màu nhôm<select style={inputStyle} value={adjustColor} onChange={(e) => setAdjustColor(e.target.value)}>{ALUMINUM_COLORS.map((color) => <option key={color.code} value={color.code}>{color.name}</option>)}</select></label>
             <label style={labelStyle}>Xưởng thợ<select style={inputStyle} value={selectedFactoryId} onChange={(e) => setSelectedFactoryId(e.target.value)}><option value="">Chọn xưởng thợ</option>{factories.map((factory) => <option key={factory.id} value={factory.id}>{factory.code} - {factory.name}</option>)}</select></label>

@@ -15,13 +15,12 @@ type ShipmentLine = {
   colorCode: string;
   quantity: number;
   kgPerMeter: number;
-  actualKgPerBar: number;
+  barLengthMm: number;
   pricePerKg: number;
 };
 
-function actualKgPerBar(profile: CatalogProfile) {
-  const fallback = profile.kgPerMeter * (profile.barLengthMm / 1000);
-  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback;
+function theoreticalKg(line: Pick<ShipmentLine, 'quantity' | 'kgPerMeter' | 'barLengthMm'>) {
+  return line.quantity * line.kgPerMeter * (line.barLengthMm / 1000);
 }
 
 export default function InventoryPage() {
@@ -38,6 +37,7 @@ export default function InventoryPage() {
   const [poNo, setPoNo] = useState('');
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<ShipmentLine[]>([]);
+  const [actualTotalKg, setActualTotalKg] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -70,10 +70,13 @@ export default function InventoryPage() {
 
   const totals = useMemo(() => {
     const totalBars = lines.reduce((sum, line) => sum + line.quantity, 0);
-    const totalKg = lines.reduce((sum, line) => sum + line.quantity * line.actualKgPerBar, 0);
-    const totalAmount = lines.reduce((sum, line) => sum + Math.round(line.quantity * line.actualKgPerBar * line.pricePerKg), 0);
-    return { totalBars, totalKg, totalAmount };
-  }, [lines]);
+    const theoreticalTotalKg = lines.reduce((sum, line) => sum + theoreticalKg(line), 0);
+    const theoreticalAmount = lines.reduce((sum, line) => sum + Math.round(theoreticalKg(line) * line.pricePerKg), 0);
+    const finalKg = Number(actualTotalKg) > 0 ? Number(actualTotalKg) : theoreticalTotalKg;
+    const avgPrice = theoreticalTotalKg > 0 ? theoreticalAmount / theoreticalTotalKg : 0;
+    const totalAmount = Math.round(finalKg * avgPrice);
+    return { totalBars, theoreticalTotalKg, finalKg, totalAmount };
+  }, [lines, actualTotalKg]);
 
   function addLine() {
     setError('');
@@ -95,7 +98,7 @@ export default function InventoryPage() {
         colorCode,
         quantity: amount,
         kgPerMeter: selectedProfile.kgPerMeter,
-        actualKgPerBar: actualKgPerBar(selectedProfile),
+        barLengthMm: selectedProfile.barLengthMm,
         pricePerKg: selectedProfile.pricePerKg,
       },
     ]);
@@ -124,8 +127,8 @@ export default function InventoryPage() {
         colorCode: line.colorCode,
         quantity: line.quantity,
         kgPerMeter: line.kgPerMeter,
-        actualKgPerBar: line.actualKgPerBar,
       })),
+      actualTotalKg: Number(actualTotalKg) > 0 ? Number(actualTotalKg) : undefined,
     };
     try {
       const created = await apiSend<{ code: string }>('/admin/npp-shipments', 'POST', body);
@@ -134,6 +137,7 @@ export default function InventoryPage() {
       setInvoiceNo('');
       setPoNo('');
       setNote('');
+      setActualTotalKg('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Khong tao duoc phieu giao NPP.');
     }
@@ -184,7 +188,7 @@ export default function InventoryPage() {
               </select>
             </label>
             <label style={labelStyle}>So cay<input style={inputStyle} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" /></label>
-            <label style={labelStyle}>Kg TT/cay<input style={{ ...inputStyle, background: ui.surfaceMuted }} value={selectedProfile ? actualKgPerBar(selectedProfile).toFixed(3) : ''} readOnly placeholder="0" /></label>
+            <label style={labelStyle}>Ten hang<input style={{ ...inputStyle, background: ui.surfaceMuted }} value={selectedProfile?.name ?? ''} readOnly placeholder="Ten thanh" /></label>
             <button onClick={addLine} style={ghostButtonStyle}><Plus size={14} /> Them</button>
           </div>
         </section>
@@ -194,31 +198,33 @@ export default function InventoryPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Ma thanh', 'Ten hang', 'Mau', 'So cay', 'Kg TT/cay', 'So kg thuc te', 'Gia tri', ''].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
+              <tr>{['Ma thanh', 'Ten hang', 'Mau', 'So cay', 'Kg tam tinh', 'Gia tri tam tinh', ''].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
             </thead>
             <tbody>
               {lines.map((line, index) => {
-                const kg = line.quantity * line.actualKgPerBar;
+                const kg = theoreticalKg(line);
                 return (
                   <tr key={`${line.profileId}-${index}`}>
                     <td style={{ ...tableCellStyle, fontWeight: 800 }}>{line.productCode}</td>
                     <td style={tableCellStyle}>{line.productName}</td>
                     <td style={tableCellStyle}>{colors.find((color) => color.code === line.colorCode)?.name ?? line.colorCode}</td>
                     <td style={tableCellStyle}>{line.quantity.toLocaleString('vi-VN')}</td>
-                    <td style={tableCellStyle}>{line.actualKgPerBar.toFixed(3)}</td>
                     <td style={tableCellStyle}>{kg.toFixed(1)} kg</td>
                     <td style={tableCellStyle}>{currency(Math.round(kg * line.pricePerKg))}</td>
                     <td style={tableCellStyle}><button onClick={() => setLines((current) => current.filter((_, i) => i !== index))} style={ghostButtonStyle}><Trash2 size={14} /> Xoa</button></td>
                   </tr>
                 );
               })}
-              {lines.length === 0 ? <tr><td colSpan={8} style={{ ...tableCellStyle, color: ui.textFaint, textAlign: 'center' }}>Chua co dong hang.</td></tr> : null}
+              {lines.length === 0 ? <tr><td colSpan={7} style={{ ...tableCellStyle, color: ui.textFaint, textAlign: 'center' }}>Chua co dong hang.</td></tr> : null}
             </tbody>
           </table>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: 16, borderTop: `1px solid ${ui.border}`, flexWrap: 'wrap' }}>
           <div style={{ color: ui.textMuted, fontSize: 14 }}>
-            <strong style={{ color: ui.text }}>{totals.totalBars.toLocaleString('vi-VN')} cay</strong> · {totals.totalKg.toFixed(1)} kg · <strong style={{ color: ui.text }}>{currency(totals.totalAmount)}</strong>
+            <label style={{ ...labelStyle, display: 'inline-grid', minWidth: 220, marginRight: 12 }}>Kg thuc can toan phieu
+              <input style={inputStyle} type="number" step="0.1" value={actualTotalKg} onChange={(e) => setActualTotalKg(e.target.value)} placeholder={totals.theoreticalTotalKg.toFixed(1)} />
+            </label>
+            <strong style={{ color: ui.text }}>{totals.totalBars.toLocaleString('vi-VN')} cay</strong> · tam tinh {totals.theoreticalTotalKg.toFixed(1)} kg · thuc can {totals.finalKg.toFixed(1)} kg · <strong style={{ color: ui.text }}>{currency(totals.totalAmount)}</strong>
           </div>
           <button onClick={createShipment} style={primaryButtonStyle}><Send size={15} /> Tao phieu giao NPP</button>
         </div>

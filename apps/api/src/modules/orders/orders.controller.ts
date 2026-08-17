@@ -295,8 +295,8 @@ export class OrdersController {
   @Post('npp/orders/:id/delivery')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  createNppDelivery(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.service.createNppDelivery(id, user);
+  createNppDelivery(@Param('id') id: string, @Body() body: { actualTotalKg?: number }, @CurrentUser() user: JwtUser) {
+    return this.service.createNppDelivery(id, user, body);
   }
 
   @Post('npp/orders/:id/complete')

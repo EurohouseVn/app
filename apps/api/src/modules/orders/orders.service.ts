@@ -67,13 +67,16 @@ export class OrdersService {
     return Number((kgPerMeter * barLengthM * quantity).toFixed(2));
   }
 
-  private actualKg(profile: any, quantity: number, inputActualKgPerBar = 0, inputKgPerMeter = 0) {
-    const barLengthM = (profile?.barLengthMm ?? STD_BAR_M * 1000) / 1000;
-    const fallbackPerBar = (profile?.kgPerMeter ?? inputKgPerMeter ?? 0) * barLengthM;
-    const actualPerBar = profile?.actualKgPerBar && profile.actualKgPerBar > 0
-      ? profile.actualKgPerBar
-      : (inputActualKgPerBar > 0 ? inputActualKgPerBar : fallbackPerBar);
-    return Number((actualPerBar * quantity).toFixed(2));
+  private resolveActualTotalKg(inputActualTotalKg: unknown, theoreticalTotalKg: number) {
+    const value = Number(inputActualTotalKg);
+    if (Number.isFinite(value) && value > 0) return Number(value.toFixed(2));
+    return Number(theoreticalTotalKg.toFixed(2));
+  }
+
+  private amountForActualWeight(actualTotalKg: number, theoreticalTotalKg: number, theoreticalAmount: number) {
+    if (theoreticalTotalKg <= 0 || theoreticalAmount <= 0) return 0;
+    const avgPricePerKg = theoreticalAmount / theoreticalTotalKg;
+    return Math.round(actualTotalKg * avgPricePerKg);
   }
 
   private hasGlobalOrderAccess(user?: JwtUser): boolean {
@@ -161,7 +164,7 @@ export class OrdersService {
     const itemsData = input.items.map((item) => {
       const profile = profileById.get(item.profileId);
       const pricePerKg = profile?.pricePerKg ?? 0;
-      const itemKg = this.actualKg(profile, item.quantity, (item as any).actualKgPerBar, (item as any).kgPerMeter);
+      const itemKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
       totalKg += itemKg;
@@ -174,6 +177,8 @@ export class OrdersService {
       };
     });
 
+    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
+    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
     const creator = userId ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } }) : null;
     const canSeeNppStockWarnings = creator?.role === 'NPP';
     const factoryOrg = creator?.organization?.type === 'FACTORY' ? creator.organization : null;
@@ -204,8 +209,8 @@ export class OrdersService {
         customerPhone: input.customerPhone ?? factoryOrg?.phone ?? creator?.phone ?? '',
         deliveryAddress: input.deliveryAddress ?? factoryOrg?.address ?? '',
         colorCode: input.colorCode ?? '', note: input.note ?? '',
-        accessoriesNote: input.accessoriesNote ?? '', status: 'NEW', totalKg: Number(totalKg.toFixed(2)),
-        totalAmount, dueNote: 'Chờ NPP tiếp nhận', items: { create: itemsData },
+        accessoriesNote: input.accessoriesNote ?? '', status: 'NEW', totalKg: actualTotalKg,
+        totalAmount: actualTotalAmount, dueNote: 'Chờ NPP tiếp nhận', items: { create: itemsData },
         histories: { create: [{ status: 'NEW', title: 'Gửi NPP', actor: factoryOrg?.productionName || factoryOrg?.name || creator?.displayName || 'Người dùng', note: 'Đơn đã được gửi tới NPP.' }] },
       },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
@@ -433,7 +438,7 @@ export class OrdersService {
     }))).map((item) => {
       const profile = profileById.get(item.profileId);
       const pricePerKg = profile?.pricePerKg ?? 0;
-      const itemKg = this.actualKg(profile, item.quantity, (item as any).actualKgPerBar, (item as any).kgPerMeter);
+      const itemKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
       totalKg += itemKg;
@@ -460,8 +465,9 @@ export class OrdersService {
       if (input.note !== undefined) updateData.note = input.note;
       if (input.accessoriesNote !== undefined) updateData.accessoriesNote = input.accessoriesNote;
       if (input.items) {
-        updateData.totalKg = Number(totalKg.toFixed(2));
-        updateData.totalAmount = totalAmount;
+        const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
+        updateData.totalKg = actualTotalKg;
+        updateData.totalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
       }
 
       await tx.order.update({ where: { id }, data: updateData });
@@ -610,7 +616,7 @@ export class OrdersService {
     const itemsData = input.items.map((item) => {
       const profile = profileById.get(item.profileId);
       if (!profile) throw new BadRequestException(`Không tìm thấy mã thanh ${item.productCode || item.profileId}.`);
-      const itemKg = this.actualKg(profile, item.quantity, item.actualKgPerBar, item.kgPerMeter);
+      const itemKg = this.theoreticalKg(profile, item.quantity, item.kgPerMeter);
       const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, item.kgPerMeter);
       const itemPrice = Math.round(itemKg * profile.pricePerKg);
       totalKg += itemKg;
@@ -628,6 +634,9 @@ export class OrdersService {
         totalPrice: itemPrice,
       };
     });
+
+    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
+    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
 
     for (const item of itemsData) {
       const profile = profileById.get(item.profileId);
@@ -651,8 +660,8 @@ export class OrdersService {
           poNo: input.poNo ?? '',
           status: 'ADMIN_SENT_NPP',
           dueNote: 'Chờ NPP xác nhận nhận đủ hàng',
-          totalKg: Number(totalKg.toFixed(2)),
-          totalAmount,
+          totalKg: actualTotalKg,
+          totalAmount: actualTotalAmount,
           items: { create: itemsData },
           histories: { create: [{ status: 'ADMIN_SENT_NPP', title: 'Công ty giao NPP', actor: 'WebAdmin', note: 'Phiếu giao hàng về NPP được tạo.' }] },
         },
@@ -678,7 +687,7 @@ export class OrdersService {
     });
   }
 
-  async createNppDelivery(id: string, user: JwtUser) {
+  async createNppDelivery(id: string, user: JwtUser, input: { actualTotalKg?: number } = {}) {
     await this.ensureNppColorSchema();
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền tạo đơn giao.');
@@ -697,6 +706,11 @@ export class OrdersService {
       });
       if (!stock || stock.stockBars < item.quantity) throw new BadRequestException(`Kho NPP không đủ ${item.productCode}.`);
     }
+
+    const theoreticalTotalKg = order.items.reduce((sum: number, item: any) => sum + (item.totalKg || 0), 0) || order.totalKg;
+    const theoreticalAmount = order.items.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0) || order.totalAmount;
+    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, theoreticalTotalKg);
+    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, theoreticalTotalKg, theoreticalAmount);
 
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
@@ -723,7 +737,10 @@ export class OrdersService {
       await tx.orderStatusHistory.create({
         data: { orderId: order.id, status: 'SHIPPED', title: 'Tạo đơn giao', actor: await this.actorNameForUser(user, 'NPP'), note: 'NPP tạo đơn giao và trừ kho NPP.' },
       });
-      await tx.order.update({ where: { id: order.id }, data: { status: 'SHIPPED', dueNote: 'Đã tạo đơn giao từ NPP' } });
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'SHIPPED', dueNote: 'Đã tạo đơn giao từ NPP', totalKg: actualTotalKg, totalAmount: actualTotalAmount },
+      });
     });
 
     return this.getOrder(id, user);

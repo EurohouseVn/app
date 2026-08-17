@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Pr
 import type { PaginatedOrders } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
-import { currency, eyebrowStyle, ghostButtonStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
+import { currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
 
 type ApiOrder = {
   id: string;
@@ -64,6 +64,7 @@ export default function NppOrdersPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('ALL');
   const [selected, setSelected] = useState<ApiOrder | null>(null);
+  const [deliveryActualKg, setDeliveryActualKg] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const pageSize = 10;
@@ -74,7 +75,11 @@ export default function NppOrdersPage() {
       return;
     }
     setSelected(order);
-    apiGet<ApiOrder>(`/npp/orders/${order.id}`).then(setSelected).catch(() => undefined);
+    setDeliveryActualKg(order.totalKg ? order.totalKg.toFixed(1) : '');
+    apiGet<ApiOrder>(`/npp/orders/${order.id}`).then((detail) => {
+      setSelected(detail);
+      setDeliveryActualKg(detail.totalKg ? detail.totalKg.toFixed(1) : '');
+    }).catch(() => undefined);
   }, []);
 
   const load = useCallback((targetPage: number, targetStatus: string) => {
@@ -106,8 +111,13 @@ export default function NppOrdersPage() {
   async function createDelivery(order: ApiOrder) {
     setMessage('');
     setError('');
+    const actualKg = Number(deliveryActualKg);
+    if (!Number.isFinite(actualKg) || actualKg <= 0) {
+      setError('Nhap kg thuc can cua don giao truoc khi tao phieu.');
+      return;
+    }
     try {
-      await apiSend(`/npp/orders/${order.id}/delivery`, 'POST');
+      await apiSend(`/npp/orders/${order.id}/delivery`, 'POST', { actualTotalKg: actualKg });
       setMessage(`Đã tạo đơn giao ${order.code}. Tồn kho NPP đã được trừ theo đơn.`);
       load(page, status);
     } catch (e) {
@@ -272,7 +282,12 @@ export default function NppOrdersPage() {
                     <button onClick={() => receive(selected)} style={ghostButtonStyle}><CheckCircle2 size={14} /> Tiếp nhận</button>
                   ) : null}
                   {selected.status === 'NPP_REVIEWING' ? (
-                    <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brandSoft, color: ui.brandText }}><Truck size={14} /> Tạo đơn giao</button>
+                    <>
+                      <label style={{ ...labelStyle, display: 'inline-grid', minWidth: 180 }}>Kg thuc can don giao
+                        <input style={{ ...inputStyle, height: 38 }} type="number" step="0.1" value={deliveryActualKg} onChange={(e) => setDeliveryActualKg(e.target.value)} placeholder={selected.totalKg.toFixed(1)} />
+                      </label>
+                      <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brandSoft, color: ui.brandText }}><Truck size={14} /> Tạo đơn giao</button>
+                    </>
                   ) : null}
                   {selected.status === 'SHIPPED' || selected.status === 'DELIVERED' || selected.status === 'COMPLETED' ? (
                     <>

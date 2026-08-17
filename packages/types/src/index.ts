@@ -315,6 +315,7 @@ export interface CreateOrderInput {
   sourceType: OrderSourceType;
   clientRequestId?: string;
   submitToNpp?: boolean;
+  actualTotalKg?: number;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
@@ -329,6 +330,7 @@ export interface CreateAdminToNppShipmentInput {
   invoiceNo?: string;
   poNo?: string;
   note?: string;
+  actualTotalKg?: number;
   items: CreateOrderItemInput[];
 }
 
@@ -352,6 +354,7 @@ export interface CreateOrderResult {
 }
 
 export interface UpdateOrderInput {
+  actualTotalKg?: number;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
