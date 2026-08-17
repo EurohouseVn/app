@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CatalogSystem, ColorCode } from '@eurohouse/types';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-55': 'Hệ 55 Euroqueen',
   'EU-TRUOT': 'Hệ trượt Châu Âu',
+  'EU-ECPLUS': 'Hệ Ecento Plus',
+  'EU-PDH': 'Hệ phào đại hội',
+  'EU-MD': 'Hệ mặt dựng',
 };
 
 const COMPANY_COLORS: ColorCode[] = [
@@ -18,6 +23,17 @@ const COMPANY_COLORS: ColorCode[] = [
 
 function displaySystemName(code: string, fallback: string) {
   return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback;
+}
+
+function profileImageUrl(code: string, current?: string | null) {
+  if (current) return current;
+  const fileName = `${code}.png`;
+  const candidates = [
+    join(process.cwd(), 'apps', 'api', 'public', 'profiles', fileName),
+    join(process.cwd(), 'public', 'profiles', fileName),
+    join(__dirname, '..', '..', '..', 'public', 'profiles', fileName),
+  ];
+  return candidates.some((file) => existsSync(file)) ? `/static/profiles/${fileName}` : undefined;
 }
 
 function actualKgPerBar(profile: { actualKgPerBar?: number | null; kgPerMeter: number; barLengthMm: number }) {
@@ -40,7 +56,7 @@ export class CatalogService {
       profiles: s.profiles.map((p) => ({
         id: p.id, code: p.code, name: p.name, thicknessMm: p.thicknessMm ?? undefined,
         kgPerMeter: p.kgPerMeter, barLengthMm: p.barLengthMm, barsPerBundle: p.barsPerBundle,
-        actualKgPerBar: actualKgPerBar(p), pricePerKg: p.pricePerKg, imageUrl: p.imageUrl ?? undefined,
+        actualKgPerBar: actualKgPerBar(p), pricePerKg: p.pricePerKg, imageUrl: profileImageUrl(p.code, p.imageUrl),
       })),
     }));
   }
