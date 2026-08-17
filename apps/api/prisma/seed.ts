@@ -10,9 +10,8 @@ const FORMULA_TEMPLATE_BACKUP = path.join(__dirname, '..', 'backups', 'formula-t
 // Mật khẩu chung cho tài khoản demo (băm bằng bcrypt khi seed)
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Eurohouse@2026';
 
-// 8/11 hệ nhôm đã có đủ ảnh + mã chuẩn (gom nhóm từ phiếu xuất kho + catalog R17).
-// Còn 3 hệ (Ecento Plus, Phào đại hội, Mặt dựng) đang chờ cắt lại ảnh nguồn — xem
-// tools/profile-crop/out/{ecento-plus,phao-dai-hoi,mat-dung}/ (segment.mjs cắt sai số ô).
+// 11 hệ nhôm đã có đủ mã chuẩn. 8 hệ đầu gom nhóm từ phiếu xuất kho + catalog R17;
+// 3 hệ Ecento Plus, Phào đại hội, Mặt dựng được bổ sung ảnh mặt cắt từ catalog R18.
 const aluSystems = [
   { code: 'EU-55', name: 'Hệ 55 Euroqueen', description: 'Cửa đi & cửa sổ mở quay hệ 55', sortOrder: 1 },
   { code: 'EU-PRECO', name: 'Hệ Preco', description: 'Hệ cửa đi & cửa sổ dòng Preco', sortOrder: 2 },
@@ -22,12 +21,9 @@ const aluSystems = [
   { code: 'EU-TL', name: 'Hệ thủy lực', description: 'Khung thủy lực, mặt dựng', sortOrder: 6 },
   { code: 'EU-NOITHAT', name: 'Hệ nội thất', description: 'Phào, nẹp nội thất trang trí', sortOrder: 7 },
   { code: 'EU-CS', name: 'Hệ chấn song', description: 'Chấn song bảo vệ, trang trí', sortOrder: 8 },
-  // 3 hệ dưới đây CHƯA có ảnh mặt cắt thật (segment.mjs cắt sai số ô khi phân
-  // đoạn PDF catalog — xem tools/profile-crop/out/{ecento-plus,phao-dai-hoi,mat-dung}/).
-  // Mã + tên lấy từ tools/profile-crop/batch-all.mjs, imageUrl để trống (ProfileImage hiện "N/A").
-  { code: 'EU-ECPLUS', name: 'Hệ Ecento Plus', description: 'Cửa đi & cửa sổ dòng Ecento Plus (chưa có ảnh mặt cắt)', sortOrder: 9 },
-  { code: 'EU-PDH', name: 'Hệ phào đại hội', description: 'Phào trang trí đại hội (chưa có ảnh mặt cắt)', sortOrder: 10 },
-  { code: 'EU-MD', name: 'Hệ mặt dựng', description: 'Mặt dựng nhôm kính (chưa có ảnh mặt cắt)', sortOrder: 11 },
+  { code: 'EU-ECPLUS', name: 'Hệ Ecento Plus', description: 'Cửa đi & cửa sổ dòng Ecento Plus', sortOrder: 9 },
+  { code: 'EU-PDH', name: 'Hệ phào đại hội', description: 'Phào trang trí đại hội', sortOrder: 10 },
+  { code: 'EU-MD', name: 'Hệ mặt dựng', description: 'Mặt dựng nhôm kính', sortOrder: 11 },
 ];
 
 // 6 màu sơn tĩnh điện chuẩn Eurohouse
@@ -182,50 +178,48 @@ const profiles: [string, string, string, number, number][] = [
   ['EU-CS', 'ECS21-P100', 'Chấn song tròn phi 100', 1.0, 5],
 ];
 
-// 37 mã thuộc 3 hệ CHƯA có ảnh mặt cắt (xem chú thích ở aluSystems phía trên).
-// Mã/tên/kg lấy từ batch-all.mjs + đối chiếu "pxk mẫu.xlsx"; vài mã không có trong
-// phiếu xuất kho (đánh dấu *) dùng giá trị suy luận từ mã liền kề cùng nhóm.
-const profilesNoImage: [string, string, string, number, number][] = [
+// 37 mã thuộc 3 hệ bổ sung từ EUROHOUSE CATALOG R18 010826.
+const profilesR18: [string, string, string, number, number][] = [
   // == EU-ECPLUS - Hệ Ecento Plus ==
-  ['EU-ECPLUS', 'C3328P', 'Khung bao liền phào', 1.25, 2],
-  ['EU-ECPLUS', 'C3328-1.4', 'Khung bao cửa đi', 1.257, 4],
-  ['EU-ECPLUS', 'EPK116', 'Khung chấn song 116 *', 1.5, 2],
-  ['EU-ECPLUS', 'EPD98', 'Cánh cửa đi', 1.469, 2],
+  ['EU-ECPLUS', 'C3328P', 'Khung bao liền phào', 1.179, 2],
+  ['EU-ECPLUS', 'C3328-1.4', 'Khung phẳng', 0.948, 4],
+  ['EU-ECPLUS', 'EPK116', 'Khung ôm tường Ecento Plus', 1.553, 2],
+  ['EU-ECPLUS', 'EPD98', 'Cánh cửa đi', 1.363, 2],
   ['EU-ECPLUS', 'EPS78', 'Cánh cửa sổ', 1.127, 2],
   ['EU-ECPLUS', 'EPTD80', 'Đố cánh', 1.008, 2],
-  ['EU-ECPLUS', 'C3323-ND', 'Đố động (biến thể ND) *', 1.08, 4],
+  ['EU-ECPLUS', 'C3323-ND', 'Đố động dùng chung', 0.789, 4],
   ['EU-ECPLUS', 'C3313', 'Đố khung', 0.899, 4],
   ['EU-ECPLUS', 'C3329A', 'Ốp chân cánh', 0.458, 10],
-  ['EU-ECPLUS', 'C3296', 'Sập kính', 0.237, 10],
-  ['EU-ECPLUS', 'EPS78S', 'Cánh cửa sổ (biến thể S)', 1.127, 4],
-  ['EU-ECPLUS', 'EPD98S', 'Cánh cửa đi (biến thể S)', 1.469, 2],
+  ['EU-ECPLUS', 'C3296', 'Nẹp kính vách', 0.237, 10],
+  ['EU-ECPLUS', 'EPS78S', 'Cánh cửa sổ sập rời', 1.012, 4],
+  ['EU-ECPLUS', 'EPD98S', 'Cánh cửa đi sập rời', 1.275, 2],
   ['EU-ECPLUS', 'E70SH', 'Sập kính thường', 0.266, 10],
   ['EU-ECPLUS', 'T9809', 'Sập kính hộp', 0.214, 10],
   ['EU-ECPLUS', 'EPD138', 'Cánh cửa đi 138', 1.817, 1],
-  ['EU-ECPLUS', 'EPD125P', 'Cánh cửa đi 125 (liền phào) *', 1.6, 2],
-  ['EU-ECPLUS', 'EPS20-125', 'Sập kính hộp 125', 0.35, 10],
-  ['EU-ECPLUS', 'EPS12-125', 'Sập kính thường 125', 0.35, 10],
-  ['EU-ECPLUS', 'EPD138P', 'Cánh cửa đi 138 (liền phào) *', 1.9, 1],
-  ['EU-ECPLUS', 'EPSV11', 'Sập vách kính hộp *', 0.3, 10],
+  ['EU-ECPLUS', 'EPD125P', 'Cánh cửa đi liền phào 125', 1.525, 2],
+  ['EU-ECPLUS', 'EPS20-125', 'Nẹp kính hộp 20mm', 0.311, 10],
+  ['EU-ECPLUS', 'EPS12-125', 'Nẹp kính 12mm', 0.343, 10],
+  ['EU-ECPLUS', 'EPD138P', 'Cánh liền phào 138', 2.113, 1],
+  ['EU-ECPLUS', 'EPSV11', 'Sập vách phẳng', 0.338, 10],
+  ['EU-ECPLUS', 'EPT90', 'Đố khung bản 90mm', 1.331, 2],
   // == EU-PDH - Hệ phào đại hội ==
   ['EU-PDH', 'DH01', 'Khung chính (Phào đại PĐ01)', 1.423, 1],
   ['EU-PDH', 'DH02', 'Cột phụ (Phào đại PĐ02)', 0.361, 10],
   ['EU-PDH', 'DH03', 'Đế ốp (Phào đại PĐ03)', 0.228, 10],
-  ['EU-PDH', 'DH04', 'Phào đại PĐ04 *', 0.3, 10],
-  ['EU-PDH', 'DH05', 'Phào đại PĐ05 *', 0.3, 10],
+  ['EU-PDH', 'DH04', 'Cột chính ghép pano', 0.606, 10],
+  ['EU-PDH', 'DH05', 'Cột phụ cải tiến', 0.439, 10],
   ['EU-PDH', 'KH01CT', 'Phào đỉnh', 0.69, 4],
   ['EU-PDH', 'EPV01', 'Phào nối đỉnh', 0.348, 10],
-  ['EU-PDH', 'ECS21-P100', 'Chấn song tròn phi 100', 1.0, 5],
+  ['EU-PDH', 'ECS21-P100', 'Phào nóc 100mm', 1.076, 5],
   ['EU-PDH', 'KH10', 'Thanh ngang', 0.497, 5],
   ['EU-PDH', 'ECS18', 'Phào cân', 0.344, 10],
-  ['EU-PDH', 'ECS18-2', 'Phào cân (biến thể 2) *', 0.344, 10],
   ['EU-PDH', 'KH09', 'U16', 0.130, 10],
   // == EU-MD - Hệ mặt dựng ==
   ['EU-MD', 'EMD6577', 'Mặt dựng 65x77', 1.615, 2],
   ['EU-MD', 'EMD65100', 'Mặt dựng 65x100', 2.245, 2],
-  ['EU-MD', 'EMD65120', 'Mặt dựng 65x120 *', 2.6, 2],
+  ['EU-MD', 'EMD65120', 'Mặt dựng 65x120', 2.106, 2],
   ['EU-MD', 'EMDK46', 'Khung mặt dựng 46', 0.75, 5],
-  ['EU-MD', 'EMDS38', 'Sập mặt dựng 38 *', 0.2, 10],
+  ['EU-MD', 'EMDS38', 'Cánh cửa sổ mặt dựng', 0.8, 10],
 ];
 
 async function seedFormulaTemplates() {
@@ -353,10 +347,10 @@ async function main() {
     systemIdByCode[sys.code] = created.id;
   }
 
-  // Xoá profile cũ, nạp toàn bộ thanh nhôm (129 có ảnh + 37 chưa có ảnh)
+  // Xoá profile cũ, nạp toàn bộ thanh nhôm (129 mã nền + 37 mã bổ sung từ catalog R18)
   await prisma.orderItem.deleteMany();
   await prisma.profile.deleteMany();
-  for (const [sys, code, name, kg, bundle] of [...profiles, ...profilesNoImage]) {
+  for (const [sys, code, name, kg, bundle] of [...profiles, ...profilesR18]) {
     const hasImage = fs.existsSync(path.join(PROFILES_DIR, `${code}.png`));
     await prisma.profile.create({
       data: {
@@ -434,7 +428,7 @@ async function main() {
     });
   }
 
-  console.log(`Seed xong: ${aluSystems.length} hệ nhôm, ${profiles.length + profilesNoImage.length} thanh nhôm, ${colors.length} màu.`);
+  console.log(`Seed xong: ${aluSystems.length} hệ nhôm, ${profiles.length + profilesR18.length} thanh nhôm, ${colors.length} màu.`);
   const formulaTemplateCount = await seedFormulaTemplates();
   console.log(`Seeded ${formulaTemplateCount} formula templates.`);
 }
