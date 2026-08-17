@@ -121,6 +121,8 @@ export class OrdersController {
         quantity: it.quantity,
         totalKg: it.totalKg,
         kgPerMeter: it.profile?.kgPerMeter,
+        actualKgPerBar: it.profile?.actualKgPerBar,
+        theoreticalTotalKg: it.theoreticalTotalKg,
         barsPerBundle: it.profile?.barsPerBundle,
       })),
     });
@@ -199,6 +201,8 @@ export class OrdersController {
         quantity: it.quantity,
         totalKg: it.totalKg,
         kgPerMeter: it.profile?.kgPerMeter,
+        actualKgPerBar: it.profile?.actualKgPerBar,
+        theoreticalTotalKg: it.theoreticalTotalKg,
         barsPerBundle: it.profile?.barsPerBundle,
       })),
     });

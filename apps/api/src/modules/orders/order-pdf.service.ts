@@ -11,6 +11,8 @@ export interface OrderPdfItem {
   quantity: number;
   totalKg: number;
   kgPerMeter?: number; // tá»· trá»ng kg/m
+  actualKgPerBar?: number;
+  theoreticalTotalKg?: number;
   barsPerBundle?: number; // quy cÃ¡ch cÃ¢y/bÃ³
 }
 

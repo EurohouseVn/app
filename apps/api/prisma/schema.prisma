@@ -135,6 +135,7 @@ model Profile {
   name           String
   thicknessMm    String? // ví dụ "1.0" hoặc "1 - 1.25"
   kgPerMeter     Float                  @default(0)
+  actualKgPerBar Float                  @default(0)
   barLengthMm    Int                    @default(6000) // chiều dài cây tiêu chuẩn
   barsPerBundle  Int                    @default(0) // quy cách bó
   pricePerKg     Int                    @default(0)
@@ -210,6 +211,7 @@ model OrderItem {
   quantity    Int      @default(0) // số cây
   unit        String   @default("cây")
   totalKg     Float    @default(0)
+  theoreticalTotalKg Float @default(0)
   unitPrice   Int      @default(0)
   totalPrice  Int      @default(0)
 }

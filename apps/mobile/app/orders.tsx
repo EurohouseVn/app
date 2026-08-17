@@ -12,6 +12,11 @@ import { api, API_URL, authHeaders } from '../src/lib/api';
 
 const STD_BAR_M = 6;
 
+function actualKgPerBar(profile: Pick<CatalogProfile, 'actualKgPerBar' | 'kgPerMeter' | 'barLengthMm'>) {
+  const fallback = profile.kgPerMeter * ((profile.barLengthMm ?? STD_BAR_M * 1000) / 1000);
+  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback;
+}
+
 type GlassLine = {
   id: string;
   glassColor: string;
@@ -213,7 +218,7 @@ export default function OrderTreeScreen() {
   }, [draftParams.projectId, draftParams.projectCode, draftParams.projectName, draftParams.customerName, draftParams.customerPhone, draftParams.deliveryAddress, draftParams.quotationCode, draftAppliedKey, systems]);
 
   const profileById = useMemo(() => {
-    const map = new Map<string, { code: string; name: string; kgPerMeter: number; pricePerKg: number; imageUrl?: string }>();
+    const map = new Map<string, CatalogProfile>();
     systems.forEach((s) => s.profiles.forEach((p) => map.set(p.id, p)));
     return map;
   }, [systems]);
@@ -227,7 +232,7 @@ export default function OrderTreeScreen() {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
-      const kg = p.kgPerMeter * STD_BAR_M * q;
+      const kg = actualKgPerBar(p) * q;
       const amount = kg * p.pricePerKg;
       lines += 1;
       totalKg += kg;
@@ -529,7 +534,7 @@ export default function OrderTreeScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.leafCode}>{p.code}</Text>
                         <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                        <Text style={styles.leafMeta}>{p.kgPerMeter} kg/m · cây {(p.barLengthMm / 1000).toFixed(1)}m · bó {p.barsPerBundle}</Text>
+                        <Text style={styles.leafMeta}>{actualKgPerBar(p).toFixed(2)} kg thực tế/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
                       </View>
                       <View style={styles.stepper}>
                         <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>

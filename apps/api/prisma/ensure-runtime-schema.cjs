@@ -51,10 +51,14 @@ const r18Profiles = [
 async function main() {
   await prisma.$executeRawUnsafe('ALTER TABLE "NppProfileStock" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
   await prisma.$executeRawUnsafe('ALTER TABLE "NppStockMovement" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "actualKgPerBar" DOUBLE PRECISION NOT NULL DEFAULT 0');
+  await prisma.$executeRawUnsafe('ALTER TABLE "OrderItem" ADD COLUMN IF NOT EXISTS "theoreticalTotalKg" DOUBLE PRECISION NOT NULL DEFAULT 0');
   await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "NppProfileStock_nppOrgId_profileId_key"');
   await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NppProfileStock_nppOrgId_profileId_colorCode_key" ON "NppProfileStock"("nppOrgId", "profileId", "colorCode")');
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppProfileStock_colorCode_idx" ON "NppProfileStock"("colorCode")');
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppStockMovement_colorCode_idx" ON "NppStockMovement"("colorCode")');
+  await prisma.$executeRawUnsafe('UPDATE "Profile" SET "actualKgPerBar" = ROUND(("kgPerMeter" * ("barLengthMm"::DOUBLE PRECISION / 1000.0))::numeric, 3)::DOUBLE PRECISION WHERE "actualKgPerBar" = 0');
+  await prisma.$executeRawUnsafe('UPDATE "OrderItem" SET "theoreticalTotalKg" = "totalKg" WHERE "theoreticalTotalKg" = 0');
 
   const systemIdByCode = new Map();
   for (const system of r18Systems) {
@@ -77,6 +81,7 @@ async function main() {
       update: {
         name,
         kgPerMeter,
+        actualKgPerBar: Number((kgPerMeter * 6).toFixed(3)),
         barsPerBundle,
         barLengthMm: 6000,
         imageUrl: `/static/profiles/${code}.png`,
@@ -86,6 +91,7 @@ async function main() {
         code,
         name,
         kgPerMeter,
+        actualKgPerBar: Number((kgPerMeter * 6).toFixed(3)),
         barsPerBundle,
         barLengthMm: 6000,
         pricePerKg: 92000,
@@ -99,6 +105,7 @@ async function main() {
     data: {
       name: 'Phào cân (biến thể 2)',
       kgPerMeter: 0.344,
+      actualKgPerBar: Number((0.344 * 6).toFixed(3)),
       imageUrl: '/static/profiles/ECS18-2.png',
     },
   });

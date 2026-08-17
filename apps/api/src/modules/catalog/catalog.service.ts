@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CatalogSystem, ColorCode } from '@eurohouse/types';
 
@@ -20,6 +20,11 @@ function displaySystemName(code: string, fallback: string) {
   return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback;
 }
 
+function actualKgPerBar(profile: { actualKgPerBar?: number | null; kgPerMeter: number; barLengthMm: number }) {
+  const fallback = profile.kgPerMeter * (profile.barLengthMm / 1000);
+  return Number(((profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback) || 0).toFixed(3));
+}
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
@@ -35,9 +40,27 @@ export class CatalogService {
       profiles: s.profiles.map((p) => ({
         id: p.id, code: p.code, name: p.name, thicknessMm: p.thicknessMm ?? undefined,
         kgPerMeter: p.kgPerMeter, barLengthMm: p.barLengthMm, barsPerBundle: p.barsPerBundle,
-        pricePerKg: p.pricePerKg, imageUrl: p.imageUrl ?? undefined,
+        actualKgPerBar: actualKgPerBar(p), pricePerKg: p.pricePerKg, imageUrl: p.imageUrl ?? undefined,
       })),
     }));
+  }
+
+  async updateProfile(id: string, input: { actualKgPerBar?: number; pricePerKg?: number }) {
+    const data: { actualKgPerBar?: number; pricePerKg?: number } = {};
+    if (input.actualKgPerBar !== undefined) {
+      const value = Number(input.actualKgPerBar);
+      if (!Number.isFinite(value) || value <= 0) throw new BadRequestException('Kg thực tế/cây phải lớn hơn 0.');
+      data.actualKgPerBar = Number(value.toFixed(3));
+    }
+    if (input.pricePerKg !== undefined) {
+      const value = Number(input.pricePerKg);
+      if (!Number.isFinite(value) || value < 0) throw new BadRequestException('Giá/kg không hợp lệ.');
+      data.pricePerKg = Math.round(value);
+    }
+    if (Object.keys(data).length === 0) throw new BadRequestException('Không có dữ liệu cập nhật.');
+    const updated = await this.prisma.profile.update({ where: { id }, data }).catch(() => null);
+    if (!updated) throw new NotFoundException('Không tìm thấy mã thanh.');
+    return { ...updated, actualKgPerBar: actualKgPerBar(updated) };
   }
 
   async colors(): Promise<ColorCode[]> {

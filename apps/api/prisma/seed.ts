@@ -355,6 +355,7 @@ async function main() {
     await prisma.profile.create({
       data: {
         aluSystemId: systemIdByCode[sys], code, name, kgPerMeter: kg,
+        actualKgPerBar: Number((kg * 6).toFixed(3)),
         barLengthMm: 6000, barsPerBundle: bundle, pricePerKg: 92000,
         imageUrl: hasImage ? `/static/profiles/${code}.png` : null,
       },

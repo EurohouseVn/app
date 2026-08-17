@@ -2,13 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
-import type { CatalogSystem, ColorCode } from '@eurohouse/types';
+import type { CatalogProfile, CatalogSystem, ColorCode } from '@eurohouse/types';
 import { AppHeader } from '../../../src/components/AppHeader';
 import { Icon } from '../../../src/components/Icon';
 import { ProfileThumb } from '../../../src/components/ProfileThumb';
 import { api } from '../../../src/lib/api';
 
 const STD_BAR_M = 6;
+
+function actualKgPerBar(profile: Pick<CatalogProfile, 'actualKgPerBar' | 'kgPerMeter' | 'barLengthMm'>) {
+  const fallback = profile.kgPerMeter * ((profile.barLengthMm ?? STD_BAR_M * 1000) / 1000);
+  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback;
+}
 
 type GlassLine = {
   id: string;
@@ -89,7 +94,7 @@ export default function EditOrderScreen() {
   }, []);
 
   const profileById = useMemo(() => {
-    const map = new Map<string, { code: string; name: string; kgPerMeter: number; pricePerKg: number; imageUrl?: string }>();
+    const map = new Map<string, CatalogProfile>();
     systems.forEach((s) => s.profiles.forEach((p) => map.set(p.id, p)));
     return map;
   }, [systems]);
@@ -101,7 +106,7 @@ export default function EditOrderScreen() {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
-      const kg = p.kgPerMeter * STD_BAR_M * q;
+      const kg = actualKgPerBar(p) * q;
       const amount = kg * p.pricePerKg;
       lines += 1; totalKg += kg; totalAmount += amount;
       items.push({ id, code: p.code, name: p.name, quantity: q, kg, amount });

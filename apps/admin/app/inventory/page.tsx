@@ -15,8 +15,14 @@ type ShipmentLine = {
   colorCode: string;
   quantity: number;
   kgPerMeter: number;
+  actualKgPerBar: number;
   pricePerKg: number;
 };
+
+function actualKgPerBar(profile: CatalogProfile) {
+  const fallback = profile.kgPerMeter * (profile.barLengthMm / 1000);
+  return profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback;
+}
 
 export default function InventoryPage() {
   const { user, ready, login, logout } = useDemoAuth();
@@ -64,8 +70,8 @@ export default function InventoryPage() {
 
   const totals = useMemo(() => {
     const totalBars = lines.reduce((sum, line) => sum + line.quantity, 0);
-    const totalKg = lines.reduce((sum, line) => sum + line.quantity * line.kgPerMeter * 6.5, 0);
-    const totalAmount = lines.reduce((sum, line) => sum + Math.round(line.quantity * line.kgPerMeter * 6.5 * line.pricePerKg), 0);
+    const totalKg = lines.reduce((sum, line) => sum + line.quantity * line.actualKgPerBar, 0);
+    const totalAmount = lines.reduce((sum, line) => sum + Math.round(line.quantity * line.actualKgPerBar * line.pricePerKg), 0);
     return { totalBars, totalKg, totalAmount };
   }, [lines]);
 
@@ -89,6 +95,7 @@ export default function InventoryPage() {
         colorCode,
         quantity: amount,
         kgPerMeter: selectedProfile.kgPerMeter,
+        actualKgPerBar: actualKgPerBar(selectedProfile),
         pricePerKg: selectedProfile.pricePerKg,
       },
     ]);
@@ -117,6 +124,7 @@ export default function InventoryPage() {
         colorCode: line.colorCode,
         quantity: line.quantity,
         kgPerMeter: line.kgPerMeter,
+        actualKgPerBar: line.actualKgPerBar,
       })),
     };
     try {
@@ -176,7 +184,7 @@ export default function InventoryPage() {
               </select>
             </label>
             <label style={labelStyle}>So cay<input style={inputStyle} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" /></label>
-            <label style={labelStyle}>Ten hang<input style={{ ...inputStyle, background: ui.surfaceMuted }} value={selectedProfile?.name ?? ''} readOnly placeholder="Ten thanh" /></label>
+            <label style={labelStyle}>Kg TT/cay<input style={{ ...inputStyle, background: ui.surfaceMuted }} value={selectedProfile ? actualKgPerBar(selectedProfile).toFixed(3) : ''} readOnly placeholder="0" /></label>
             <button onClick={addLine} style={ghostButtonStyle}><Plus size={14} /> Them</button>
           </div>
         </section>
@@ -186,24 +194,25 @@ export default function InventoryPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Ma thanh', 'Ten hang', 'Mau', 'So cay', 'So kg', 'Gia tri', ''].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
+              <tr>{['Ma thanh', 'Ten hang', 'Mau', 'So cay', 'Kg TT/cay', 'So kg thuc te', 'Gia tri', ''].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
             </thead>
             <tbody>
               {lines.map((line, index) => {
-                const kg = line.quantity * line.kgPerMeter * 6.5;
+                const kg = line.quantity * line.actualKgPerBar;
                 return (
                   <tr key={`${line.profileId}-${index}`}>
                     <td style={{ ...tableCellStyle, fontWeight: 800 }}>{line.productCode}</td>
                     <td style={tableCellStyle}>{line.productName}</td>
                     <td style={tableCellStyle}>{colors.find((color) => color.code === line.colorCode)?.name ?? line.colorCode}</td>
                     <td style={tableCellStyle}>{line.quantity.toLocaleString('vi-VN')}</td>
+                    <td style={tableCellStyle}>{line.actualKgPerBar.toFixed(3)}</td>
                     <td style={tableCellStyle}>{kg.toFixed(1)} kg</td>
                     <td style={tableCellStyle}>{currency(Math.round(kg * line.pricePerKg))}</td>
                     <td style={tableCellStyle}><button onClick={() => setLines((current) => current.filter((_, i) => i !== index))} style={ghostButtonStyle}><Trash2 size={14} /> Xoa</button></td>
                   </tr>
                 );
               })}
-              {lines.length === 0 ? <tr><td colSpan={7} style={{ ...tableCellStyle, color: ui.textFaint, textAlign: 'center' }}>Chua co dong hang.</td></tr> : null}
+              {lines.length === 0 ? <tr><td colSpan={8} style={{ ...tableCellStyle, color: ui.textFaint, textAlign: 'center' }}>Chua co dong hang.</td></tr> : null}
             </tbody>
           </table>
         </div>

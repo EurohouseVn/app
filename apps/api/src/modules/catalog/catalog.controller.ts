@@ -1,5 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { Roles } from '../../auth/roles.decorator';
+import { RolesGuard } from '../../auth/roles.guard';
 
 @Controller('catalog')
 export class CatalogController {
@@ -13,5 +16,12 @@ export class CatalogController {
   @Get('colors')
   colors() {
     return this.service.colors();
+  }
+
+  @Patch('profiles/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF', 'NPP')
+  updateProfile(@Param('id') id: string, @Body() body: { actualKgPerBar?: number; pricePerKg?: number }) {
+    return this.service.updateProfile(id, body);
   }
 }

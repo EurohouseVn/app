@@ -269,6 +269,7 @@ export interface CatalogProfile {
   name: string;
   thicknessMm?: string;
   kgPerMeter: number;
+  actualKgPerBar?: number;
   barLengthMm: number;
   barsPerBundle: number;
   pricePerKg: number;
@@ -307,6 +308,7 @@ export interface CreateOrderItemInput {
   colorCode: string;
   quantity: number;
   kgPerMeter?: number;
+  actualKgPerBar?: number;
 }
 
 export interface CreateOrderInput {
@@ -1061,6 +1063,7 @@ export interface InventoryProfile {
   systemName?: string;
   stockBars: number;
   kgPerMeter?: number;
+  actualKgPerBar?: number;
   stockByColor?: { colorCode: string; colorName: string; stockBars: number; tons: number }[];
   lowStockAlert?: number;
   pricePerKg?: number;

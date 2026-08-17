@@ -61,6 +61,21 @@ export class OrdersService {
     this.nppColorSchemaReady = true;
   }
 
+  private theoreticalKg(profile: any, quantity: number, inputKgPerMeter = 0) {
+    const kgPerMeter = profile?.kgPerMeter ?? inputKgPerMeter ?? 0;
+    const barLengthM = (profile?.barLengthMm ?? STD_BAR_M * 1000) / 1000;
+    return Number((kgPerMeter * barLengthM * quantity).toFixed(2));
+  }
+
+  private actualKg(profile: any, quantity: number, inputActualKgPerBar = 0, inputKgPerMeter = 0) {
+    const barLengthM = (profile?.barLengthMm ?? STD_BAR_M * 1000) / 1000;
+    const fallbackPerBar = (profile?.kgPerMeter ?? inputKgPerMeter ?? 0) * barLengthM;
+    const actualPerBar = profile?.actualKgPerBar && profile.actualKgPerBar > 0
+      ? profile.actualKgPerBar
+      : (inputActualKgPerBar > 0 ? inputActualKgPerBar : fallbackPerBar);
+    return Number((actualPerBar * quantity).toFixed(2));
+  }
+
   private hasGlobalOrderAccess(user?: JwtUser): boolean {
     return !user || user.isCeo === true || user.role === 'ADMIN' || user.role === 'STAFF';
   }
@@ -145,15 +160,16 @@ export class OrdersService {
     let totalAmount = 0;
     const itemsData = input.items.map((item) => {
       const profile = profileById.get(item.profileId);
-      const kgPerMeter = profile?.kgPerMeter ?? item.kgPerMeter ?? 0;
       const pricePerKg = profile?.pricePerKg ?? 0;
-      const itemKg = Number((kgPerMeter * STD_BAR_M * item.quantity).toFixed(2));
+      const itemKg = this.actualKg(profile, item.quantity, (item as any).actualKgPerBar, (item as any).kgPerMeter);
+      const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
       totalKg += itemKg;
       totalAmount += itemPrice;
       return {
         profileId: profile?.id ?? null, productCode: item.productCode, productName: item.productName,
         colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cÃ¢y', totalKg: itemKg,
+        theoreticalTotalKg,
         unitPrice: pricePerKg, totalPrice: itemPrice,
       };
     });
@@ -416,15 +432,16 @@ export class OrdersService {
       colorCode: i.colorCode, quantity: i.quantity,
     }))).map((item) => {
       const profile = profileById.get(item.profileId);
-      const kgPerMeter = profile?.kgPerMeter ?? 0;
       const pricePerKg = profile?.pricePerKg ?? 0;
-      const itemKg = Number((kgPerMeter * STD_BAR_M * item.quantity).toFixed(2));
+      const itemKg = this.actualKg(profile, item.quantity, (item as any).actualKgPerBar, (item as any).kgPerMeter);
+      const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
       totalKg += itemKg;
       totalAmount += itemPrice;
       return {
         profileId: profile?.id ?? null, productCode: item.productCode, productName: item.productName,
         colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cÃ¢y', totalKg: itemKg,
+        theoreticalTotalKg,
         unitPrice: pricePerKg, totalPrice: itemPrice,
       };
     });
@@ -593,8 +610,8 @@ export class OrdersService {
     const itemsData = input.items.map((item) => {
       const profile = profileById.get(item.profileId);
       if (!profile) throw new BadRequestException(`Không tìm thấy mã thanh ${item.productCode || item.profileId}.`);
-      const kgPerMeter = profile.kgPerMeter ?? item.kgPerMeter ?? 0;
-      const itemKg = Number((kgPerMeter * STD_BAR_M * item.quantity).toFixed(2));
+      const itemKg = this.actualKg(profile, item.quantity, item.actualKgPerBar, item.kgPerMeter);
+      const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, item.kgPerMeter);
       const itemPrice = Math.round(itemKg * profile.pricePerKg);
       totalKg += itemKg;
       totalAmount += itemPrice;
@@ -606,6 +623,7 @@ export class OrdersService {
         quantity: item.quantity,
         unit: 'cây',
         totalKg: itemKg,
+        theoreticalTotalKg,
         unitPrice: profile.pricePerKg,
         totalPrice: itemPrice,
       };

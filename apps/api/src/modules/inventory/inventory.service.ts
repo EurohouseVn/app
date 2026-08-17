@@ -43,6 +43,11 @@ function displaySystemName(code?: string, fallback?: string) {
   return EUROHOUSE_SYSTEM_NAMES[code.toUpperCase()] ?? fallback ?? code;
 }
 
+function actualKgPerBar(profile: { actualKgPerBar?: number | null; kgPerMeter?: number | null; barLengthMm?: number | null }) {
+  const fallback = (profile.kgPerMeter ?? 0) * ((profile.barLengthMm ?? 6000) / 1000);
+  return Number(((profile.actualKgPerBar && profile.actualKgPerBar > 0 ? profile.actualKgPerBar : fallback) || 0).toFixed(3));
+}
+
 @Injectable()
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
@@ -353,6 +358,7 @@ export class InventoryService {
     return profiles.filter((profile) => systemById.has(profile.aluSystemId)).map((profile) => {
       const system = systemById.get(profile.aluSystemId);
       const profileStocks = stocksByProfileId.get(profile.id) ?? [];
+      const actualKg = actualKgPerBar(profile);
       const stockByColor = ALUMINUM_COLORS.map((color) => {
         const bars = profileStocks
           .filter((stock) => normalizeColorCode((stock as any).colorCode) === color.code)
@@ -361,7 +367,7 @@ export class InventoryService {
           colorCode: color.code,
           colorName: color.name,
           stockBars: bars,
-          tons: Number(((bars * (profile.kgPerMeter ?? 0) * 6) / 1000).toFixed(3)),
+          tons: Number(((bars * actualKg) / 1000).toFixed(3)),
         };
       });
       const stockBars = stockByColor.reduce((sum, item) => sum + item.stockBars, 0);
@@ -373,6 +379,7 @@ export class InventoryService {
       systemName: displaySystemName(system?.code, system?.name),
       stockBars,
       kgPerMeter: profile.kgPerMeter,
+      actualKgPerBar: actualKg,
       stockByColor,
       lowStockAlert: profileStocks[0]?.lowStockAlert ?? profile.lowStockAlert,
       pricePerKg: profile.pricePerKg,
