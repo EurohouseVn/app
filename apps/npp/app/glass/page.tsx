@@ -32,7 +32,7 @@ export default function NppGlassPage() {
         setSheets(items);
         setSelectedSheetId((current) => current || items[0]?.id || '');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Khong tai duoc kho kinh.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được kho kính.'));
   }
 
   useEffect(() => { load(); }, []);
@@ -60,7 +60,7 @@ export default function NppGlassPage() {
       setSheetForm(emptySheet);
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong luu duoc tam kinh.');
+      setError(e instanceof Error ? e.message : 'Không lưu được tấm kính.');
     }
   }
 
@@ -75,7 +75,7 @@ export default function NppGlassPage() {
       const result = await apiSend<GlassCutPlanResult>('/npp/glass/cut-plan', 'POST', { sheetId: selectedSheetId, pieces });
       setPlan(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong tinh duoc phuong an cat.');
+      setError(e instanceof Error ? e.message : 'Không tính được phương án cắt.');
     }
   }
 
@@ -179,7 +179,7 @@ export default function NppGlassPage() {
             </div>
             <div style={{ color: ui.textMuted, fontSize: 14, lineHeight: 1.8 }}>
               <div>Kho lon: <strong style={{ color: ui.text }}>{plan.sheetWidthMm} x {plan.sheetHeightMm} mm</strong></div>
-              <div>So tam cat duoc: <strong style={{ color: ui.text }}>{plan.placements.length}</strong></div>
+              <div>Số tấm cắt được: <strong style={{ color: ui.text }}>{plan.placements.length}</strong></div>
               <div>Hao hut du kien: <strong style={{ color: ui.text }}>{plan.wastePercent}%</strong></div>
               {plan.errors.length ? <div style={{ color: ui.danger, marginTop: 8 }}>{plan.errors.join(' ')}</div> : null}
             </div>

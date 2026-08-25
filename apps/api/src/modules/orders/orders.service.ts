@@ -1,6 +1,7 @@
-﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
+  ConvertQuoteToOrderInput,
   CreateNppFactoryInput,
   CreateAdminToNppShipmentInput,
   CreateOrderInput,
@@ -12,6 +13,7 @@ import type {
   UpdateOrderInput,
 } from '@eurohouse/types';
 import type { JwtUser } from '../../auth/current-user.decorator';
+import { QuotationBomService } from '../quotations/quotation-bom.service';
 
 const STD_BAR_M = 6;
 
@@ -30,6 +32,13 @@ function normalizeColorCode(colorCode?: string) {
   const found = ALUMINUM_COLORS.find((color) => color.code === value || color.name === value);
   return found?.code ?? value;
 }
+function requireSingleColorCode(colorCode?: string) {
+  const value = (colorCode || '').trim();
+  if (value.includes(',')) {
+    throw new BadRequestException('Dòng hàng có nhiều màu ghép chung. Vui lòng tách riêng số cây cho từng màu trước khi tạo đơn giao.');
+  }
+  return normalizeColorCode(value);
+}
 const ORDER_KG_PER_BLOCK = 100;
 const ORDER_POINTS_PER_KG_BLOCK = 10;
 
@@ -39,15 +48,16 @@ function normalizeCodePart(value: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .replace(/Ä‘/g, 'd')
-    .replace(/Ä/g, 'D');
+    .replace(/Đ/g, 'D');
   return noMarks.toUpperCase().replace(/[^A-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'CSSX';
 }
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly quotationBom: QuotationBomService,
+  ) {}
 
   private readonly createOrderRequests = new Map<string, { expiresAt: number; promise: Promise<any> }>();
   private nppColorSchemaReady = false;
@@ -92,6 +102,35 @@ export class OrdersService {
     throw new ForbiddenException('Không có quyền truy cập đơn hàng này.');
   }
 
+  private scopedOrderWhere(
+    filter: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string } | undefined,
+    user?: JwtUser,
+  ) {
+    const where: Record<string, unknown> = {
+      sourceType: filter?.sourceType,
+      status: filter?.status,
+      createdById: filter?.createdById,
+      nppOrgId: filter?.nppOrgId,
+    };
+
+    if (this.hasGlobalOrderAccess(user)) return where;
+    if (user?.role === 'NPP') {
+      if (!user.organizationId) throw new ForbiddenException('Tài khoản NPP chưa được gán tổ chức.');
+      where.nppOrgId = user.organizationId;
+      where.createdById = undefined;
+      where.status = filter?.status === 'DRAFT'
+        ? '__DRAFT_IS_NOT_VISIBLE_TO_NPP__'
+        : (filter?.status || { not: 'DRAFT' });
+      return where;
+    }
+    if (user?.role === 'FACTORY' || user?.role === 'DAILY') {
+      where.createdById = user.sub;
+      where.nppOrgId = undefined;
+      return where;
+    }
+    throw new ForbiddenException('Không có quyền truy cập danh sách đơn hàng.');
+  }
+
   private maskNppStockForWorker(order: any, user?: JwtUser) {
     if (user?.role !== 'FACTORY' && user?.role !== 'DAILY') return order;
     if (!Array.isArray(order?.items)) return order;
@@ -99,7 +138,9 @@ export class OrdersService {
       ...order,
       items: order.items.map((item: any) => {
         if (!item?.profile) return item;
-        const { stockBars: _stockBars, lowStockAlert: _lowStockAlert, ...profile } = item.profile;
+        const profile = { ...item.profile };
+        delete profile.stockBars;
+        delete profile.lowStockAlert;
         return { ...item, profile };
       }),
     };
@@ -139,6 +180,11 @@ export class OrdersService {
     const requestKey = userId && requestId ? `${userId}:${requestId}` : '';
     const now = Date.now();
     if (requestKey) {
+      const persisted = await this.prisma.order.findFirst({
+        where: { createdById: userId, clientRequestId: requestId },
+        include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
+      });
+      if (persisted) return persisted;
       const current = this.createOrderRequests.get(requestKey);
       if (current && current.expiresAt > now) return current.promise;
       if (current) this.createOrderRequests.delete(requestKey);
@@ -157,9 +203,24 @@ export class OrdersService {
   }
 
   private async createOrderInternal(input: CreateOrderInput, userId?: string) {
-    const profileIds = input.items.map((i) => i.profileId).filter(Boolean);
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      throw new BadRequestException('Đơn hàng cần ít nhất một dòng sản phẩm.');
+    }
+    for (const item of input.items) {
+      if (typeof item?.profileId !== 'string' || !item.profileId.trim()) {
+        throw new BadRequestException('Mỗi dòng hàng phải liên kết với một mã thanh trong catalog.');
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        throw new BadRequestException(`Số cây của ${item.productCode || 'dòng hàng'} phải là số nguyên dương.`);
+      }
+      requireSingleColorCode(item.colorCode);
+    }
+
+    const profileIds = Array.from(new Set(input.items.map((item) => item.profileId.trim())));
     const profiles = await this.prisma.profile.findMany({ where: { id: { in: profileIds } } });
     const profileById = new Map(profiles.map((p) => [p.id, p]));
+    const missingProfileId = profileIds.find((profileId) => !profileById.has(profileId));
+    if (missingProfileId) throw new BadRequestException('Có mã thanh không còn tồn tại trong catalog. Vui lòng tải lại danh mục.');
 
     let totalKg = 0;
     let totalAmount = 0;
@@ -172,19 +233,27 @@ export class OrdersService {
       totalKg += itemKg;
       totalAmount += itemPrice;
       return {
-        profileId: profile?.id ?? null, productCode: item.productCode, productName: item.productName,
-        colorCode: item.colorCode ?? '', quantity: item.quantity, unit: 'cây', totalKg: itemKg,
+        profileId: profile!.id, productCode: profile!.code, productName: profile!.name,
+        colorCode: requireSingleColorCode(item.colorCode), quantity: item.quantity, unit: 'cây', totalKg: itemKg,
         theoreticalTotalKg,
         unitPrice: pricePerKg, totalPrice: itemPrice,
       };
     });
 
-    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
-    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
     const creator = userId ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } }) : null;
     const canSeeNppStockWarnings = creator?.role === 'NPP';
-    const factoryOrg = creator?.organization?.type === 'FACTORY' ? creator.organization : null;
-    const code = await this.nextOrderCode(factoryOrg);
+    const nppOrganization = creator?.organization?.type === 'NPP' ? creator.organization : null;
+    const createdByNpp = Boolean(nppOrganization);
+    const nppPurchase = createdByNpp && input.sourceType === 'NPP_TO_ADMIN';
+    let factoryOrg = creator?.organization?.type === 'FACTORY' ? creator.organization : null;
+    if (createdByNpp && !nppPurchase) {
+      if (!input.factoryOrgId) throw new BadRequestException('Chọn cơ sở sản xuất nhận đơn hàng.');
+      factoryOrg = await this.prisma.organization.findFirst({
+        where: { id: input.factoryOrgId, type: 'FACTORY', managedByNppId: nppOrganization!.id },
+      });
+      if (!factoryOrg) throw new BadRequestException('Cơ sở sản xuất không thuộc phạm vi quản lý của NPP.');
+    }
+    const code = await this.nextOrderCode(nppPurchase ? nppOrganization : factoryOrg);
 
     let nppOrgId: string | null = null;
     let nppName = '';
@@ -202,18 +271,34 @@ export class OrdersService {
       nppName = creator.organization.name;
     }
 
+    const fallbackSourceType = input.sourceType || (creator?.organization?.type === 'NPP' ? 'NPP' : 'FACTORY');
+    const shouldSubmit = nppPurchase || createdByNpp || (input.submitToNpp === true && Boolean(nppOrgId));
+    const initialStatus = nppPurchase ? 'NEW' : (createdByNpp ? 'NPP_REVIEWING' : (shouldSubmit ? 'NEW' : 'DRAFT'));
+    const initialTitle = nppPurchase ? 'NPP đặt hàng công ty' : (createdByNpp ? 'NPP tạo đơn' : (shouldSubmit ? 'Gửi NPP' : 'Lưu nháp'));
+    const initialNote = nppPurchase
+      ? `${nppOrganization?.name || 'NPP'} gửi yêu cầu đặt hàng tới công ty.`
+      : createdByNpp
+      ? `NPP tạo đơn trực tiếp cho ${factoryOrg?.productionName || factoryOrg?.name || 'CSSX'}.`
+      : shouldSubmit
+      ? `Đơn đã được gửi tới ${nppName || 'NPP'}.`
+      : 'Đơn được lưu nháp và chưa chuyển tới NPP.';
+    const initialActor = createdByNpp
+      ? (creator?.organization?.productionName || creator?.organization?.name || creator?.displayName || 'NPP')
+      : (factoryOrg?.productionName || factoryOrg?.name || creator?.displayName || 'Người dùng');
     const order = await this.prisma.order.create({
       data: {
-        code, sourceType: input.sourceType, createdById: creator?.id ?? null,
-        factoryName: creator?.organization?.type === 'FACTORY' ? creator.organization.name : '',
+        code, clientRequestId: input.clientRequestId?.trim() || null,
+        sourceType: fallbackSourceType, createdById: creator?.id ?? null,
+        factoryName: factoryOrg?.productionName || factoryOrg?.name || '',
+        factoryOrgId: factoryOrg?.id ?? null,
         nppOrgId, nppName,
-        customerName: input.customerName ?? factoryOrg?.productionName ?? factoryOrg?.name ?? creator?.displayName ?? '',
-        customerPhone: input.customerPhone ?? factoryOrg?.phone ?? creator?.phone ?? '',
-        deliveryAddress: input.deliveryAddress ?? factoryOrg?.address ?? '',
+        customerName: input.customerName ?? (nppPurchase ? nppOrganization?.name : undefined) ?? factoryOrg?.productionName ?? factoryOrg?.name ?? creator?.displayName ?? '',
+        customerPhone: input.customerPhone ?? (nppPurchase ? nppOrganization?.phone : undefined) ?? factoryOrg?.phone ?? creator?.phone ?? '',
+        deliveryAddress: input.deliveryAddress ?? (nppPurchase ? nppOrganization?.address : undefined) ?? factoryOrg?.address ?? '',
         colorCode: input.colorCode ?? '', note: input.note ?? '',
-        accessoriesNote: input.accessoriesNote ?? '', status: 'NEW', totalKg: actualTotalKg,
-        totalAmount: actualTotalAmount, dueNote: 'Chờ NPP tiếp nhận', items: { create: itemsData },
-        histories: { create: [{ status: 'NEW', title: 'Gửi NPP', actor: factoryOrg?.productionName || factoryOrg?.name || creator?.displayName || 'Người dùng', note: 'Đơn đã được gửi tới NPP.' }] },
+        accessoriesNote: input.accessoriesNote ?? '', status: initialStatus, totalKg,
+        totalAmount, dueNote: nppPurchase ? 'Chờ công ty tiếp nhận' : (createdByNpp ? 'NPP chuẩn bị đơn giao' : (shouldSubmit ? 'Chờ NPP tiếp nhận' : 'Bản nháp')), items: { create: itemsData },
+        histories: { create: [{ status: initialStatus, title: initialTitle, actor: initialActor, note: initialNote }] },
       },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
     });
@@ -224,9 +309,7 @@ export class OrdersService {
   listOrders(filter: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string; page: number; pageSize?: number; }, user?: JwtUser): Promise<{ items: any[]; total: number; page: number; pageSize: number }>;
   listOrders(filter?: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string; page?: undefined; pageSize?: number; }, user?: JwtUser): Promise<any[]>;
   async listOrders(filter?: { sourceType?: string; status?: string; createdById?: string; nppOrgId?: string; page?: number; pageSize?: number; }, user?: JwtUser) {
-    const where = {
-      sourceType: filter?.sourceType, status: filter?.status, createdById: filter?.createdById, nppOrgId: filter?.nppOrgId,
-    };
+    const where = this.scopedOrderWhere(filter, user);
     if (filter?.page !== undefined) {
       const pageSize = filter.pageSize ?? 5;
       const page = filter.page;
@@ -255,6 +338,9 @@ export class OrdersService {
         nppOrg: {
           select: { name: true, address: true, phone: true, email: true, productionName: true, mainCategories: true },
         },
+        factoryOrg: {
+          select: { name: true, address: true, phone: true, email: true, productionName: true, mainCategories: true },
+        },
         items: { include: { profile: true } },
         histories: { orderBy: { createdAt: 'desc' } },
       },
@@ -276,6 +362,12 @@ export class OrdersService {
             },
           },
         },
+        factoryOrg: {
+          select: { name: true, address: true, phone: true, email: true, productionName: true, mainCategories: true },
+        },
+        nppOrg: {
+          select: { name: true, address: true, phone: true, email: true, productionName: true, mainCategories: true },
+        },
         items: { include: { profile: true } },
         histories: { orderBy: { createdAt: 'desc' } },
       },
@@ -292,14 +384,21 @@ export class OrdersService {
     if (!existing) throw new NotFoundException('Không tìm thấy đơn hàng.');
 
     this.assertCanAccessOrder(existing, user);
+    if (existing.status !== 'DRAFT') {
+      throw new BadRequestException('Chỉ được xóa đơn nháp. Đơn đã gửi phải được hủy để giữ lịch sử xử lý.');
+    }
+    if (existing.createdById !== user?.sub && !this.hasGlobalOrderAccess(user)) {
+      throw new ForbiddenException('Chỉ người tạo mới được xóa đơn nháp này.');
+    }
 
-    await this.prisma.orderItem.deleteMany({ where: { orderId: existing.id } });
-    await this.prisma.orderStatusHistory.deleteMany({ where: { orderId: existing.id } });
-    await this.prisma.profileStockMovement.deleteMany({ where: { orderId: existing.id } });
-    await this.prisma.debt.deleteMany({ where: { orderId: existing.id } });
-    await this.prisma.workOrder.deleteMany({ where: { orderId: existing.id } });
-
-    await this.prisma.order.delete({ where: { id: existing.id } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: existing.id } });
+      await tx.orderStatusHistory.deleteMany({ where: { orderId: existing.id } });
+      await tx.profileStockMovement.deleteMany({ where: { orderId: existing.id } });
+      await tx.debt.deleteMany({ where: { orderId: existing.id } });
+      await tx.workOrder.deleteMany({ where: { orderId: existing.id } });
+      await tx.order.delete({ where: { id: existing.id } });
+    });
     return true;
   }
 
@@ -318,6 +417,7 @@ export class OrdersService {
 
   async updateOrderStatus(id: string, status: string, actor: string, title: string, note = '', user?: JwtUser) {
     const order = await this.getOrder(id, user);
+    if (order.status === status) return order;
 
     const validTransitions: Record<string, string[]> = {
       DRAFT: ['NEW', 'CANCELLED'],
@@ -340,13 +440,25 @@ export class OrdersService {
       throw new BadRequestException(`Không thể chuyển đơn hàng từ trạng thái ${order.status} sang ${status}.`);
     }
 
-    await this.prisma.orderStatusHistory.create({
-      data: { orderId: order.id, status, title, actor, note },
+    const changed = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: { status },
+      });
+      if (result.count === 0) return false;
+      await tx.orderStatusHistory.create({
+        data: { orderId: order.id, status, title, actor, note },
+      });
+      return true;
     });
-    const updated = await this.prisma.order.update({
-      where: { id: order.id }, data: { status },
+    const updated = await this.prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
     });
+    if (!changed) {
+      if (updated.status === status) return this.maskNppStockForWorker(updated, user);
+      throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại dữ liệu.');
+    }
 
     if (order.createdById) {
       const statusTextMap: Record<string, string> = {
@@ -385,17 +497,19 @@ export class OrdersService {
     const points = Math.floor(order.totalKg / ORDER_KG_PER_BLOCK) * ORDER_POINTS_PER_KG_BLOCK;
     if (points <= 0) return;
 
-    const existing = await this.prisma.pointLedger.findFirst({ where: { reason: 'ORDER_COMPLETED', refId: order.id } });
-    if (existing) return;
-
     await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: order.createdById! }, select: { points: true } });
-      if (!user) return;
-      const balanceAfter = user.points + points;
-      await tx.user.update({ where: { id: order.createdById! }, data: { points: balanceAfter } });
+      await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `order-points:${order.id}`);
+      const existing = await tx.pointLedger.findFirst({ where: { reason: 'ORDER_COMPLETED', refId: order.id } });
+      if (existing) return;
+      const updatedUser = await tx.user.update({
+        where: { id: order.createdById! },
+        data: { points: { increment: points } },
+        select: { points: true },
+      }).catch(() => null);
+      if (!updatedUser) return;
       await tx.pointLedger.create({
         data: {
-          userId: order.createdById!, delta: points, balanceAfter, reason: 'ORDER_COMPLETED',
+          userId: order.createdById!, delta: points, balanceAfter: updatedUser.points, reason: 'ORDER_COMPLETED',
           refType: 'ORDER', refId: order.id, note: `Đơn hoàn tất ${order.code} - ${order.totalKg.toFixed(0)}kg`,
         },
       });
@@ -404,28 +518,30 @@ export class OrdersService {
 
   private async createNppDebtForOrder(orderId: string): Promise<void> {
     const order = await this.prisma.order.findUnique({
-      where: { id: orderId }, include: { createdBy: { include: { organization: true } } },
+      where: { id: orderId }, include: { factoryOrg: true, createdBy: { include: { organization: true } } },
     });
     if (!order || !order.nppOrgId) return;
 
-    const existing = await this.prisma.debt.findFirst({ where: { orderId: order.id } });
-    if (existing) return;
-
-    const factoryOrg = order.createdBy?.organization?.type === 'FACTORY' ? order.createdBy.organization : null;
+    const factoryOrg = order.factoryOrg || (order.createdBy?.organization?.type === 'FACTORY' ? order.createdBy.organization : null);
     if (!factoryOrg) return;
 
-    await this.prisma.debt.create({
-      data: {
-        type: 'NPP', direction: 'RECEIVABLE', partnerName: factoryOrg.name, amount: order.totalAmount,
-        note: `Công nợ đơn ${order.code}`, nppOrgId: order.nppOrgId, factoryOrgId: factoryOrg.id, orderId: order.id,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `order-debt:${order.id}`);
+      const existing = await tx.debt.findFirst({ where: { orderId: order.id } });
+      if (existing) return;
+      await tx.debt.create({
+        data: {
+          type: 'NPP', direction: 'RECEIVABLE', partnerName: factoryOrg.name, amount: order.totalAmount,
+          note: `Công nợ đơn ${order.code}`, nppOrgId: order.nppOrgId, factoryOrgId: factoryOrg.id, orderId: order.id,
+        },
+      });
     });
   }
 
   async updateOrder(id: string, input: UpdateOrderInput, userId: string) {
     const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
-    if (!['DRAFT', 'NEW'].includes(order.status)) throw new BadRequestException('Chỉ có thể sửa đơn khi trạng thái là Mới (NEW).');
+    if (order.status !== 'DRAFT') throw new BadRequestException('Chỉ có thể sửa đơn khi còn ở trạng thái nháp.');
     if (order.createdById !== userId) throw new BadRequestException('Không có quyền sửa đơn này.');
 
     const profileIds = (input.items ?? []).map((i) => i.profileId).filter(Boolean);
@@ -467,9 +583,8 @@ export class OrdersService {
       if (input.note !== undefined) updateData.note = input.note;
       if (input.accessoriesNote !== undefined) updateData.accessoriesNote = input.accessoriesNote;
       if (input.items) {
-        const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
-        updateData.totalKg = actualTotalKg;
-        updateData.totalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
+        updateData.totalKg = totalKg;
+        updateData.totalAmount = totalAmount;
       }
 
       await tx.order.update({ where: { id }, data: updateData });
@@ -481,23 +596,35 @@ export class OrdersService {
   async submitOrderToNpp(id: string, user: JwtUser) {
     const order = await this.getOrder(id, user);
     if (order.createdById !== user.sub) throw new ForbiddenException('Không có quyền gửi đơn này.');
-    if (!['DRAFT', 'NEW'].includes(order.status)) throw new BadRequestException('Chỉ gửi NPP khi đơn còn ở trạng thái mới.');
+    if (order.status === 'NEW') return order;
+    if (order.status !== 'DRAFT') throw new BadRequestException('Chỉ gửi NPP khi đơn còn ở trạng thái nháp.');
+    if (!order.nppOrgId) throw new BadRequestException('Cơ sở sản xuất chưa được gán NPP quản lý. Vui lòng liên hệ NPP trước khi gửi đơn.');
 
     const actor = await this.actorNameForUser(user, 'CSSX');
-    await this.prisma.orderStatusHistory.create({
-      data: {
-        orderId: order.id,
-        status: 'NEW',
-        title: 'Gửi NPP',
-        actor,
-        note: order.nppName ? `Đơn đã được gửi tới ${order.nppName}.` : 'Đơn đã được gửi tới luồng NPP.',
-      },
+    const changed = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { id: order.id, status: 'DRAFT' },
+        data: { status: 'NEW', dueNote: 'Chờ NPP tiếp nhận' },
+      });
+      if (result.count === 0) return false;
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          status: 'NEW',
+          title: 'Gửi NPP',
+          actor,
+          note: `Đơn đã được gửi tới ${order.nppName || 'NPP'}.`,
+        },
+      });
+      return true;
     });
-    const updated = await this.prisma.order.update({
+    const updated = await this.prisma.order.findUniqueOrThrow({
       where: { id: order.id },
-      data: { status: 'NEW', dueNote: 'Chờ NPP tiếp nhận' },
       include: { items: { include: { profile: true } }, histories: { orderBy: { createdAt: 'desc' } } },
     });
+    if (!changed && updated.status !== 'NEW') {
+      throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại trước khi gửi.');
+    }
     return this.maskNppStockForWorker(updated, user);
   }
 
@@ -506,13 +633,13 @@ export class OrdersService {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [statusGroups, managedFactoryCount, openDebts, monthOrders] = await Promise.all([
-      this.prisma.order.groupBy({ by: ['status'], where: { nppOrgId }, _count: { _all: true } }),
+      this.prisma.order.groupBy({ by: ['status'], where: { nppOrgId, status: { not: 'DRAFT' } }, _count: { _all: true } }),
       this.prisma.organization.count({ where: { managedByNppId: nppOrgId } }),
       this.prisma.debt.aggregate({
         where: { nppOrgId, status: { not: 'PAID' } }, _sum: { amount: true, paidAmount: true },
       }),
       this.prisma.order.findMany({
-        where: { nppOrgId, createdAt: { gte: startOfMonth } }, select: { totalAmount: true },
+        where: { nppOrgId, status: { not: 'DRAFT' }, createdAt: { gte: startOfMonth } }, select: { totalAmount: true },
       }),
     ]);
 
@@ -693,7 +820,9 @@ export class OrdersService {
     await this.ensureNppColorSchema();
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền tạo đơn giao.');
+    if (order.status === 'SHIPPED') return order;
     if (!['NPP_REVIEWING', 'CONFIRMED', 'RESERVED'].includes(order.status)) throw new BadRequestException('Chỉ tạo đơn giao khi NPP đã tiếp nhận hoặc xác nhận đơn.');
+    if (!order.items.length) throw new BadRequestException('Đơn hàng chưa có dòng sản phẩm, không thể tạo đơn giao.');
 
     const existingMovement = await this.prisma.nppStockMovement.findFirst({
       where: { nppOrgId: user.organizationId, orderId: order.id, direction: 'OUT', reason: 'Xuất giao CSSX' },
@@ -702,8 +831,8 @@ export class OrdersService {
 
     const requiredStocks = new Map<string, { profileId: string; colorCode: string; productCode: string; quantity: number }>();
     for (const item of order.items) {
-      if (!item.profileId) continue;
-      const colorCode = normalizeColorCode(item.colorCode);
+      if (!item.profileId) throw new BadRequestException(`Mã hàng ${item.productCode} chưa liên kết với danh mục kho NPP.`);
+      const colorCode = requireSingleColorCode(item.colorCode);
       const key = `${item.profileId}:${colorCode}`;
       const current = requiredStocks.get(key);
       if (current) current.quantity += item.quantity;
@@ -723,18 +852,29 @@ export class OrdersService {
 
     const theoreticalTotalKg = order.items.reduce((sum: number, item: any) => sum + (item.totalKg || 0), 0) || order.totalKg;
     const theoreticalAmount = order.items.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0) || order.totalAmount;
-    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, theoreticalTotalKg);
+    const submittedActualKg = Number(input.actualTotalKg);
+    if (!Number.isFinite(submittedActualKg) || submittedActualKg <= 0) {
+      throw new BadRequestException('Nhập tổng kg thực tế cân của toàn đơn giao.');
+    }
+    if (submittedActualKg + 0.01 < theoreticalTotalKg) {
+      throw new BadRequestException(`Kg thực tế không được thấp hơn kg theo tỷ trọng (${theoreticalTotalKg.toFixed(2)} kg).`);
+    }
+    const actualTotalKg = Number(submittedActualKg.toFixed(2));
     const actualTotalAmount = this.amountForActualWeight(actualTotalKg, theoreticalTotalKg, theoreticalAmount);
+    const actor = await this.actorNameForUser(user, 'NPP');
 
     await this.prisma.$transaction(async (tx) => {
       for (const required of requiredStocks.values()) {
         const key = `${required.profileId}:${required.colorCode}`;
         const stock = stocksByKey.get(key);
         if (!stock) throw new BadRequestException(`Kho NPP không đủ ${required.productCode} màu ${required.colorCode}.`);
-        await tx.nppProfileStock.update({
-          where: { id: stock.id },
+        const decremented = await tx.nppProfileStock.updateMany({
+          where: { id: stock.id, nppOrgId: user.organizationId!, stockBars: { gte: required.quantity } },
           data: { stockBars: { decrement: required.quantity } },
         });
+        if (decremented.count === 0) {
+          throw new BadRequestException(`Kho NPP không đủ ${required.productCode} màu ${required.colorCode}.`);
+        }
         await tx.nppStockMovement.create({
           data: {
             nppOrgId: user.organizationId!,
@@ -749,12 +889,13 @@ export class OrdersService {
           },
         });
       }
-      await tx.orderStatusHistory.create({
-        data: { orderId: order.id, status: 'SHIPPED', title: 'Tạo đơn giao', actor: await this.actorNameForUser(user, 'NPP'), note: 'NPP tạo đơn giao và trừ kho NPP.' },
-      });
-      await tx.order.update({
-        where: { id: order.id },
+      const transitioned = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
         data: { status: 'SHIPPED', dueNote: 'Đã tạo đơn giao từ NPP', totalKg: actualTotalKg, totalAmount: actualTotalAmount },
+      });
+      if (transitioned.count === 0) throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại trước khi tạo đơn giao.');
+      await tx.orderStatusHistory.create({
+        data: { orderId: order.id, status: 'SHIPPED', title: 'Tạo đơn giao', actor, note: `NPP tạo đơn giao, cân thực tế ${actualTotalKg.toFixed(2)} kg và trừ kho NPP.` },
       });
     });
 
@@ -764,23 +905,33 @@ export class OrdersService {
   async completeNppDelivery(id: string, user: JwtUser) {
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền hoàn thành đơn giao.');
+    if (order.status === 'COMPLETED') {
+      await this.createNppDebtForOrder(order.id);
+      await this.awardOrderPoints(order.id);
+      return order;
+    }
     if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new BadRequestException('Chỉ hoàn thành đơn sau khi đã tạo đơn giao.');
 
+    const actor = await this.actorNameForUser(user, 'NPP');
     await this.prisma.$transaction(async (tx) => {
+      const transitioned = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: { status: 'COMPLETED', dueNote: 'NPP đã hoàn thành đơn giao' },
+      });
+      if (transitioned.count === 0) throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại trước khi hoàn thành.');
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
           status: 'COMPLETED',
           title: 'Hoàn thành đơn',
-          actor: await this.actorNameForUser(user, 'NPP'),
+          actor,
           note: 'NPP xác nhận đơn giao đã hoàn tất.',
         },
       });
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: 'COMPLETED', dueNote: 'NPP đã hoàn thành đơn giao' },
-      });
     });
+
+    await this.createNppDebtForOrder(order.id);
+    await this.awardOrderPoints(order.id);
 
     return this.getOrder(id, user);
   }
@@ -793,7 +944,7 @@ export class OrdersService {
     }
 
     const orders = await this.prisma.order.findMany({
-      where: { nppOrgId, createdAt: dateRange }, include: { createdBy: { include: { organization: true } } },
+      where: { nppOrgId, status: { not: 'DRAFT' }, createdAt: dateRange }, include: { createdBy: { include: { organization: true } } },
     });
 
     const groups = new Map<string, NppFactoryReconciliation>();
@@ -860,5 +1011,35 @@ export class OrdersService {
       totalDebtOpen,
     };
   }
-}
 
+  async convertQuotationToOrder(input: ConvertQuoteToOrderInput, user: JwtUser) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { id: input.quotationId },
+      include: { items: true },
+    });
+    if (!quotation) throw new NotFoundException('Không tìm thấy Báo giá.');
+    if (!this.hasGlobalOrderAccess(user) && quotation.createdById !== user.sub) {
+      throw new ForbiddenException('Không có quyền chuyển báo giá này thành đơn hàng.');
+    }
+
+    const defaultColor = normalizeColorCode(input.colorCode || quotation.items[0]?.color || 'CAFE_METALIC');
+    const orderItemsInput = await this.quotationBom.buildOrderItems(quotation.items, {
+      defaultColor,
+      customItemQuantities: input.customItemQuantities,
+    });
+
+    const orderInput: CreateOrderInput = {
+      sourceType: 'FACTORY',
+      customerName: quotation.customerName || '',
+      customerPhone: quotation.customerPhone || '',
+      deliveryAddress: quotation.customerAddress || '',
+      colorCode: defaultColor,
+      note: input.note ? `${input.note} (Từ Báo giá ${quotation.code})` : `Tạo từ Báo giá ${quotation.code}`,
+      accessoriesNote: quotation.extraProducts || '',
+      submitToNpp: input.submitToNpp,
+      items: orderItemsInput,
+    };
+
+    return this.createOrder(orderInput, user.sub);
+  }
+}

@@ -133,6 +133,7 @@ function UsersRbac() {
     if (!form) return;
     if (!form.displayName.trim()) { setError('Vui lòng nhập tên hiển thị.'); return; }
     if (!form.id && !form.email.trim()) { setError('Vui lòng nhập email.'); return; }
+    if (!form.id && form.password.trim().length < 8) { setError('Mật khẩu phải có ít nhất 8 ký tự.'); return; }
     setSaving(true);
     setError('');
     try {
@@ -173,8 +174,9 @@ function UsersRbac() {
 
   async function submitNppForm() {
     if (!nppForm) return;
-    if (!nppForm.name.trim()) { setError('Vui long nhap ten NPP.'); return; }
-    if (!nppForm.email.trim()) { setError('Vui long nhap email dang nhap NPP.'); return; }
+    if (!nppForm.name.trim()) { setError('Vui lòng nhập tên NPP.'); return; }
+    if (!nppForm.email.trim()) { setError('Vui lòng nhập email đăng nhập NPP.'); return; }
+    if (nppForm.password?.trim() && nppForm.password.trim().length < 8) { setError('Mật khẩu phải có ít nhất 8 ký tự.'); return; }
     setSaving(true);
     setError('');
     setMessage('');
@@ -184,10 +186,10 @@ function UsersRbac() {
         password: nppForm.password?.trim() || undefined,
       });
       setNppForm(null);
-      setMessage(`Da tao NPP ${created.organization.name} (${created.organization.code}). Tai khoan: ${created.user.email}. Mat khau: ${created.password}`);
+      setMessage(`Đã tạo NPP ${created.organization.name} (${created.organization.code}). Tài khoản: ${created.user.email}. Mật khẩu bàn giao một lần: ${created.password}`);
       loadAll();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong tao duoc tai khoan NPP.');
+      setError(e instanceof Error ? e.message : 'Không tạo được tài khoản NPP.');
     } finally {
       setSaving(false);
     }
@@ -203,7 +205,7 @@ function UsersRbac() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
         <button style={ghostButtonStyle} onClick={openCreateNpp}>
-          <Plus size={16} style={{ verticalAlign: -3, marginRight: 6 }} /> Tao NPP
+          <Plus size={16} style={{ verticalAlign: -3, marginRight: 6 }} /> Tạo NPP
         </button>
         <button style={primaryButtonStyle} onClick={openCreate}>
           <Plus size={16} style={{ verticalAlign: -3, marginRight: 6 }} /> Thêm người dùng
@@ -358,9 +360,9 @@ function NppFormModal({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: `1px solid ${ui.border}` }}>
           <h2 style={{ ...panelTitleStyle, margin: 0 }}>
             <UserCog size={18} style={{ verticalAlign: -3, marginRight: 8 }} color={ui.brand} />
-            Tao nha phan phoi
+            Tạo nhà phân phối
           </h2>
-          <button onClick={onClose} style={{ ...ghostButtonStyle, padding: 8, lineHeight: 0 }} aria-label="Dong">
+          <button onClick={onClose} style={{ ...ghostButtonStyle, padding: 8, lineHeight: 0 }} aria-label="Đóng">
             <X size={16} />
           </button>
         </div>
@@ -368,58 +370,58 @@ function NppFormModal({
         <div style={{ padding: 22, display: 'grid', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <label style={labelStyle}>
-              Ten NPP *
-              <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: NPP Mien Nam" />
+              Tên NPP *
+              <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: NPP Miền Nam" />
             </label>
             <label style={labelStyle}>
-              Ma NPP (co the de trong)
+              Mã NPP (có thể để trống)
               <input style={inputStyle} value={form.code || ''} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="VD: NPP-MIENNAM" />
             </label>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <label style={labelStyle}>
-              Email dang nhap *
+              Email đăng nhập *
               <input style={inputStyle} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="npp@eurohouse.vn" />
             </label>
             <label style={labelStyle}>
-              Ten nguoi phu trach
-              <input style={inputStyle} value={form.displayName || ''} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="De trong se lay ten NPP" />
+              Tên người phụ trách
+              <input style={inputStyle} value={form.displayName || ''} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="Để trống sẽ lấy tên NPP" />
             </label>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <label style={labelStyle}>
-              So dien thoai
+              Số điện thoại
               <input style={inputStyle} value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="09xx xxx xxx" />
             </label>
             <label style={labelStyle}>
-              Tinh/Thanh
-              <input style={inputStyle} value={form.province || ''} onChange={(e) => setForm({ ...form, province: e.target.value })} placeholder="VD: Ha Noi" />
+              Tỉnh/Thành
+              <input style={inputStyle} value={form.province || ''} onChange={(e) => setForm({ ...form, province: e.target.value })} placeholder="VD: Hà Nội" />
             </label>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <label style={labelStyle}>
-              Ky hieu ngan
+              Ký hiệu ngắn
               <input style={inputStyle} value={form.shortLabel || ''} onChange={(e) => setForm({ ...form, shortLabel: e.target.value })} placeholder="VD: MN" />
             </label>
             <label style={labelStyle}>
-              Mat khau (de trong dung mac dinh)
-              <input style={inputStyle} type="password" value={form.password || ''} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Eurohouse@2026" />
+              Mật khẩu (để trống để sinh tự động)
+              <input style={inputStyle} type="password" value={form.password || ''} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Tối thiểu 8 ký tự" />
             </label>
           </div>
 
           <label style={labelStyle}>
-            Dia chi
-            <input style={inputStyle} value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Dia chi nha phan phoi" />
+            Địa chỉ
+            <input style={inputStyle} value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Địa chỉ nhà phân phối" />
           </label>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 22px', borderTop: `1px solid ${ui.border}` }}>
-          <button style={ghostButtonStyle} onClick={onClose} disabled={saving}>Huy</button>
+          <button style={ghostButtonStyle} onClick={onClose} disabled={saving}>Hủy</button>
           <button style={{ ...primaryButtonStyle, opacity: saving ? 0.7 : 1 }} onClick={onSubmit} disabled={saving}>
-            {saving ? 'Dang tao...' : 'Tao NPP va tai khoan'}
+            {saving ? 'Đang tạo...' : 'Tạo NPP và tài khoản'}
           </button>
         </div>
       </div>
@@ -532,7 +534,7 @@ function UserFormModal({
           </div>
 
           <label style={labelStyle}>
-            {isEdit ? 'Đặt lại mật khẩu (để trống nếu giữ nguyên)' : 'Mật khẩu (để trống → dùng mặc định)'}
+            {isEdit ? 'Đặt lại mật khẩu (để trống nếu giữ nguyên)' : 'Mật khẩu (tối thiểu 8 ký tự)'}
             <input style={inputStyle} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
           </label>
 

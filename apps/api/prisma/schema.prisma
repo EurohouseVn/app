@@ -31,6 +31,7 @@ model Organization {
   managedByNpp     Organization?  @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
   managedFactories Organization[] @relation("NppManagesFactory")
   ordersAsNpp      Order[]        @relation("OrderNppOrg")
+  ordersAsFactory  Order[]        @relation("OrderFactoryOrg")
   debtsAsNpp       Debt[]         @relation("DebtNppOrg")
   debtsAsFactory   Debt[]         @relation("DebtFactoryOrg")
   nppProfileStocks NppProfileStock[] @relation("NppProfileStockOrg")
@@ -135,7 +136,6 @@ model Profile {
   name           String
   thicknessMm    String? // ví dụ "1.0" hoặc "1 - 1.25"
   kgPerMeter     Float                  @default(0)
-  actualKgPerBar Float                  @default(0)
   barLengthMm    Int                    @default(6000) // chiều dài cây tiêu chuẩn
   barsPerBundle  Int                    @default(0) // quy cách bó
   pricePerKg     Int                    @default(0)
@@ -168,10 +168,13 @@ model ColorCode {
 model Order {
   id                    String                 @id @default(cuid())
   code                  String                 @unique
+  clientRequestId       String?
   sourceType            String // FACTORY | DEALER | NPP | ADMIN
   createdById           String?
   createdBy             User?                  @relation(fields: [createdById], references: [id])
   factoryName           String                 @default("")
+  factoryOrgId          String?
+  factoryOrg            Organization?          @relation("OrderFactoryOrg", fields: [factoryOrgId], references: [id])
   dealerName            String                 @default("")
   nppName               String                 @default("")
   nppOrgId              String?
@@ -197,6 +200,8 @@ model Order {
   workOrders            WorkOrder[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+
+  @@unique([createdById, clientRequestId])
 }
 
 model OrderItem {
@@ -389,6 +394,7 @@ model QuotationItem {
   glassType     String?
   glassColor    String?
   dynamicInputs Json?
+  formulaSnapshot Json?
 }
 
 // ---------- Bảo hành ----------

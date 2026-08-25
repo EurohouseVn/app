@@ -20,8 +20,8 @@ export class CatalogController {
 
   @Patch('profiles/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'STAFF', 'NPP')
-  updateProfile(@Param('id') id: string, @Body() body: { actualKgPerBar?: number; pricePerKg?: number }) {
+  @Roles('ADMIN', 'STAFF')
+  updateProfile(@Param('id') id: string, @Body() body: { pricePerKg?: number }) {
     return this.service.updateProfile(id, body);
   }
 }

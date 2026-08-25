@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { FormulaEvaluatorService } from './formula-evaluator.service';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile, persistValidatedXlsx, XLSX_UPLOAD_OPTIONS } from '../../common/upload';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-55': 'Hệ 55 Euroqueen',
@@ -128,14 +129,13 @@ export class SystemFormulasController {
   @Post('systems/:systemId/formulas/:doorModelId/upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', XLSX_UPLOAD_OPTIONS))
   async uploadExcel(
     @Param('systemId') systemId: string,
     @Param('doorModelId') doorModelId: string,
     @UploadedFile() file: any,
   ) {
     if (!file) throw new BadRequestException('No file provided');
-    
     const formula = await this.prisma.systemFormula.findUnique({
       where: { aluSystemId_doorModelId: { aluSystemId: systemId, doorModelId } }
     });
@@ -147,7 +147,7 @@ export class SystemFormulasController {
     }
 
     const filePath = path.join(uploadsDir, `${doorModelId}.xlsx`);
-    fs.writeFileSync(filePath, file.buffer);
+    await persistValidatedXlsx(file, filePath);
 
     return this.prisma.systemFormula.update({
       where: { id: formula.id },
@@ -158,7 +158,7 @@ export class SystemFormulasController {
   @Post('door-designs/:id/image')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(FileInterceptor('image', IMAGE_UPLOAD_OPTIONS))
   async uploadDoorImage(
     @Param('id') id: string,
     @UploadedFile() file: any,
@@ -171,14 +171,14 @@ export class SystemFormulasController {
       fs.mkdirSync(imagesDir, { recursive: true });
     }
 
-    const fileExt = path.extname(file.originalname) || '.png';
+    const fileExt = imageExtension(file);
     const fileName = `${id}-${Date.now()}${fileExt}`;
     const filePath = path.join(imagesDir, fileName);
     
-    fs.writeFileSync(filePath, file.buffer);
+    persistUploadedFile(file, filePath);
 
     // Update the door model with the new image URL relative to public dir
-    const imageUrl = `/images/doors/${fileName}`;
+    const imageUrl = `/static/images/doors/${fileName}`;
     return this.prisma.doorModel.update({
       where: { id },
       data: { imageUrl }

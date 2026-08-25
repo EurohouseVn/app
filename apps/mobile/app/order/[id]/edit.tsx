@@ -7,6 +7,7 @@ import { AppHeader } from '../../../src/components/AppHeader';
 import { Icon } from '../../../src/components/Icon';
 import { ProfileThumb } from '../../../src/components/ProfileThumb';
 import { api } from '../../../src/lib/api';
+import { isSystemAllowedForColors } from '../../orders';
 
 const STD_BAR_M = 6;
 
@@ -93,6 +94,43 @@ export default function EditOrderScreen() {
     api.get<ColorCode[]>('/catalog/colors').then(setColorList).catch(() => undefined);
   }, []);
 
+  const visibleSystems = useMemo(() => {
+    return systems.filter((sys) => isSystemAllowedForColors(sys, selectedColors, colorList));
+  }, [systems, selectedColors, colorList]);
+
+  useEffect(() => {
+    if (visibleSystems.length > 0) {
+      setOpenSystem((cur) => {
+        if (!cur || !visibleSystems.some((s) => s.id === cur)) {
+          return visibleSystems[0].id;
+        }
+        return cur;
+      });
+    }
+  }, [visibleSystems]);
+
+  const colorRuleHint = useMemo(() => {
+    if (!selectedColors.length) return null;
+    const hasGroup2 = selectedColors.some((colCode) => {
+      const colObj = colorList.find((c) => c.code === colCode || c.id === colCode);
+      const s = (colCode + ' ' + (colObj?.name || '')).toLowerCase();
+      return s.includes('cafe thuong') || s.includes('cafe_thuong') || s.includes('cafe-thuong') || s.includes('rita');
+    });
+    const hasGroup1 = selectedColors.some((colCode) => {
+      const colObj = colorList.find((c) => c.code === colCode || c.id === colCode);
+      const s = (colCode + ' ' + (colObj?.name || '')).toLowerCase();
+      return !s.includes('cafe thuong') && !s.includes('cafe_thuong') && !s.includes('cafe-thuong') && !s.includes('rita');
+    });
+
+    if (hasGroup2 && !hasGroup1) {
+      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Euroqueen, Preco & Mặt dựng';
+    }
+    if (hasGroup1 && !hasGroup2) {
+      return 'Màu Metalic / Vân gỗ / Ngọc trai: Khả dụng tất cả hệ (trừ Preco, Mặt dựng, Nội thất)';
+    }
+    return 'Áp dụng danh mục hệ nhôm theo các màu đã chọn';
+  }, [selectedColors, colorList]);
+
   const profileById = useMemo(() => {
     const map = new Map<string, CatalogProfile>();
     systems.forEach((s) => s.profiles.forEach((p) => map.set(p.id, p)));
@@ -101,18 +139,20 @@ export default function EditOrderScreen() {
 
   const cart = useMemo(() => {
     let totalKg = 0; let totalAmount = 0; let lines = 0;
-    const items: { id: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
+    const items: { id: string; profileId: string; colorCode: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
     Object.entries(qty).forEach(([id, q]) => {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
       const kg = theoreticalKgPerBar(p) * q;
       const amount = kg * p.pricePerKg;
-      lines += 1; totalKg += kg; totalAmount += amount;
-      items.push({ id, code: p.code, name: p.name, quantity: q, kg, amount });
+      selectedColors.forEach((colorCode) => {
+        lines += 1; totalKg += kg; totalAmount += amount;
+        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, code: p.code, name: p.name, quantity: q, kg, amount });
+      });
     });
     return { totalKg, totalAmount, lines, items };
-  }, [qty, profileById]);
+  }, [qty, profileById, selectedColors]);
 
   function toggleColor(code: string) {
     setSelectedColors((cur) => cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]);
@@ -149,8 +189,8 @@ export default function EditOrderScreen() {
     setMessage(''); setSubmitting(true);
     try {
       const items = cart.items.map((item) => {
-        const p = profileById.get(item.id)!;
-        return { profileId: item.id, productCode: p.code, productName: p.name, colorCode: selectedColors.join(', '), quantity: item.quantity };
+        const p = profileById.get(item.profileId)!;
+        return { profileId: item.profileId, productCode: p.code, productName: p.name, colorCode: item.colorCode, quantity: item.quantity };
       });
       await api.patch(`/orders/${order.id}`, {
         colorCode: selectedColors.join(', '),
@@ -199,8 +239,15 @@ export default function EditOrderScreen() {
           })}
         </View>
 
+        {colorRuleHint ? (
+          <View style={styles.colorRuleBox}>
+            <Icon name="sliders" size={13} color={colors.brandOrangeText} />
+            <Text style={styles.colorRuleText}>{colorRuleHint}</Text>
+          </View>
+        ) : null}
+
         <Text style={[styles.label, { marginTop: 4 }]}>Danh sách thanh nhôm</Text>
-        {systems.map((system) => {
+        {visibleSystems.map((system) => {
           const open = openSystem === system.id;
           const sysQty = system.profiles.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0);
           return (
@@ -344,6 +391,8 @@ const styles = StyleSheet.create({
   colorText: { flex: 1, color: colors.brandGrey[500], fontWeight: '700', fontSize: 12 },
   checkBox: { width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, borderColor: '#D5D8DC', alignItems: 'center', justifyContent: 'center' },
   checkBoxActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange },
+  colorRuleBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
+  colorRuleText: { flex: 1, color: colors.brandOrangeText, fontSize: 11.5, fontWeight: '700', lineHeight: 16 },
   treeNode: { borderRadius: 18, marginBottom: 12, overflow: 'hidden', backgroundColor: colors.white, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2 },
   treeHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: colors.white },
   treeIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },

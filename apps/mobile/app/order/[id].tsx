@@ -150,7 +150,7 @@ export default function OrderDetailScreen() {
           </View>
         ) : null}
 
-        {order.status === 'NEW' ? (
+        {order.status === 'DRAFT' ? (
           <Pressable style={styles.editBtn} onPress={() => router.push(`/order/${order.id}/edit` as Href)}>
             <Icon name="edit-2" size={15} color={colors.brandBlack.main} />
             <Text style={styles.editBtnText}>Sửa đơn</Text>

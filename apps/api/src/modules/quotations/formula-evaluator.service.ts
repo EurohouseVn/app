@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import * as exceljs from 'exceljs';
+import JSZip from 'jszip';
 import * as path from 'path';
 import * as fs from 'fs';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -9,7 +10,7 @@ function normalizeText(val: any): string {
   return String(val)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[Ã„â€˜Ã„Â]/g, 'd')
+    .replace(/[đĐ]/g, 'd')
     .toLowerCase();
 }
 
@@ -24,7 +25,7 @@ function columnIndex(colName: string): number {
 function columnName(index: number): string {
   let name = '';
   while (index > 0) {
-    let remainder = (index - 1) % 26;
+    const remainder = (index - 1) % 26;
     name = String.fromCharCode(65 + remainder) + name;
     index = Math.floor((index - 1) / 26);
   }
@@ -365,7 +366,7 @@ export class FormulaEvaluatorService {
     let files: string[] = [];
     try {
       files = fs.readdirSync(this.templatesDir);
-    } catch (e) {
+    } catch {
       this.logger.warn(`Could not read templates dir ${this.templatesDir}`);
     }
     let localName = files.find(f => f === leaf);
@@ -373,19 +374,11 @@ export class FormulaEvaluatorService {
       localName = files.find(f => f.includes(`__${numericId}__${leaf}`));
     }
     
-    let inputs: any[] = [];
-    if (localName) {
-      try {
-        const filePath = path.join(this.templatesDir, localName);
-        const workbook = new exceljs.Workbook();
-        await workbook.xlsx.readFile(filePath);
-        const sheet = workbook.worksheets.find(w => w.name.toUpperCase() !== 'TSS1') || workbook.worksheets[0];
-        
-        inputs = this.extractInputsFromSheet(sheet).inputs;
-      } catch (e: any) {
-        this.logger.error(`Error reading template details for ${templateId}: ${e.message}`);
-      }
-    }
+    if (!localName) throw new NotFoundException(`XLSX file for template ${templateId} not found`);
+    const filePath = path.join(this.templatesDir, localName);
+    const workbook = await this.loadWorkbookFile(filePath);
+    const sheet = workbook.worksheets.find(w => w.name.toUpperCase() !== 'TSS1') || workbook.worksheets[0];
+    const inputs = this.extractInputsFromSheet(sheet).inputs;
 
     return {
       ...template,
@@ -403,15 +396,9 @@ export class FormulaEvaluatorService {
 
     let inputs: any[] = [];
     if (formula.excelFilePath && fs.existsSync(formula.excelFilePath)) {
-      try {
-        const workbook = new exceljs.Workbook();
-        await workbook.xlsx.readFile(formula.excelFilePath);
-        const sheet = workbook.worksheets.find(w => w.name.toUpperCase() !== 'TSS1') || workbook.worksheets[0];
-        
-        inputs = this.extractInputsFromSheet(sheet).inputs;
-      } catch (e: any) {
-        this.logger.error(`Error reading system formula details for ${systemFormulaId}: ${e.message}`);
-      }
+      const workbook = await this.loadWorkbookFile(formula.excelFilePath);
+      const sheet = workbook.worksheets.find(w => w.name.toUpperCase() !== 'TSS1') || workbook.worksheets[0];
+      inputs = this.extractInputsFromSheet(sheet).inputs;
     }
 
     return {
@@ -426,15 +413,14 @@ export class FormulaEvaluatorService {
     });
     if (!template) throw new NotFoundException(`Template ${templateId} not found`);
 
-    // DÃ¡Â»Â±a vÃƒÂ o file_path trong database cÃ…Â©, tÃƒÂ¬m file xlsx cÃƒÂ³ Ã„â€˜Ã¡Â»â€¹nh dÃ¡ÂºÂ¡ng *__{numeric_id}__{leaf}
+    // Resolve the imported workbook from its legacy file path and numeric ID.
     const leaf = path.basename(template.filePath || '');
     const numericId = String(template.numericId || '');
     
-    // VÃƒÂ¬ ta Ã„â€˜ÃƒÂ£ copy file vÃ¡Â»â€ºi tÃƒÂªn gÃ¡Â»â€˜c tÃ¡Â»Â« extractor
     let files: string[] = [];
     try {
       files = fs.readdirSync(this.templatesDir);
-    } catch (e) {
+    } catch {
       this.logger.warn(`Could not read templates dir ${this.templatesDir}`);
     }
     let localName = files.find(f => f === leaf);
@@ -464,14 +450,52 @@ export class FormulaEvaluatorService {
   }
 
   private async evaluateWorkbookFile(filePath: string, inputs: Record<string, any>) {
+    const workbook = await this.loadWorkbookFile(filePath);
     try {
-      const workbook = new exceljs.Workbook();
-      await workbook.xlsx.readFile(filePath);
       return this.evaluateWorkbook(workbook, inputs);
     } catch (e: any) {
-      this.logger.error(`Error reading or evaluating workbook at ${filePath}: ${e.message}`);
-      throw new InternalServerErrorException(`XLSX parse error: ${e.message}`);
+      if (e instanceof BadRequestException) throw e;
+      this.logger.error(`Error evaluating workbook at ${filePath}: ${e.message}`);
+      throw new InternalServerErrorException(`XLSX evaluation error: ${e.message}`);
     }
+  }
+
+  private async loadWorkbookFile(filePath: string) {
+    const workbook = new exceljs.Workbook();
+    try {
+      await workbook.xlsx.readFile(filePath);
+    } catch (initialError: any) {
+      try {
+        const repaired = await this.repairLegacyWorkbookXml(filePath);
+        await workbook.xlsx.load(repaired as any);
+        this.logger.warn(`Recovered malformed legacy XLSX XML: ${path.basename(filePath)}`);
+      } catch (recoveryError: any) {
+        this.logger.error(`Error reading workbook at ${filePath}: ${initialError.message}`);
+        throw new InternalServerErrorException(`XLSX parse error: ${recoveryError.message || initialError.message}`);
+      }
+    }
+    return workbook;
+  }
+
+  private async repairLegacyWorkbookXml(filePath: string) {
+    const zip = await JSZip.loadAsync(await fs.promises.readFile(filePath));
+    let repaired = false;
+
+    for (const [name, entry] of Object.entries(zip.files)) {
+      if (entry.dir || !name.toLowerCase().endsWith('.xml')) continue;
+      const xml = await entry.async('string');
+      const sanitized = xml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-f]+;)/gi, '&amp;');
+      if (sanitized !== xml) {
+        zip.file(name, sanitized);
+        repaired = true;
+      }
+    }
+
+    if (!repaired) {
+      throw new Error('Không thể tự động phục hồi cấu trúc XML của file XLSX.');
+    }
+
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
 
   private evaluateWorkbook(workbook: exceljs.Workbook, inputs: Record<string, any>) {
@@ -491,13 +515,35 @@ export class FormulaEvaluatorService {
       }
     }
 
+    for (const key of ['width', 'height', 'quantity']) {
+      if (inputMap[key] && (!Number.isFinite(Number(normalizedInputs[key])) || Number(normalizedInputs[key]) <= 0)) {
+        throw new BadRequestException(`Giá trị ${key} phải lớn hơn 0.`);
+      }
+    }
+
+    const dimensionPairs: Array<[string, string, string]> = [
+      ['b1', 'width', 'B1'],
+      ['b2', 'width', 'B2'],
+      ['h1', 'height', 'H1'],
+      ['h2', 'height', 'H2'],
+    ];
+    for (const [partKey, totalKey, label] of dimensionPairs) {
+      if (!inputMap[partKey] || !inputMap[totalKey]) continue;
+      const part = Number(normalizedInputs[partKey]);
+      const total = Number(normalizedInputs[totalKey]);
+      if (Number.isFinite(part) && part > 0 && Number.isFinite(total) && part > total) {
+        const totalLabel = totalKey === 'width' ? 'rộng cửa' : 'cao cửa';
+        throw new BadRequestException(`${label} (${part} mm) không được lớn hơn ${totalLabel} (${total} mm).`);
+      }
+    }
+
     const cache: Record<string, any> = {};
     const stack = new Set<string>();
 
     const getVal = (coord: string) => {
       coord = coord.replace(/\$/g, '').toUpperCase();
       if (cache[coord] !== undefined) return cache[coord];
-      if (stack.has(coord)) return 0;
+      if (stack.has(coord)) throw new BadRequestException(`Công thức Excel bị tham chiếu vòng tại ô ${coord}.`);
       
       stack.add(coord);
       const cell = sheet.getCell(coord);
@@ -547,12 +593,13 @@ export class FormulaEvaluatorService {
         if (shouldStop) break;
         
         const record: any = {};
+        const textFields = new Set(['name', 'position', 'code', 'angle', 'unit']);
         for (const [name, colIdx] of cols) {
           let cellVal = this.getCellValue(sheet.getCell(r, colIdx));
           if (this.isFormula(cellVal)) {
             cellVal = this.evalFormula(cellVal, getVal, getRangeVals);
           }
-          record[name] = this.toNumber(cellVal);
+          record[name] = textFields.has(name) ? String(cellVal ?? '').trim() : this.toNumber(cellVal);
         }
         
         if (record[cols[0][0]] || record[cols[1][0]] || record[cols[2][0]]) {
@@ -577,16 +624,47 @@ export class FormulaEvaluatorService {
     const accessories = extractSection(
       'PHU KIEN',
       [['name', 2], ['code', 3], ['unit', 4], ['quantity', 5]],
-      ['BANG TINH', 'TÃ¡Â»â€NG', 'TONG']
+      ['BANG TINH', 'TỔNG', 'TONG']
     );
+
+    const activeAluminum = aluminum.filter((item) => this.validateOutputRow(item, 'nhôm', ['length_mm'], ['total_kg']));
+    const activeGlass = glass.filter((item) => this.validateOutputRow(item, 'kính', ['width_mm', 'height_mm', 'area_m2']));
+    const activeAccessories = accessories.filter((item) => this.validateOutputRow(item, 'phụ kiện'));
 
     return {
       sheet: sheet.name,
       inputs: normalizedInputs,
-      aluminum,
-      glass,
-      accessories,
+      aluminum: activeAluminum,
+      glass: activeGlass,
+      accessories: activeAccessories,
     };
+  }
+
+  private validateOutputRow(
+    item: Record<string, any>,
+    section: string,
+    positiveFields: string[] = [],
+    nonNegativeFields: string[] = [],
+  ) {
+    const quantity = Number(item.quantity ?? 0);
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      throw new BadRequestException(`Công thức ${section} sinh số lượng không hợp lệ.`);
+    }
+    if (quantity === 0) return false;
+
+    for (const field of positiveFields) {
+      const value = Number(item[field]);
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new BadRequestException(`Công thức ${section} sinh ${field} không hợp lệ (${item[field]}).`);
+      }
+    }
+    for (const field of nonNegativeFields) {
+      const value = Number(item[field]);
+      if (!Number.isFinite(value) || value < 0) {
+        throw new BadRequestException(`Công thức ${section} sinh ${field} không hợp lệ (${item[field]}).`);
+      }
+    }
+    return true;
   }
 
   private findRow(sheet: exceljs.Worksheet, label: string): number | null {
@@ -673,13 +751,17 @@ export class FormulaEvaluatorService {
         SUM: EXCEL_SUM,
         SQRT: (val: any) => Math.sqrt(parseFloat(val) || 0),
         IF: EXCEL_IF,
-        ROUND: Math.round,
+        ROUND: (value: any, digits: any = 0) => {
+          const factor = Math.pow(10, Number(digits) || 0);
+          return Math.round(Number(value) * factor) / factor;
+        },
         MIN: Math.min,
         MAX: Math.max,
         ABS: Math.abs,
       });
     } catch (e) {
-      return 0;
+      const reason = e instanceof Error ? e.message : 'Lỗi không xác định';
+      throw new BadRequestException(`Không thể tính công thức Excel "${formula}": ${reason}`);
     }
   }
 
@@ -839,7 +921,7 @@ export class FormulaEvaluatorService {
           if (!fn) throw new Error(`Unsupported formula function: ${token.value}`);
           return fn(...args);
         }
-        return 0;
+        throw new Error(`Unsupported formula identifier: ${token.value}`);
       }
       if (token.type === 'punct' && token.value === '(') {
         const value = parseExpression();
@@ -865,27 +947,29 @@ export class FormulaEvaluatorService {
       }
       if (!label) continue;
       label = String(label).trim().replace(/:$/, '');
-      const lower = label.toLowerCase();
+      const lower = normalizeText(label);
       
       if (lower.includes('n/a') || lower.includes('---')) continue;
-      if (lower.includes('diện tích') || lower.includes('tổng') || lower.includes('thành tiền') || lower.includes('tỉ trọng')) continue;
+      if (lower.includes('dien tich') || lower.includes('tong') || lower.includes('thanh tien') || lower.includes('ti trong')) continue;
       
       let key = 'field_' + i;
       let type = 'number';
       
-      if (lower.includes('rộng')) key = 'width';
+      if (lower.includes('rong')) key = 'width';
       else if (lower.includes('cao')) key = 'height';
-      else if (lower.includes('b1')) key = 'h1';
-      else if (lower.includes('h1') || lower.includes('hở chân')) key = 'h2';
-      else if (lower.includes('kính') && !lower.includes('giá')) { key = 'glass_type'; type = 'string'; }
-      else if (lower.includes('bộ')) key = 'quantity';
-      else if (lower.includes('giá nhôm')) key = 'aluminum_price';
-      else if (lower.includes('giá kính')) key = 'glass_price';
+      else if (/\bb1\b/.test(lower)) key = 'b1';
+      else if (/\bb2\b/.test(lower)) key = 'b2';
+      else if (/\bh1\b/.test(lower)) key = 'h1';
+      else if (/\bh2\b/.test(lower)) key = 'h2';
+      else if (lower.includes('ho chan')) key = 'bottom_gap';
+      else if (lower.includes('kinh') && !lower.includes('gia')) { key = 'glass_type'; type = 'string'; }
+      else if (lower.includes('bo')) key = 'quantity';
+      else if (lower.includes('gia nhom')) key = 'aluminum_price';
+      else if (lower.includes('gia kinh')) key = 'glass_price';
 
       const cCell = sheet.getCell('C' + i);
       const defaultVal = cCell.value?.valueOf() ?? cCell.value;
-      if (!defaultVal && ['h1', 'h2', 'glass_type'].includes(key)) continue;
-
+      if (this.isFormula(this.getCellValue(cCell))) continue;
       let unit = '';
       if (lower.includes('mm')) unit = 'mm';
       else if (lower.includes('kg')) unit = 'VNĐ/Kg';
@@ -893,9 +977,11 @@ export class FormulaEvaluatorService {
 
       inputs.push({
         id: key,
-        name: label,
+        name: label.replace(/\s*\(mm\)\s*$/i, ''),
         type,
-        unit
+        unit,
+        defaultValue: defaultVal ?? '',
+        required: !['aluminum_price', 'glass_price'].includes(key),
       });
       if (inputMap[key]) {
         key = 'field_' + i;

@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Printer, Truck, UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Plus, Printer, Truck, UserRound } from 'lucide-react';
 import type { PaginatedOrders } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
@@ -198,7 +199,10 @@ export default function NppOrdersPage() {
   return (
     <NppPage>
       <p style={eyebrowStyle}>Đơn hàng</p>
-      <h1 style={pageTitleStyle}>Đơn hàng từ xưởng</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <h1 style={pageTitleStyle}>Đơn hàng từ xưởng</h1>
+        <Link href="/orders/new" style={{ ...ghostButtonStyle, background: ui.brand, color: '#fff', textDecoration: 'none' }}><Plus size={15} /> Tạo đơn cho CSSX</Link>
+      </div>
       <p style={subtitleStyle}>Tiếp nhận đơn từ cơ sở sản xuất, kiểm tra chi tiết hàng và tạo phiếu giao khi đã sẵn sàng.</p>
       {message ? <p style={{ color: ui.success, fontWeight: 700, background: ui.successSoft, display: 'inline-block', padding: '6px 12px', borderRadius: 8, fontSize: 13 }}>{message}</p> : null}
       {error ? <p style={{ color: ui.danger, fontWeight: 700 }}>{error}</p> : null}

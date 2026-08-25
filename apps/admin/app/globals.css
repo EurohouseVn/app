@@ -31,7 +31,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-heading), "Be Vietnam Pro", sans-serif;
+  font-family: var(--font-body), "Segoe UI", Arial, sans-serif;
 }
 
 a {

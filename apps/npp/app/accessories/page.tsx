@@ -27,7 +27,7 @@ export default function NppAccessoriesPage() {
   function load() {
     apiGet<NppAccessoryItem[]>(`/npp/accessories${query ? `?q=${encodeURIComponent(query)}` : ''}`)
       .then(setItems)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Khong tai duoc phu kien.'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được phụ kiện.'));
   }
 
   useEffect(() => { load(); }, []);
@@ -50,7 +50,7 @@ export default function NppAccessoriesPage() {
       setForm(emptyForm);
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong luu duoc phu kien.');
+      setError(e instanceof Error ? e.message : 'Không lưu được phụ kiện.');
     }
   }
 
@@ -60,7 +60,7 @@ export default function NppAccessoriesPage() {
       await apiSend(`/npp/accessories/${item.id}`, 'PATCH', { quantity });
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Khong cap nhat duoc so luong.');
+      setError(e instanceof Error ? e.message : 'Không cập nhật được số lượng.');
     }
   }
 

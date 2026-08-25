@@ -7,11 +7,12 @@ import { QuotationPdfService } from './quotation-pdf.service';
 import { FormulaEvaluatorService } from './formula-evaluator.service';
 import { CuttingOptimizerService } from './cutting-optimizer.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { QuotationBomService } from './quotation-bom.service';
 
 @Module({
   imports: [PrismaModule, MulterModule.register({ dest: './uploads' })],
   controllers: [QuotationsController, SystemFormulasController],
-  providers: [QuotationsService, QuotationPdfService, FormulaEvaluatorService, CuttingOptimizerService],
-  exports: [QuotationsService],
+  providers: [QuotationsService, QuotationPdfService, FormulaEvaluatorService, CuttingOptimizerService, QuotationBomService],
+  exports: [QuotationsService, QuotationBomService],
 })
 export class QuotationsModule {}

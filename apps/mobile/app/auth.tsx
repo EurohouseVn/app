@@ -7,26 +7,27 @@ import { useAuth } from '../src/lib/auth';
 type Mode = 'login' | 'register';
 
 const REMEMBER_LOGIN_KEY = 'eurohouse-remember-login';
-const DEFAULT_IDENTIFIER = 'tho@eurohouse.vn';
-const DEFAULT_PASSWORD = 'Eurohouse@2026';
+const DEFAULT_IDENTIFIER = '';
 
-async function getRememberedLogin(): Promise<{ identifier: string; password: string } | null> {
+async function getRememberedLogin(): Promise<{ identifier: string; password?: string } | null> {
   const raw = Platform.OS === 'web'
     ? (typeof localStorage !== 'undefined' ? localStorage.getItem(REMEMBER_LOGIN_KEY) : null)
     : await SecureStore.getItemAsync(REMEMBER_LOGIN_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    return typeof parsed.identifier === 'string' && typeof parsed.password === 'string' ? parsed : null;
+    return typeof parsed.identifier === 'string'
+      ? { identifier: parsed.identifier, password: typeof parsed.password === 'string' ? parsed.password : undefined }
+      : null;
   } catch {
     return null;
   }
 }
 
-async function setRememberedLogin(value: { identifier: string; password: string } | null) {
+async function setRememberedLogin(value: { identifier: string; password?: string } | null) {
   if (Platform.OS === 'web') {
     if (typeof localStorage === 'undefined') return;
-    if (value) localStorage.setItem(REMEMBER_LOGIN_KEY, JSON.stringify(value));
+    if (value) localStorage.setItem(REMEMBER_LOGIN_KEY, JSON.stringify({ identifier: value.identifier }));
     else localStorage.removeItem(REMEMBER_LOGIN_KEY);
     return;
   }
@@ -38,7 +39,7 @@ export default function AuthScreen() {
   const { login, registerFactory } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [identifier, setIdentifier] = useState(DEFAULT_IDENTIFIER);
-  const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -53,7 +54,7 @@ export default function AuthScreen() {
       const saved = await getRememberedLogin();
       if (saved) {
         setIdentifier(saved.identifier);
-        setPassword(saved.password);
+        if (saved.password) setPassword(saved.password);
         setRememberPassword(true);
       }
     })();
@@ -66,7 +67,9 @@ export default function AuthScreen() {
       if (mode === 'login') {
         const cleanIdentifier = identifier.trim();
         await login(cleanIdentifier, password);
-        await setRememberedLogin(rememberPassword ? { identifier: cleanIdentifier, password } : null);
+        await setRememberedLogin(rememberPassword
+          ? { identifier: cleanIdentifier, password: Platform.OS === 'web' ? undefined : password }
+          : null);
       } else {
         await registerFactory({
           displayName: displayName.trim(),
@@ -107,7 +110,7 @@ export default function AuthScreen() {
             <View style={[styles.checkbox, rememberPassword && styles.checkboxActive]}>
               {rememberPassword ? <Text style={styles.checkboxMark}>✓</Text> : null}
             </View>
-            <Text style={styles.rememberText}>Nhớ email và mật khẩu cho lần đăng nhập sau</Text>
+            <Text style={styles.rememberText}>{Platform.OS === 'web' ? 'Nhớ email; mật khẩu do trình duyệt quản lý' : 'Nhớ thông tin đăng nhập an toàn trên thiết bị'}</Text>
           </Pressable>
         </>
       ) : (

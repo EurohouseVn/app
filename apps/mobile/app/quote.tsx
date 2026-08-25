@@ -57,6 +57,11 @@ export default function QuoteScreen() {
   const [isFinalSettlement, setIsFinalSettlement] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
 
+  // Sơ đồ cắt & tối ưu thanh nhôm
+  const [optModalOpen, setOptModalOpen] = useState(false);
+  const [optResults, setOptResults] = useState<any[]>([]);
+  const [optLoading, setOptLoading] = useState(false);
+
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!id;
 
@@ -157,7 +162,7 @@ export default function QuoteScreen() {
             clone[selectingIndex].requiredInputs = data.requiredInputs;
             const init: Record<string, string> = {};
             data.requiredInputs.forEach((req: any) => {
-              init[req.id] = req.id === 'quantity' ? '1' : '';
+              init[req.id] = String(req.defaultValue ?? (req.id === 'quantity' ? '1' : ''));
             });
             clone[selectingIndex].dynamicInputs = init;
             return clone;
@@ -342,6 +347,66 @@ export default function QuoteScreen() {
       Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không xuất được PDF.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function convertToOrder() {
+    if (!saved) {
+      Alert.alert('Chưa lưu báo giá', 'Vui lòng bấm "Lưu dự toán" trước khi tạo đơn đặt hàng.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const order = await api.post<any>('/orders/convert-from-quotation', {
+        quotationId: saved.id,
+        note: `Tạo từ Báo giá ${saved.code}`,
+        submitToNpp: true,
+      });
+      Alert.alert('Thành công', `Đã tạo Đơn đặt hàng ${order.code} gửi tới NPP!`, [
+        { text: 'Xem đơn hàng', onPress: () => router.push('/orders' as Href) },
+        { text: 'Ở lại', style: 'cancel' }
+      ]);
+    } catch (e) {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể tạo đơn hàng.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runCuttingOptimizer() {
+    setOptModalOpen(true);
+    setOptLoading(true);
+    try {
+      const requests: any[] = [];
+      const cutsBySystem: Record<string, { lengths: number[]; pieces: any[] }> = {};
+
+      items.forEach((it) => {
+        const sysKey = it.system || 'EUROQUEEN 55';
+        if (!cutsBySystem[sysKey]) cutsBySystem[sysKey] = { lengths: [], pieces: [] };
+        const qty = it.quantity || 1;
+        for (let q = 0; q < qty; q++) {
+          // Khung đứng (2 thanh ~ H) + Khung ngang (2 thanh ~ W)
+          cutsBySystem[sysKey].lengths.push(it.heightMm, it.heightMm, it.widthMm, it.widthMm);
+          cutsBySystem[sysKey].pieces.push(
+            { lengthMm: it.heightMm, doorName: it.name, profileName: 'Khung/Cánh đứng', cutAngle: '45-45' },
+            { lengthMm: it.heightMm, doorName: it.name, profileName: 'Khung/Cánh đứng', cutAngle: '45-45' },
+            { lengthMm: it.widthMm, doorName: it.name, profileName: 'Khung/Cánh ngang', cutAngle: '45-45' },
+            { lengthMm: it.widthMm, doorName: it.name, profileName: 'Khung/Cánh ngang', cutAngle: '45-45' }
+          );
+        }
+      });
+
+      Object.entries(cutsBySystem).forEach(([matCode, data]) => {
+        requests.push({ materialCode: matCode, lengths: data.lengths, pieces: data.pieces });
+      });
+
+      const res = await api.post<any[]>('/quotations/optimize-cut', requests);
+      setOptResults(Array.isArray(res) ? res : []);
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể tính toán tối ưu cắt nhôm.');
+      setOptResults([]);
+    } finally {
+      setOptLoading(false);
     }
   }
 
@@ -879,8 +944,29 @@ export default function QuoteScreen() {
                     <Text style={styles.orangeButtonText}>Xuất PDF</Text>
                   </Pressable>
                 </View>
+
+                {/* NÚT TỐI ƯU CẮT & SƠ ĐỒ THANH NHÔM */}
+                <Pressable
+                  style={[styles.purpleButton, { marginTop: 10 }]}
+                  onPress={runCuttingOptimizer}
+                  disabled={busy}
+                >
+                  <Icon name="zap" size={16} color="#ffffff" />
+                  <Text style={styles.purpleButtonText}>TỐI ƯU CẮT & SƠ ĐỒ THANH (TIẾT KIỆM PHẾ)</Text>
+                </Pressable>
+
                 {saved ? (
-                  <View style={{ marginTop: 10 }}>
+                  <View style={{ marginTop: 10, gap: 10 }}>
+                    {/* NÚT TẠO ĐƠN ĐẶT HÀNG GỬI NPP */}
+                    <Pressable
+                      style={{ backgroundColor: colors.brandOrange, padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      onPress={convertToOrder}
+                      disabled={busy}
+                    >
+                      <Icon name="truck" size={18} color={colors.brandBlack.main} />
+                      <Text style={{ color: colors.brandBlack.main, fontWeight: '900', fontSize: 14 }}>ĐẶT NHÔM GỬI NPP THEO BÁO GIÁ NÀY</Text>
+                    </Pressable>
+
                     <Pressable
                       style={{ backgroundColor: '#0284c7', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                       onPress={async () => {
@@ -900,13 +986,99 @@ export default function QuoteScreen() {
                       <Icon name="layers" size={16} color="#ffffff" />
                       <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }}>TẠO CÔNG TRÌNH TỪ BÁO GIÁ NÀY</Text>
                     </Pressable>
-                    <Text style={styles.savedNote}>Đã lưu {saved.code}. Bấm "Xuất PDF" hoặc "Tạo công trình".</Text>
+                    <Text style={styles.savedNote}>Đã lưu {saved.code}. Bấm "Đặt nhôm gửi NPP" hoặc "Xuất PDF".</Text>
                   </View>
                 ) : null}
               </View>
             ) : null}
         <View style={{ height: 110 }} />
       </ScrollView>
+
+      {/* MODAL SƠ ĐỒ CẮT TRỰC QUAN (VISUAL CUTTING BLUEPRINT) */}
+      <Modal visible={optModalOpen} animationType="slide" transparent onRequestClose={() => setOptModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Sơ Đồ Cắt & Tối Ưu Phế Liệu</Text>
+                <Text style={{ fontSize: 12, color: colors.brandGrey[500] }}>Thuật toán Best-Fit xếp nhôm + Tận dụng Đề-xê</Text>
+              </View>
+              <Pressable onPress={() => setOptModalOpen(false)} style={{ padding: 4 }}>
+                <Icon name="x" size={24} color={colors.brandBlack.main} />
+              </Pressable>
+            </View>
+
+            {optLoading ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={colors.brandOrange} />
+                <Text style={{ marginTop: 12, color: colors.brandBlack.main, fontWeight: '700' }}>Đang tính toán sơ đồ cắt tối ưu...</Text>
+              </View>
+            ) : (
+              <ScrollView contentContainerStyle={{ padding: 16 }}>
+                {optResults.length === 0 ? (
+                  <Text style={{ textAlign: 'center', padding: 20, color: colors.brandGrey[500] }}>Không có dữ liệu thanh nhôm để tối ưu.</Text>
+                ) : (
+                  optResults.map((opt, oIdx) => (
+                    <View key={oIdx} style={styles.optCard}>
+                      <View style={styles.optCardHeader}>
+                        <Text style={styles.optCardTitle}>Hệ nhôm: {opt.materialCode}</Text>
+                        <Text style={styles.optCardDesc}>
+                          Cần <Text style={{ fontWeight: '900', color: colors.brandOrange }}>{opt.newBarsNeeded} cây 6m</Text> • Sinh {opt.newDeXeGenerated?.length || 0} đoạn Đề-xê • Phế nhôm: <Text style={{ fontWeight: '900', color: colors.danger }}>{opt.scrapGeneratedKg} kg</Text>
+                        </Text>
+                      </View>
+
+                      {opt.barLayouts && opt.barLayouts.length > 0 ? (
+                        opt.barLayouts.map((bar: any, bIdx: number) => (
+                          <View key={bIdx} style={styles.barItemBox}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: colors.brandBlack.main }}>
+                                {bar.isDeXe ? `🔄 CÂY ĐỀ-XÊ (${bar.barLengthMm}mm)` : `🌲 CÂY NGUYÊN #${bar.barIndex} (${bar.barLengthMm}mm)`}
+                              </Text>
+                              <Text style={{ fontSize: 12, color: colors.brandGrey[500] }}>
+                                Dùng: {bar.usedLengthMm}mm | Thừa: {bar.remainingLengthMm}mm
+                              </Text>
+                            </View>
+
+                            {/* Thanh trực quan */}
+                            <View style={styles.barVisualTrack}>
+                              {bar.cuts?.map((cut: any, cIdx: number) => {
+                                const pct = Math.max(8, (cut.lengthMm / bar.barLengthMm) * 100);
+                                return (
+                                  <View key={cIdx} style={[styles.cutSegment, { width: `${pct}%`, backgroundColor: cIdx % 2 === 0 ? '#FDA720' : '#ea580c' }]}>
+                                    <Text style={styles.cutSegmentText} numberOfLines={1}>{cut.lengthMm}</Text>
+                                  </View>
+                                );
+                              })}
+                              {bar.remainingLengthMm > 0 && (
+                                <View style={[styles.remainingSegment, { width: `${Math.max(5, (bar.remainingLengthMm / bar.barLengthMm) * 100)}%`, backgroundColor: bar.isNewDeXe ? '#10b981' : '#94a3b8' }]}>
+                                  <Text style={styles.remainingSegmentText} numberOfLines={1}>{bar.remainingLengthMm} {bar.isNewDeXe ? 'ĐX' : 'Phế'}</Text>
+                                </View>
+                              )}
+                            </View>
+
+                            {/* Chi tiết đoạn cắt */}
+                            <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                              {bar.cuts?.map((c: any, ci: number) => (
+                                <View key={ci} style={{ backgroundColor: '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                                  <Text style={{ fontSize: 11, color: colors.brandBlack.main }}>
+                                    {c.doorName ? `${c.doorName}: ` : ''}<Text style={{ fontWeight: '700' }}>{c.lengthMm}mm</Text> ({c.cutAngle || '45°'})
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={{ fontSize: 12, color: colors.brandGrey[500], padding: 8 }}>Chưa có sơ đồ chi tiết</Text>
+                      )}
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -1026,11 +1198,25 @@ const styles = StyleSheet.create({
   darkButtonText: { color: colors.white, fontWeight: '800' },
   orangeButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
   orangeButtonText: { color: colors.brandBlack.main, fontWeight: '800' },
+  purpleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#8B5CF6', borderRadius: 14, paddingVertical: 14 },
+  purpleButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 13 },
   savedNote: { textAlign: 'center', color: colors.success, fontWeight: '600', marginTop: 12, fontSize: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '70%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
   modalTitle: { fontSize: 18, fontWeight: '900', color: colors.brandBlack.main },
   templateItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F4F4F5' },
-  templateName: { flex: 1, color: colors.brandBlack.main, fontWeight: '700' }
+  templateName: { flex: 1, color: colors.brandBlack.main, fontWeight: '700' },
+
+  // Sơ đồ cắt
+  optCard: { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  optCardHeader: { marginBottom: 8 },
+  optCardTitle: { fontSize: 15, fontWeight: '900', color: colors.brandBlack.main },
+  optCardDesc: { fontSize: 12, color: colors.brandGrey[500], marginTop: 2 },
+  barItemBox: { backgroundColor: '#ffffff', borderRadius: 8, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#cbd5e1' },
+  barVisualTrack: { flexDirection: 'row', height: 28, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: '#cbd5e1' },
+  cutSegment: { height: '100%', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderColor: '#ffffff' },
+  cutSegmentText: { fontSize: 11, fontWeight: '800', color: '#ffffff' },
+  remainingSegment: { height: '100%', justifyContent: 'center', alignItems: 'center' },
+  remainingSegmentText: { fontSize: 10, fontWeight: '700', color: '#ffffff' },
 });

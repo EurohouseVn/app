@@ -2,9 +2,12 @@ import { Controller, Get, Post, Body, Patch, Param, UseGuards, Query } from '@ne
 import { SalesService } from './sales.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser, JwtUser } from '../../auth/current-user.decorator';
+import { Roles } from '../../auth/roles.decorator';
+import { RolesGuard } from '../../auth/roles.guard';
 
 @Controller('admin/sales')
-@UseGuards(JwtAuthGuard) // Chỉ những người có module sales hoặc có quyền mới được, nhưng tạm thời dùng jwt auth, chi tiết check ở service
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN', 'STAFF')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 

@@ -3,9 +3,10 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { OrderPdfService } from './order-pdf.service';
 import { CatalogModule } from '../catalog/catalog.module';
+import { QuotationsModule } from '../quotations/quotations.module';
 
 @Module({
-  imports: [CatalogModule],
+  imports: [CatalogModule, QuotationsModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderPdfService],
   exports: [OrdersService],

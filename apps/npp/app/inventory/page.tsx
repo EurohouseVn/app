@@ -195,6 +195,8 @@ export default function NppInventoryPage() {
     }
     const body: CreateOrderInput = {
       sourceType: 'NPP',
+      factoryOrgId: factory.id,
+      clientRequestId: `npp-quick-${factory.id}-${selected.id}-${adjustColor}-${Date.now()}`,
       customerName: factory.name,
       customerPhone: factory.phone,
       deliveryAddress: factory.address,
@@ -227,6 +229,7 @@ export default function NppInventoryPage() {
     }
     const body: CreateOrderInput = {
       sourceType: 'NPP_TO_ADMIN',
+      clientRequestId: `npp-company-${selected.id}-${adjustColor}-${Date.now()}`,
       colorCode: adjustColor,
       note: note || 'NPP đặt hàng công ty từ WebNPP',
       items: [{

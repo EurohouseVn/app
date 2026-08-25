@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, BadRequestException } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import * as fs from 'fs';
 import * as path from 'path';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile } from '../../common/upload';
 
 @Controller('content')
 export class ContentController {
@@ -48,7 +49,7 @@ export class ContentController {
   @Post('admin/promotions/:id/image')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
-  @UseInterceptors(FilesInterceptor('images', 10))
+  @UseInterceptors(FilesInterceptor('images', 10, IMAGE_UPLOAD_OPTIONS))
   async uploadPromotionImage(
     @Param('id') id: string,
     @UploadedFiles() files: any[],
@@ -61,10 +62,10 @@ export class ContentController {
     }
 
     const imageUrls = files.map((file, index) => {
-      const fileExt = path.extname(file.originalname) || '.png';
+      const fileExt = imageExtension(file);
       const fileName = `${id}-${Date.now()}-${index}${fileExt}`;
       const filePath = path.join(imagesDir, fileName);
-      fs.writeFileSync(filePath, file.buffer);
+      persistUploadedFile(file, filePath);
       return `/static/images/promotions/${fileName}`;
     });
 

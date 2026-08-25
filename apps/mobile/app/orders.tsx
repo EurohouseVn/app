@@ -45,6 +45,35 @@ function normalizeText(value?: string | null) {
     .toLowerCase();
 }
 
+export function isSystemAllowedForColors(system: Pick<CatalogSystem, 'code' | 'name'>, selectedColors: string[], colorList?: ColorCode[]): boolean {
+  if (!selectedColors || selectedColors.length === 0) return true;
+
+  const normSysCode = normalizeText(system.code);
+  const normSysName = normalizeText(system.name);
+
+  const is55 = normSysCode.includes('55') || normSysName.includes('55');
+  const isPreco = normSysCode.includes('preco') || normSysName.includes('preco');
+  const isMatDung = normSysCode.includes('md') || normSysName.includes('mat dung');
+  const isNoiThat = normSysCode.includes('noithat') || normSysCode.includes('noi that') || normSysName.includes('noi that');
+
+  // Kiểm tra xem hệ này có hợp lệ với ít nhất 1 màu đang chọn không
+  return selectedColors.some((colCode) => {
+    const colObj = colorList?.find((c) => c.code === colCode || c.id === colCode);
+    const colSearch = normalizeText(`${colCode} ${colObj?.name || ''}`);
+
+    const isGroup2 = colSearch.includes('cafe thuong') || colSearch.includes('cafe_thuong') || colSearch.includes('cafe-thuong') || colSearch.includes('rita');
+
+    if (isGroup2) {
+      // Cafe thường hoặc Xám Rita: CHỈ hiện hệ 55 Euroqueen, Preco, và mặt dựng
+      return is55 || isPreco || isMatDung;
+    }
+
+    // Cafe Metalic, Gỗ Cẩm Lai, Gỗ Olak (Trắc), Xám Ngọc Trai (và các màu Nhóm 1):
+    // Hiện đủ tất cả các hệ TRỪ Preco, mặt dựng, và nội thất
+    return !isPreco && !isMatDung && !isNoiThat;
+  });
+}
+
 function findMatchingSystem(systems: CatalogSystem[], quoteSystem?: string) {
   const normalized = normalizeText(quoteSystem);
   if (!normalized) return systems[0];
@@ -166,6 +195,7 @@ export default function OrderTreeScreen() {
   const [clientRequestId, setClientRequestId] = useState(createClientRequestId);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [draftAppliedKey, setDraftAppliedKey] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(() => {
     api.get<CatalogSystem[]>('/catalog/systems').then((data) => {
@@ -209,13 +239,50 @@ export default function OrderTreeScreen() {
           setOpenSystem(draft.firstSystemId ?? systems[0]?.id ?? null);
           setMessage(`Da boc tach tam tinh ${draft.lines} dong thanh nhom tu bao gia ${quotation.code}. Vui long ra soat so cay truoc khi gui.`);
         } else {
-          setMessage(`Chua map duoc he nhom trong bao gia ${quotation.code}. Vui long chon thanh nhom thu cong.`);
+          setMessage(`Chưa ánh xạ được hệ nhôm trong báo giá ${quotation.code}. Vui lòng chọn thanh nhôm thủ công.`);
         }
       })
       .catch(() => {
-        setMessage('Khong tai duoc bao gia lien ket. Vui long chon thanh nhom thu cong.');
+        setMessage('Không tải được báo giá liên kết. Vui lòng chọn thanh nhôm thủ công.');
       });
   }, [draftParams.projectId, draftParams.projectCode, draftParams.projectName, draftParams.customerName, draftParams.customerPhone, draftParams.deliveryAddress, draftParams.quotationCode, draftAppliedKey, systems]);
+
+  const visibleSystems = useMemo(() => {
+    return systems.filter((sys) => isSystemAllowedForColors(sys, selectedColors, colorList));
+  }, [systems, selectedColors, colorList]);
+
+  useEffect(() => {
+    if (visibleSystems.length > 0) {
+      setOpenSystem((cur) => {
+        if (!cur || !visibleSystems.some((s) => s.id === cur)) {
+          return visibleSystems[0].id;
+        }
+        return cur;
+      });
+    }
+  }, [visibleSystems]);
+
+  const colorRuleHint = useMemo(() => {
+    if (!selectedColors.length) return null;
+    const hasGroup2 = selectedColors.some((colCode) => {
+      const colObj = colorList.find((c) => c.code === colCode || c.id === colCode);
+      const s = normalizeText(`${colCode} ${colObj?.name || ''}`);
+      return s.includes('cafe thuong') || s.includes('cafe_thuong') || s.includes('cafe-thuong') || s.includes('rita');
+    });
+    const hasGroup1 = selectedColors.some((colCode) => {
+      const colObj = colorList.find((c) => c.code === colCode || c.id === colCode);
+      const s = normalizeText(`${colCode} ${colObj?.name || ''}`);
+      return !s.includes('cafe thuong') && !s.includes('cafe_thuong') && !s.includes('cafe-thuong') && !s.includes('rita');
+    });
+
+    if (hasGroup2 && !hasGroup1) {
+      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Euroqueen, Preco & Mặt dựng';
+    }
+    if (hasGroup1 && !hasGroup2) {
+      return 'Màu Metalic / Vân gỗ / Ngọc trai: Khả dụng tất cả hệ (trừ Preco, Mặt dựng, Nội thất)';
+    }
+    return 'Áp dụng danh mục hệ nhôm theo các màu đã chọn';
+  }, [selectedColors, colorList]);
 
   const profileById = useMemo(() => {
     const map = new Map<string, CatalogProfile>();
@@ -223,24 +290,42 @@ export default function OrderTreeScreen() {
     return map;
   }, [systems]);
 
+  const filteredProfiles = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = normalizeText(searchQuery);
+    const list: { profile: CatalogProfile; systemName: string }[] = [];
+    visibleSystems.forEach((sys) => {
+      sys.profiles.forEach((p) => {
+        const text = `${normalizeText(p.code)} ${normalizeText(p.name)} ${normalizeText(sys.name)}`;
+        if (text.includes(q)) {
+          list.push({ profile: p, systemName: sys.name });
+        }
+      });
+    });
+    return list;
+  }, [searchQuery, visibleSystems]);
+
   const cart = useMemo(() => {
     let totalKg = 0;
     let totalAmount = 0;
     let lines = 0;
-    const items: { id: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
+    const items: { id: string; profileId: string; colorCode: string; colorName: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
     Object.entries(qty).forEach(([id, q]) => {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
       const kg = theoreticalKgPerBar(p) * q;
       const amount = kg * p.pricePerKg;
-      lines += 1;
-      totalKg += kg;
-      totalAmount += amount;
-      items.push({ id, code: p.code, name: p.name, quantity: q, kg, amount });
+      selectedColors.forEach((colorCode) => {
+        const colorName = colorList.find((color) => color.code === colorCode)?.name || colorCode;
+        lines += 1;
+        totalKg += kg;
+        totalAmount += amount;
+        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, colorName, code: p.code, name: p.name, quantity: q, kg, amount });
+      });
     });
     return { totalKg, totalAmount, lines, items };
-  }, [qty, profileById]);
+  }, [qty, profileById, selectedColors, colorList]);
 
   function toggleColor(code: string) {
     setSelectedColors((cur) => (cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]));
@@ -290,12 +375,13 @@ export default function OrderTreeScreen() {
     setSubmitting(true);
     try {
       const items = cart.items.map((item) => {
-        const p = profileById.get(item.id)!;
-        return { profileId: item.id, productCode: p.code, productName: p.name, colorCode: selectedColors.join(', '), quantity: item.quantity };
+        const p = profileById.get(item.profileId)!;
+        return { profileId: item.profileId, productCode: p.code, productName: p.name, colorCode: item.colorCode, quantity: item.quantity };
       });
       const order = await api.post<CreateOrderResult>('/orders', {
         sourceType: 'FACTORY',
         clientRequestId,
+        submitToNpp: true,
         colorCode: selectedColors.join(', '),
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
@@ -332,12 +418,12 @@ export default function OrderTreeScreen() {
       const target = `${FileSystem.cacheDirectory}phieu-dat-hang-${order.code}.pdf`;
       const { uri } = await FileSystem.downloadAsync(`${API_URL}/orders/${order.id}/pdf`, target, { headers: authHeaders() });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Phieu dat hang ${order.code}` });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Phiếu đặt hàng ${order.code}` });
       } else {
         Alert.alert('Da tai PDF', `Da luu file tai: ${uri}`);
       }
     } catch (e) {
-      Alert.alert('Loi', e instanceof Error ? e.message : 'Khong xuat duoc PDF.');
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không xuất được PDF.');
     } finally {
       setExportingPdf(false);
     }
@@ -352,7 +438,7 @@ export default function OrderTreeScreen() {
           <View style={styles.successBox}>
             <Icon name="check-circle" size={32} color={colors.success} />
             <Text style={styles.successTitle}>Đã tạo đơn {result.code}</Text>
-            <Text style={styles.successSub}>{result.nppName ? `Đã gửi tới ${result.nppName}` : 'Đang chờ gán NPP xử lý'}</Text>
+            <Text style={styles.successSub}>{result.status === 'NEW' && result.nppName ? `Đã gửi tới ${result.nppName}` : 'Đơn đang được lưu nháp; cần gán NPP trước khi gửi'}</Text>
           </View>
 
           {hasWarnings ? (
@@ -387,7 +473,7 @@ export default function OrderTreeScreen() {
             <View key={item.id} style={styles.confirmRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.confirmCode}>{item.code}</Text>
-                <Text style={styles.confirmName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.confirmName} numberOfLines={1}>{item.name} · {item.colorName}</Text>
               </View>
               <Text style={styles.confirmQty}>×{item.quantity}</Text>
               <Text style={styles.confirmAmount}>{Math.round(item.amount).toLocaleString('vi-VN')} đ</Text>
@@ -511,43 +597,96 @@ export default function OrderTreeScreen() {
           })}
         </View>
 
-        {systems.map((system) => {
-          const open = openSystem === system.id;
-          const sysQty = system.profiles.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0);
-          return (
-            <View key={system.id} style={styles.treeNode}>
-              <Pressable onPress={() => setOpenSystem(open ? null : system.id)} style={styles.treeHead}>
-                <View style={styles.treeIcon}><Icon name="layers" size={16} color={colors.brandOrangeText} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.treeTitle}>{system.name}</Text>
-                  <Text style={styles.treeSub}>{system.profiles.length} thanh · {system.code}</Text>
-                </View>
-                {sysQty > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{sysQty}</Text></View> : null}
-                <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.brandGrey[500]} />
-              </Pressable>
+        {colorRuleHint ? (
+          <View style={styles.colorRuleBox}>
+            <Icon name="sliders" size={13} color={colors.brandOrangeText} />
+            <Text style={styles.colorRuleText}>{colorRuleHint}</Text>
+          </View>
+        ) : null}
 
-              {open ? (
-                <View style={styles.leafWrap}>
-                  {system.profiles.map((p) => (
-                    <View key={p.id} style={styles.leaf}>
-                      <ProfileThumb imageUrl={p.imageUrl} size={48} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.leafCode}>{p.code}</Text>
-                        <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                        <Text style={styles.leafMeta}>{theoreticalKgPerBar(p).toFixed(2)} kg tạm tính/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
-                      </View>
-                      <View style={styles.stepper}>
-                        <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
-                        <Text style={styles.stepVal}>{qty[p.id] ?? 0}</Text>
-                        <Pressable style={[styles.stepBtn, styles.stepBtnAdd]} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) + 1)}><Icon name="plus" size={14} color={colors.brandBlack.main} /></Pressable>
-                      </View>
-                    </View>
-                  ))}
+        {/* THANH TÌM KIẾM THANH NHÔM ĐẶT TAY */}
+        <View style={styles.searchWrap}>
+          <Icon name="search" size={18} color={colors.brandOrangeText} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm nhanh mã thanh (VD: DAK55, DAD91, E70...)"
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }}>
+              <Icon name="x" size={16} color={colors.brandGrey[500]} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* KẾT QUẢ TÌM KIẾM */}
+        {searchQuery.trim() ? (
+          <View style={styles.searchResultsBox}>
+            <Text style={styles.searchResultTitle}>
+              Tìm thấy {filteredProfiles.length} thanh nhôm khớp "{searchQuery}"
+            </Text>
+            {filteredProfiles.length === 0 ? (
+              <Text style={{ color: colors.brandGrey[500], padding: 14, textAlign: 'center' }}>Không tìm thấy thanh nhôm phù hợp.</Text>
+            ) : (
+              filteredProfiles.map(({ profile: p, systemName }) => (
+                <View key={p.id} style={styles.leaf}>
+                  <ProfileThumb imageUrl={p.imageUrl} size={48} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.leafCode}>{p.code}</Text>
+                    <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
+                    <Text style={styles.leafMeta}>{systemName} · {theoreticalKgPerBar(p).toFixed(2)} kg/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
+                  </View>
+                  <View style={styles.stepper}>
+                    <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
+                    <Text style={styles.stepVal}>{qty[p.id] ?? 0}</Text>
+                    <Pressable style={[styles.stepBtn, styles.stepBtnAdd]} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) + 1)}><Icon name="plus" size={14} color={colors.brandBlack.main} /></Pressable>
+                  </View>
                 </View>
-              ) : null}
-            </View>
-          );
-        })}
+              ))
+            )}
+          </View>
+        ) : (
+          /* DANH MỤC THEO HỆ NHÔM KHẢ DỤNG */
+          visibleSystems.map((system) => {
+            const open = openSystem === system.id;
+            const sysQty = system.profiles.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0);
+            return (
+              <View key={system.id} style={styles.treeNode}>
+                <Pressable onPress={() => setOpenSystem(open ? null : system.id)} style={styles.treeHead}>
+                  <View style={styles.treeIcon}><Icon name="layers" size={16} color={colors.brandOrangeText} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.treeTitle}>{system.name}</Text>
+                    <Text style={styles.treeSub}>{system.profiles.length} thanh · {system.code}</Text>
+                  </View>
+                  {sysQty > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{sysQty}</Text></View> : null}
+                  <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.brandGrey[500]} />
+                </Pressable>
+
+                {open ? (
+                  <View style={styles.leafWrap}>
+                    {system.profiles.map((p) => (
+                      <View key={p.id} style={styles.leaf}>
+                        <ProfileThumb imageUrl={p.imageUrl} size={48} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.leafCode}>{p.code}</Text>
+                          <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
+                          <Text style={styles.leafMeta}>{theoreticalKgPerBar(p).toFixed(2)} kg tạm tính/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
+                        </View>
+                        <View style={styles.stepper}>
+                          <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
+                          <Text style={styles.stepVal}>{qty[p.id] ?? 0}</Text>
+                          <Pressable style={[styles.stepBtn, styles.stepBtnAdd]} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) + 1)}><Icon name="plus" size={14} color={colors.brandBlack.main} /></Pressable>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })
+        )}
 
         {message ? <Text style={styles.errorText}>{message}</Text> : null}
         <View style={{ height: 150 }} />
@@ -572,13 +711,19 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
   label: { color: colors.brandBlack.main, fontWeight: '800' },
   labelHint: { color: colors.brandOrangeText, fontWeight: '700', fontSize: 12 },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   colorChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: colors.white, width: '48%', shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
   colorChipActive: { borderWidth: 1.5, borderColor: colors.brandOrange },
   colorDot: { width: 18, height: 18, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
   colorText: { flex: 1, color: colors.brandGrey[500], fontWeight: '700', fontSize: 12 },
   checkBox: { width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, borderColor: '#D5D8DC', alignItems: 'center', justifyContent: 'center' },
   checkBoxActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange },
+  colorRuleBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
+  colorRuleText: { flex: 1, color: colors.brandOrangeText, fontSize: 11.5, fontWeight: '700', lineHeight: 16 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 4, marginBottom: 14, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  searchInput: { flex: 1, height: 44, paddingHorizontal: 10, color: colors.brandBlack.main, fontSize: 13, fontWeight: '600' },
+  searchResultsBox: { backgroundColor: colors.white, borderRadius: 18, padding: 14, marginBottom: 14, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  searchResultTitle: { fontSize: 12, fontWeight: '800', color: colors.brandOrangeText, marginBottom: 8, paddingHorizontal: 4 },
   treeNode: { borderRadius: 18, marginBottom: 12, overflow: 'hidden', backgroundColor: colors.white, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   treeHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: colors.white },
   treeIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },

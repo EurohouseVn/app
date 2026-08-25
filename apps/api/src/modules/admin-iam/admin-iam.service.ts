@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import type {
   AdminUserItem,
   CreateNppInput,
@@ -7,12 +8,13 @@ import type {
   Department,
   UpdateUserInput,
   OrgItem,
-  UpdateOrgInput,
 } from '@eurohouse/types';
 import { ADMIN_MODULE_KEYS } from '@eurohouse/types';
 import { PrismaService } from '../../prisma/prisma.service';
 
-const DEFAULT_USER_PASSWORD = process.env.DEMO_ADMIN_PASSWORD ?? 'Eurohouse@2026';
+function generatedPassword(): string {
+  return `Eh@${randomBytes(9).toString('base64url')}`;
+}
 
 function serializeModules(modules: string[] | undefined): string {
   const valid = (modules ?? []).filter((m) => ADMIN_MODULE_KEYS.includes(m));
@@ -98,7 +100,9 @@ export class AdminIamService {
     if (!email) throw new BadRequestException('Email không được để trống.');
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new BadRequestException('Email đã tồn tại.');
-    const passwordHash = await bcrypt.hash(input.password?.trim() || DEFAULT_USER_PASSWORD, 10);
+    const password = input.password?.trim() || '';
+    if (password.length < 8) throw new BadRequestException('Mật khẩu phải có ít nhất 8 ký tự.');
+    const passwordHash = await bcrypt.hash(password, 10);
     const created = await this.prisma.user.create({
       data: {
         email,
@@ -120,21 +124,23 @@ export class AdminIamService {
   async createNpp(input: CreateNppInput): Promise<{ organization: OrgItem; user: AdminUserItem; password: string }> {
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
-    if (!name) throw new BadRequestException('Ten NPP khong duoc de trong.');
-    if (!email) throw new BadRequestException('Email dang nhap NPP khong duoc de trong.');
+    if (!name) throw new BadRequestException('Tên NPP không được để trống.');
+    if (!email) throw new BadRequestException('Email đăng nhập NPP không được để trống.');
 
     const existingEmail = await this.prisma.user.findUnique({ where: { email } });
-    if (existingEmail) throw new BadRequestException('Email da ton tai.');
+    if (existingEmail) throw new BadRequestException('Email đã tồn tại.');
 
     const requestedCode = input.code?.trim() ? normalizeCodePart(input.code) : normalizeCodePart(name);
-    let code = requestedCode.startsWith('NPP') ? requestedCode : `NPP-${requestedCode}`;
+    const codeBase = requestedCode.replace(/^NPP/, '') || 'AUTO';
+    let code = `NPP-${codeBase}`;
     let suffix = 1;
     while (await this.prisma.organization.findUnique({ where: { code } })) {
       suffix += 1;
-      code = `${requestedCode.startsWith('NPP') ? requestedCode : `NPP-${requestedCode}`}-${suffix}`;
+      code = `NPP-${codeBase}-${suffix}`;
     }
 
-    const password = input.password?.trim() || DEFAULT_USER_PASSWORD;
+    const password = input.password?.trim() || generatedPassword();
+    if (password.length < 8) throw new BadRequestException('Mật khẩu phải có ít nhất 8 ký tự.');
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -154,7 +160,7 @@ export class AdminIamService {
       const existingNppUser = await tx.user.findFirst({
         where: { organizationId: organization.id, role: 'NPP' },
       });
-      if (existingNppUser) throw new BadRequestException('NPP nay da co tai khoan.');
+      if (existingNppUser) throw new BadRequestException('NPP này đã có tài khoản.');
 
       const user = await tx.user.create({
         data: {
@@ -164,7 +170,7 @@ export class AdminIamService {
           passwordHash,
           role: 'NPP',
           organizationId: organization.id,
-          jobTitle: 'Tai khoan NPP',
+          jobTitle: 'Tài khoản NPP',
           moduleAccess: '[]',
         },
         include: { organization: true, department: true },
@@ -175,7 +181,7 @@ export class AdminIamService {
 
     const orgs = await this.adminOrgs();
     const organization = orgs.find((org) => org.id === result.organization.id);
-    if (!organization) throw new NotFoundException('Khong tim thay NPP vua tao.');
+    if (!organization) throw new NotFoundException('Không tìm thấy NPP vừa tạo.');
     return {
       organization,
       user: this.toAdminUserItem(result.user),

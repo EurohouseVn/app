@@ -1,4 +1,4 @@
-import { apiUrl, clearSession, getToken } from '../auth';
+import { apiUrl, clearSession, getToken, waitForToken } from '../auth';
 
 export { apiUrl };
 
@@ -22,8 +22,19 @@ function handleUnauthorized(status: number) {
   }
 }
 
+async function authenticatedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  await waitForToken();
+  let response = await fetch(url, { ...init, headers: authHeaders(init.headers as Record<string, string> | undefined) });
+  if (response.status === 401) {
+    clearSession();
+    const freshToken = await waitForToken();
+    if (freshToken) response = await fetch(url, { ...init, headers: authHeaders(init.headers as Record<string, string> | undefined) });
+  }
+  return response;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
+  const response = await authenticatedFetch(`${apiUrl}${path}`);
   if (!response.ok) {
     handleUnauthorized(response.status);
     throw new Error(`Không tải được ${path} (lỗi ${response.status})`);
@@ -32,7 +43,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 }
 
 export async function apiBlob(path: string): Promise<Blob> {
-  const response = await fetch(`${apiUrl}${path}`, { headers: authHeaders() });
+  const response = await authenticatedFetch(`${apiUrl}${path}`);
   if (!response.ok) {
     handleUnauthorized(response.status);
     throw new Error(`Không tải được ${path} (lỗi ${response.status})`);
@@ -41,9 +52,9 @@ export async function apiBlob(path: string): Promise<Blob> {
 }
 
 export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, {
+  const response = await authenticatedFetch(`${apiUrl}${path}`, {
     method,
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {

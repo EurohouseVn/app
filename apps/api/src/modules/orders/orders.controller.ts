@@ -1,6 +1,6 @@
-﻿import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import type { CreateAdminToNppShipmentInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
+import type { ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -22,6 +22,13 @@ export class OrdersController {
   @Roles('ADMIN', 'NPP', 'FACTORY')
   createOrder(@Body() body: CreateOrderInput, @CurrentUser() user: JwtUser) {
     return this.service.createOrder(body, user.sub);
+  }
+
+  @Post('orders/convert-from-quotation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
+  convertFromQuotation(@Body() body: ConvertQuoteToOrderInput, @CurrentUser() user: JwtUser) {
+    return this.service.convertQuotationToOrder(body, user);
   }
 
   @Get('orders')
@@ -113,6 +120,9 @@ export class OrdersController {
       invoiceNo: order.invoiceNo ?? '',
       poNo: order.poNo ?? '',
       createdAt: order.createdAt,
+      actualTotalKg: order.sourceType === 'ADMIN_TO_NPP' || ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status)
+        ? order.totalKg
+        : undefined,
       colorNameByCode,
       items: order.items.map((it: any) => ({
         profileCode: it.profile?.code ?? it.productCode,
@@ -121,7 +131,6 @@ export class OrdersController {
         quantity: it.quantity,
         totalKg: it.totalKg,
         kgPerMeter: it.profile?.kgPerMeter,
-        actualKgPerBar: it.profile?.actualKgPerBar,
         theoreticalTotalKg: it.theoreticalTotalKg,
         barsPerBundle: it.profile?.barsPerBundle,
       })),
@@ -173,16 +182,16 @@ export class OrdersController {
     const colorNameByCode: Record<string, string> = {};
     for (const c of colors) colorNameByCode[c.code] = c.name;
     const nppOrg = (order as any).nppOrg;
-    const factoryOrg = order.createdBy?.organization;
+    const factoryOrg = (order as any).factoryOrg || order.createdBy?.organization;
 
     const pdf = await this.orderPdfService.render({
-      title: 'PHIEU GIAO HANG',
+      title: 'PHIẾU GIAO HÀNG',
       code: order.code,
       issuerName: nppOrg?.productionName || nppOrg?.name || order.nppName || 'NPP EUROHOUSE',
       issuerAddress: nppOrg?.address || '',
       issuerPhone: nppOrg?.phone || '',
       issuerEmail: nppOrg?.email || '',
-      issuerCategories: nppOrg?.mainCategories || 'Nha phan phoi Eurohouse',
+      issuerCategories: nppOrg?.mainCategories || 'Nhà phân phối Eurohouse',
       customerCode: order.customerCode ?? '',
       customerName: factoryOrg?.productionName || factoryOrg?.name || order.factoryName || order.customerName || '',
       customerPhone: factoryOrg?.phone || order.customerPhone || '',
@@ -191,8 +200,9 @@ export class OrdersController {
       poNo: order.poNo ?? '',
       debtAmount: order.totalAmount,
       accessoriesNote: order.accessoriesNote ?? '',
-      signatureLabels: ['CHU NPP', 'NHAN VIEN GIAO HANG', 'KHACH HANG NHAN HANG'],
+      signatureLabels: ['CHỦ NPP', 'NHÂN VIÊN GIAO HÀNG', 'KHÁCH HÀNG NHẬN HÀNG'],
       createdAt: order.createdAt,
+      actualTotalKg: ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) ? order.totalKg : undefined,
       colorNameByCode,
       items: order.items.map((it: any) => ({
         profileCode: it.profile?.code ?? it.productCode,
@@ -201,7 +211,6 @@ export class OrdersController {
         quantity: it.quantity,
         totalKg: it.totalKg,
         kgPerMeter: it.profile?.kgPerMeter,
-        actualKgPerBar: it.profile?.actualKgPerBar,
         theoreticalTotalKg: it.theoreticalTotalKg,
         barsPerBundle: it.profile?.barsPerBundle,
       })),
@@ -217,27 +226,27 @@ export class OrdersController {
   async nppDeliveryExcel(@Param('id') id: string, @Res() res: any, @CurrentUser() user: JwtUser) {
     const order = await this.service.getOrder(id, user);
     const nppOrg = (order as any).nppOrg;
-    const factoryOrg = order.createdBy?.organization;
+    const factoryOrg = (order as any).factoryOrg || order.createdBy?.organization;
     const workbook = new exceljs.Workbook();
     workbook.creator = 'Eurohouse';
-    const sheet = workbook.addWorksheet('Phieu giao hang');
+    const sheet = workbook.addWorksheet('Phiếu giao hàng');
     sheet.columns = [
       { header: 'STT', key: 'index', width: 8 },
-      { header: 'Ma thanh', key: 'code', width: 16 },
-      { header: 'Ten hang', key: 'name', width: 32 },
-      { header: 'Mau', key: 'color', width: 14 },
-      { header: 'So cay', key: 'quantity', width: 12 },
-      { header: 'So kg', key: 'kg', width: 12 },
-      { header: 'Don gia', key: 'unitPrice', width: 14 },
-      { header: 'Thanh tien', key: 'amount', width: 16 },
+      { header: 'Mã thanh', key: 'code', width: 16 },
+      { header: 'Tên hàng', key: 'name', width: 32 },
+      { header: 'Màu', key: 'color', width: 18 },
+      { header: 'Số cây', key: 'quantity', width: 12 },
+      { header: 'Số kg', key: 'kg', width: 12 },
+      { header: 'Đơn giá', key: 'unitPrice', width: 14 },
+      { header: 'Thành tiền', key: 'amount', width: 16 },
     ];
     sheet.spliceRows(1, 0,
-      ['PHIEU GIAO HANG'],
-      [`Ma don: ${order.code}`, `Ngay tao: ${new Date(order.createdAt).toLocaleDateString('vi-VN')}`],
-      [`NPP: ${nppOrg?.productionName || nppOrg?.name || order.nppName || ''}`, `SDT: ${nppOrg?.phone || ''}`],
-      [`CSSX: ${factoryOrg?.productionName || factoryOrg?.name || order.factoryName || ''}`, `SDT: ${factoryOrg?.phone || order.customerPhone || ''}`],
-      [`Dia chi giao: ${order.deliveryAddress || factoryOrg?.address || ''}`],
-      [`Phu kien di kem: ${order.accessoriesNote || ''}`],
+      ['PHIẾU GIAO HÀNG'],
+      [`Mã đơn: ${order.code}`, `Ngày tạo: ${new Date(order.createdAt).toLocaleDateString('vi-VN')}`],
+      [`NPP: ${nppOrg?.productionName || nppOrg?.name || order.nppName || ''}`, `SĐT: ${nppOrg?.phone || ''}`],
+      [`CSSX: ${factoryOrg?.productionName || factoryOrg?.name || order.factoryName || ''}`, `SĐT: ${factoryOrg?.phone || order.customerPhone || ''}`],
+      [`Địa chỉ giao: ${order.deliveryAddress || factoryOrg?.address || ''}`],
+      [`Phụ kiện đi kèm: ${order.accessoriesNote || ''}`],
       [],
     );
     const headerRow = sheet.getRow(8);
@@ -256,10 +265,12 @@ export class OrdersController {
       });
     });
     sheet.addRow([]);
-    sheet.addRow(['', '', '', 'Tong cong', order.items.reduce((s: number, item: any) => s + item.quantity, 0), order.totalKg, '', order.totalAmount]);
+    const totalRow = sheet.addRow(['', '', '', 'TỔNG CỘNG (KG THỰC TẾ CÂN)', order.items.reduce((s: number, item: any) => s + item.quantity, 0), order.totalKg, '', order.totalAmount]);
+    totalRow.font = { bold: true };
+    totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E7' } };
     sheet.addRow([]);
-    sheet.addRow(['Chu NPP', '', 'Nhan vien giao hang', '', '', 'Khach hang nhan hang']);
-    sheet.addRow(['Ky, ghi ro ho ten', '', 'Ky, ghi ro ho ten', '', '', 'Ky, ghi ro ho ten']);
+    sheet.addRow(['CHỦ NPP', '', 'NHÂN VIÊN GIAO HÀNG', '', '', 'KHÁCH HÀNG NHẬN HÀNG']);
+    sheet.addRow(['Ký, ghi rõ họ tên', '', 'Ký, ghi rõ họ tên', '', '', 'Ký, ghi rõ họ tên']);
     sheet.eachRow((row) => row.eachCell((cell) => {
       cell.alignment = { vertical: 'middle', wrapText: true };
       cell.border = { top: { style: 'thin', color: { argb: 'FFD9DDE3' } }, left: { style: 'thin', color: { argb: 'FFD9DDE3' } }, bottom: { style: 'thin', color: { argb: 'FFD9DDE3' } }, right: { style: 'thin', color: { argb: 'FFD9DDE3' } } };

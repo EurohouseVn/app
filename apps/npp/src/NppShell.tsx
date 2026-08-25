@@ -53,6 +53,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
           position: 'sticky',
           top: 0,
           height: '100vh',
+          overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
         }}

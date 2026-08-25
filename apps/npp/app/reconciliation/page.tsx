@@ -7,9 +7,14 @@ import { NppPage } from '../../src/NppPage';
 import { apiGet } from '../../src/lib/api';
 import { currency, eyebrowStyle, ghostButtonStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
 
-const statusCols = ['NEW', 'RECEIVED_BY_NPP', 'SENT_TO_ADMIN', 'PROCESSING', 'COMPLETED', 'CANCELLED'];
+const statusCols = ['NEW', 'NPP_REVIEWING', 'CONFIRMED', 'RESERVED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
 const statusLabel: Record<string, string> = {
   NEW: 'Mới',
+  NPP_REVIEWING: 'Đã tiếp nhận',
+  CONFIRMED: 'Đã xác nhận',
+  RESERVED: 'Đã giữ hàng',
+  SHIPPED: 'Đơn giao',
+  DELIVERED: 'Đã giao',
   RECEIVED_BY_NPP: 'Đã tiếp nhận',
   SENT_TO_ADMIN: 'Đã gửi',
   PROCESSING: 'Đang xử lý',

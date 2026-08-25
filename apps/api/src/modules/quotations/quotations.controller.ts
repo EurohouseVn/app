@@ -11,6 +11,7 @@ import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
 import { QuotationPdfService } from './quotation-pdf.service';
 import { FormulaEvaluatorService } from './formula-evaluator.service';
 import { CuttingOptimizerService, CutRequest } from './cutting-optimizer.service';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile } from '../../common/upload';
 
 @Controller()
 export class QuotationsController {
@@ -29,17 +30,17 @@ export class QuotationsController {
 
   @Post('npp/profile/logo')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('logo'))
+  @UseInterceptors(FileInterceptor('logo', IMAGE_UPLOAD_OPTIONS))
   async uploadNppLogo(@Request() req: any, @UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No logo provided');
     const imagesDir = path.join(process.cwd(), 'public', 'images', 'logos');
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
     }
-    const ext = path.extname(file.originalname);
+    const ext = imageExtension(file);
     const filename = `logo-${req.user.sub}-${Date.now()}${ext}`;
     const targetPath = path.join(imagesDir, filename);
-    fs.renameSync(file.path, targetPath);
+    persistUploadedFile(file, targetPath);
     const logoUrl = `/static/images/logos/${filename}`;
     return { url: logoUrl };
   }
@@ -98,7 +99,7 @@ export class QuotationsController {
     const quotation = await this.service.getQuotation(id, user);
     if (!quotation) throw new NotFoundException('Không tìm thấy báo giá.');
     
-    const cutRequests: Record<string, number[]> = {};
+    const cutRequests: Record<string, { materialCode: string; systemCode?: string; lengths: number[] }> = {};
     
     for (const item of quotation.items) {
       if (!item.templateId) continue;
@@ -116,9 +117,10 @@ export class QuotationsController {
             const length = alu.length_mm;
             const qty = alu.quantity;
             if (code && length && qty) {
-              if (!cutRequests[code]) cutRequests[code] = [];
+              const key = `${item.system || ''}:${code}`;
+              if (!cutRequests[key]) cutRequests[key] = { materialCode: code, systemCode: item.system, lengths: [] };
               for (let i = 0; i < qty; i++) {
-                cutRequests[code].push(length);
+                cutRequests[key].lengths.push(length);
               }
             }
           }
@@ -128,10 +130,7 @@ export class QuotationsController {
       }
     }
     
-    const formattedRequests: CutRequest[] = Object.keys(cutRequests).map(code => ({
-      materialCode: code,
-      lengths: cutRequests[code]
-    }));
+    const formattedRequests: CutRequest[] = Object.values(cutRequests);
     
     if (formattedRequests.length === 0) {
       return { materials: [], totalScrapWeight: 0, total6mBars: 0 };
@@ -166,8 +165,8 @@ export class QuotationsController {
   @Roles('ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY')
   listQuotations(@Query('page') page?: string, @Query('mine') mine?: string, @CurrentUser() user?: JwtUser) {
     const createdById = (mine === 'true' || (user && user.role !== 'ADMIN' && user.role !== 'STAFF')) ? user?.sub : undefined;
-    if (page) return this.service.listQuotations({ createdById, page: parseInt(page, 10) });
-    return this.service.listQuotations({ createdById });
+    if (page) return this.service.listQuotations({ createdById, page: parseInt(page, 10) }, user);
+    return this.service.listQuotations({ createdById }, user);
   }
 
   @Get('quotations/:id')

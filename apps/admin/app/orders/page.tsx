@@ -57,7 +57,17 @@ type ApiOrder = {
 };
 
 const statusMeta: Record<string, { label: string; fg: string; soft: string }> = {
+  DRAFT: { label: 'Nháp', fg: ui.textMuted, soft: ui.surfaceMuted },
   NEW: { label: 'Mới', fg: ui.brand, soft: ui.brandSoft },
+  NPP_REVIEWING: { label: 'NPP tiếp nhận', fg: ui.success, soft: ui.successSoft },
+  CONFIRMED: { label: 'Đã xác nhận', fg: ui.success, soft: ui.successSoft },
+  RESERVED: { label: 'Đã giữ hàng', fg: ui.warning, soft: ui.warningSoft },
+  PICKING: { label: 'Đang soạn hàng', fg: ui.warning, soft: ui.warningSoft },
+  SHIPPED: { label: 'Đã tạo đơn giao', fg: ui.brand, soft: ui.brandSoft },
+  PARTIALLY_SHIPPED: { label: 'Giao một phần', fg: ui.warning, soft: ui.warningSoft },
+  DELIVERED: { label: 'Đã giao', fg: ui.success, soft: ui.successSoft },
+  ADMIN_SENT_NPP: { label: 'Công ty đã giao NPP', fg: ui.brand, soft: ui.brandSoft },
+  NPP_RECEIVED: { label: 'NPP đã nhận đủ', fg: ui.success, soft: ui.successSoft },
   RECEIVED_BY_NPP: { label: 'NPP tiếp nhận', fg: ui.success, soft: ui.successSoft },
   SENT_TO_ADMIN: { label: 'Gửi công ty', fg: ui.blue, soft: ui.blueSoft },
   PROCESSING: { label: 'Đang xử lý', fg: ui.warning, soft: ui.warningSoft },

@@ -178,7 +178,7 @@ export class InventoryService {
       const normalFits = piece.widthMm <= sheet.widthMm && piece.heightMm <= sheet.heightMm;
       const rotatedFits = piece.heightMm <= sheet.widthMm && piece.widthMm <= sheet.heightMm;
       if (!normalFits && !rotatedFits) {
-        errors.push(`Tam ${index + 1} khong vua kho kinh lon.`);
+        errors.push(`Tấm ${index + 1} không vừa khổ kính lớn.`);
         return;
       }
       const rotated = !normalFits || (rotatedFits && piece.heightMm < piece.widthMm && piece.heightMm <= sheet.widthMm);
@@ -405,7 +405,7 @@ export class InventoryService {
       if (input.direction === 'OUT') {
         const stock = await tx.nppProfileStock.findUnique({ where: { nppOrgId_profileId_colorCode: { nppOrgId, profileId, colorCode } } });
         if (!stock || stock.stockBars < input.quantity) {
-          throw new BadRequestException('Ton kho NPP khong du de xuat.');
+          throw new BadRequestException('Tồn kho NPP không đủ để xuất.');
         }
       }
       await tx.nppProfileStock.upsert({

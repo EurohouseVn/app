@@ -155,6 +155,25 @@ export default function ProjectDetailScreen() {
     }
   };
 
+  const handleOrderFromProjectQuotation = async () => {
+    if (!quotationCode) return;
+    try {
+      const q = await api.get<any>(`/quotations/${quotationCode}`);
+      if (!q || !q.id) throw new Error('Không tìm thấy báo giá');
+      const order = await api.post<any>('/orders/convert-from-quotation', {
+        quotationId: q.id,
+        note: `Đặt nhôm cho công trình ${name || project?.code}`,
+        submitToNpp: true,
+      });
+      Alert.alert('Thành công', `Đã tạo Đơn hàng ${order.code} gửi tới NPP!`, [
+        { text: 'Xem đơn hàng', onPress: () => router.push('/orders' as any) },
+        { text: 'Ở lại', style: 'cancel' }
+      ]);
+    } catch (e) {
+      Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không thể tạo đơn hàng từ công trình này.');
+    }
+  };
+
   const pickImage = async () => {
     if (images.length >= 5) {
       Alert.alert('Giới hạn', 'Tối đa 5 ảnh công trình');
@@ -268,15 +287,25 @@ export default function ProjectDetailScreen() {
         </View>
 
         {quotationCode ? (
-          <Pressable style={styles.quoteLinkedBanner} onPress={handlePreviewQuotation}>
-            <Icon name="file-text" size={16} color={colors.brandOrangeText} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.quoteLinkedText}>
-                Liên kết báo giá: <Text style={{ fontWeight: '900', textDecorationLine: 'underline' }}>{quotationCode}</Text>
-              </Text>
-            </View>
-            <Text style={{ fontSize: 12, color: colors.brandOrangeText, fontWeight: '800' }}>Xem dự toán ›</Text>
-          </Pressable>
+          <View style={{ gap: 8, marginBottom: 12 }}>
+            <Pressable style={styles.quoteLinkedBanner} onPress={handlePreviewQuotation}>
+              <Icon name="file-text" size={16} color={colors.brandOrangeText} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quoteLinkedText}>
+                  Liên kết báo giá: <Text style={{ fontWeight: '900', textDecorationLine: 'underline' }}>{quotationCode}</Text>
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.brandOrangeText, fontWeight: '800' }}>Xem dự toán ›</Text>
+            </Pressable>
+
+            <Pressable
+              style={{ backgroundColor: colors.brandOrange, padding: 12, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onPress={handleOrderFromProjectQuotation}
+            >
+              <Icon name="truck" size={16} color={colors.brandBlack.main} />
+              <Text style={{ color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 }}>ĐẶT NHÔM GỬI NPP CHO CÔNG TRÌNH NÀY</Text>
+            </Pressable>
+          </View>
         ) : null}
 
         <View style={styles.field}>

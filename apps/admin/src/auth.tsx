@@ -52,7 +52,7 @@ export function useDemoAuth() {
 
 export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) => void }) {
   const [identifier, setIdentifier] = useState('board@eurohouse.vn');
-  const [password, setPassword] = useState('Eurohouse@2026');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -175,12 +175,6 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
             <LogIn size={18} /> {loading ? 'Đang đăng nhập...' : 'Vào hệ thống'}
           </button>
 
-          <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 12, padding: 16, color: ui.textMuted, fontSize: 13, lineHeight: 1.7 }}>
-            <strong style={{ color: ui.text }}>Tài khoản demo</strong>
-            <p style={{ margin: '6px 0 0' }}>Admin: board@eurohouse.vn</p>
-            <p style={{ margin: '2px 0 0' }}>Xưởng: minh@xuong.vn · NPP: vietanh@npp.vn</p>
-            <p style={{ margin: '2px 0 0' }}>Mật khẩu chung: Eurohouse@2026</p>
-          </div>
         </form>
       </section>
     </main>

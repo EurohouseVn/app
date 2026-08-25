@@ -1,7 +1,17 @@
 import { colors } from '@eurohouse/ui';
 
 export const statusText: Record<string, string> = {
+  DRAFT: 'Nháp',
   NEW: 'Mới',
+  NPP_REVIEWING: 'NPP tiếp nhận',
+  CONFIRMED: 'Đã xác nhận',
+  RESERVED: 'Đã giữ hàng',
+  PICKING: 'Đang soạn hàng',
+  SHIPPED: 'Đã tạo đơn giao',
+  PARTIALLY_SHIPPED: 'Giao một phần',
+  DELIVERED: 'Đã giao hàng',
+  ADMIN_SENT_NPP: 'Công ty đã giao NPP',
+  NPP_RECEIVED: 'NPP đã nhận đủ',
   RECEIVED_BY_NPP: 'NPP tiếp nhận',
   SENT_TO_ADMIN: 'Gửi công ty',
   PROCESSING: 'Đang xử lý',
@@ -12,7 +22,17 @@ export const statusText: Record<string, string> = {
 };
 
 export const statusTone: Record<string, string> = {
+  DRAFT: colors.brandGrey[500],
   NEW: colors.brandOrange,
+  NPP_REVIEWING: colors.success,
+  CONFIRMED: colors.success,
+  RESERVED: colors.warning,
+  PICKING: colors.warning,
+  SHIPPED: colors.brandOrange,
+  PARTIALLY_SHIPPED: colors.warning,
+  DELIVERED: colors.success,
+  ADMIN_SENT_NPP: colors.brandOrange,
+  NPP_RECEIVED: colors.success,
   RECEIVED_BY_NPP: colors.success,
   SENT_TO_ADMIN: colors.brandBlack.main,
   PROCESSING: colors.warning,

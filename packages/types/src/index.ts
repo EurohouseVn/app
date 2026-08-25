@@ -10,7 +10,6 @@ export interface UserSummary {
   status: UserStatus;
   points: number;
 }
-
 export interface DashboardMetric {
   label: string;
   value: string;
@@ -269,7 +268,6 @@ export interface CatalogProfile {
   name: string;
   thicknessMm?: string;
   kgPerMeter: number;
-  actualKgPerBar?: number;
   barLengthMm: number;
   barsPerBundle: number;
   pricePerKg: number;
@@ -308,14 +306,13 @@ export interface CreateOrderItemInput {
   colorCode: string;
   quantity: number;
   kgPerMeter?: number;
-  actualKgPerBar?: number;
 }
 
 export interface CreateOrderInput {
   sourceType: OrderSourceType;
   clientRequestId?: string;
   submitToNpp?: boolean;
-  actualTotalKg?: number;
+  factoryOrgId?: string;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
@@ -354,7 +351,6 @@ export interface CreateOrderResult {
 }
 
 export interface UpdateOrderInput {
-  actualTotalKg?: number;
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
@@ -733,7 +729,7 @@ export interface CreateUserInput {
   jobTitle?: string;
   isCeo?: boolean;
   modules?: string[];
-  password?: string; // để trống → dùng mật khẩu mặc định
+  password?: string; // bắt buộc khi tạo tài khoản nhân sự; NPP có thể được sinh tự động
 }
 
 export interface UpdateUserInput {
@@ -1066,7 +1062,6 @@ export interface InventoryProfile {
   systemName?: string;
   stockBars: number;
   kgPerMeter?: number;
-  actualKgPerBar?: number;
   stockByColor?: { colorCode: string; colorName: string; stockBars: number; tons: number }[];
   lowStockAlert?: number;
   pricePerKg?: number;
@@ -1093,4 +1088,78 @@ export interface InventoryData {
   profiles: InventoryProfile[];
   cutoffs: InventoryCutoff[];
   scrapKg: number;
+}
+
+// ---------- Tối ưu cắt & Sơ đồ cắt trực quan (Visual Cutting Blueprint) ----------
+
+export interface VisualCutSegment {
+  lengthMm: number;
+  doorName?: string;
+  profileName?: string;
+  cutAngle?: string;
+}
+
+export interface BarCuttingLayout {
+  barIndex: number;
+  barLengthMm: number;
+  materialCode: string;
+  materialName?: string;
+  isDeXe: boolean;
+  deXeId?: string;
+  cuts: VisualCutSegment[];
+  usedLengthMm: number;
+  remainingLengthMm: number;
+  isNewDeXe: boolean; // remaining >= 1000mm
+  scrapMm: number;
+}
+
+export interface CutPieceRequest {
+  lengthMm: number;
+  doorName?: string;
+  profileName?: string;
+  cutAngle?: string;
+}
+
+export interface CutRequest {
+  materialCode: string;
+  systemCode?: string;
+  lengths: number[];
+  pieces?: CutPieceRequest[];
+}
+
+export interface CutResult {
+  materialCode: string;
+  materialName?: string;
+  pieces: number[];
+  usedDeXeIds: string[];
+  newBarsNeeded: number;
+  newDeXeGenerated: number[];
+  scrapGeneratedKg: number;
+  barLayouts?: BarCuttingLayout[];
+}
+
+// ---------- Chuyển đổi Báo giá sang Đơn hàng ----------
+
+export interface ConvertQuoteToOrderInput {
+  quotationId: string;
+  projectId?: string;
+  colorCode?: string;
+  note?: string;
+  submitToNpp?: boolean;
+  customItemQuantities?: Record<string, number>; // profileId -> quantity (ghi nhận override nếu có)
+}
+
+// ---------- Thợ Pro & Gamification ----------
+
+export type WorkerTier = 'SILVER' | 'GOLD' | 'DIAMOND' | 'MASTER';
+
+export interface WorkerProCardData {
+  tier: WorkerTier;
+  tierName: string;
+  currentPoints: number;
+  proScore: number;
+  nextTierPoints: number;
+  monthlyMissionsCompleted: number;
+  monthlyMissionsTotal: number;
+  rankInProvince: number;
 }

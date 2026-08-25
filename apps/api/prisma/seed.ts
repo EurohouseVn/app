@@ -347,15 +347,25 @@ async function main() {
     systemIdByCode[sys.code] = created.id;
   }
 
-  // Xoá profile cũ, nạp toàn bộ thanh nhôm (129 mã nền + 37 mã bổ sung từ catalog R18)
-  await prisma.orderItem.deleteMany();
-  await prisma.profile.deleteMany();
+  // Nạp toàn bộ thanh nhôm (129 mã nền + 37 mã bổ sung từ catalog R18)
   for (const [sys, code, name, kg, bundle] of [...profiles, ...profilesR18]) {
+    const sysId = systemIdByCode[sys];
+    if (!sysId) continue;
     const hasImage = fs.existsSync(path.join(PROFILES_DIR, `${code}.png`));
-    await prisma.profile.create({
-      data: {
-        aluSystemId: systemIdByCode[sys], code, name, kgPerMeter: kg,
-        actualKgPerBar: Number((kg * 6).toFixed(3)),
+    await prisma.profile.upsert({
+      where: {
+        aluSystemId_code: {
+          aluSystemId: sysId,
+          code,
+        },
+      },
+      update: {
+        name, kgPerMeter: kg,
+        barLengthMm: 6000, barsPerBundle: bundle, pricePerKg: 92000,
+        imageUrl: hasImage ? `/static/profiles/${code}.png` : null,
+      },
+      create: {
+        aluSystemId: sysId, code, name, kgPerMeter: kg,
         barLengthMm: 6000, barsPerBundle: bundle, pricePerKg: 92000,
         imageUrl: hasImage ? `/static/profiles/${code}.png` : null,
       },

@@ -40,6 +40,8 @@ type RequiredInput = {
   name: string;
   type?: 'number' | 'string';
   unit?: string;
+  defaultValue?: string | number;
+  required?: boolean;
 };
 
 type DoorSet = {
@@ -75,8 +77,8 @@ function nextId() {
 function inputDefaults(inputs: RequiredInput[], quantity = '1') {
   const values: Record<string, string> = {};
   for (const input of inputs) {
-    if (input.id === 'quantity') values[input.id] = quantity;
-    else values[input.id] = '';
+    if (input.id === 'quantity') values[input.id] = String(input.defaultValue ?? quantity);
+    else values[input.id] = input.defaultValue === undefined || input.defaultValue === null ? '' : String(input.defaultValue);
   }
   return values;
 }
@@ -197,7 +199,7 @@ export default function FormulasScreen() {
 
   function validateCurrent() {
     const missing = requiredInputs.filter((input) => {
-      const required = ['width', 'height', 'quantity'].includes(input.id);
+      const required = input.required ?? ['width', 'height', 'quantity'].includes(input.id);
       return required && !dynamicInputs[input.id];
     });
     if (missing.length > 0) {

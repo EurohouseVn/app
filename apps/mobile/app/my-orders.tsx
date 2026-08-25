@@ -5,7 +5,7 @@ import { colors } from '@eurohouse/ui';
 import type { PaginatedOrders } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
-import { api, API_URL } from '../src/lib/api';
+import { api } from '../src/lib/api';
 import { confirmAction, showAlert } from '../src/lib/alert';
 import { statusText, statusTone } from '../src/lib/orderStatus';
 
@@ -16,9 +16,11 @@ const ORDER_LIMIT = 100;
 
 const filters: { key: string; label: string }[] = [
   { key: 'ALL', label: 'Tất cả' },
+  { key: 'DRAFT', label: 'Nháp' },
   { key: 'NEW', label: 'Mới' },
-  { key: 'RECEIVED_BY_NPP', label: 'NPP tiếp nhận' },
-  { key: 'PROCESSING', label: 'Đang xử lý' },
+  { key: 'NPP_REVIEWING', label: 'NPP tiếp nhận' },
+  { key: 'SHIPPED', label: 'Đơn giao' },
+  { key: 'DELIVERED', label: 'Đã giao' },
   { key: 'COMPLETED', label: 'Hoàn tất' },
 ];
 
@@ -136,9 +138,11 @@ export default function MyOrdersScreen() {
                     <View style={[styles.statusPill, { backgroundColor: (statusTone[order.status] ?? colors.brandGrey[500]) + '1A' }]}>
                       <Text style={[styles.statusPillText, { color: statusTone[order.status] ?? colors.brandBlack.main }]}>{statusText[order.status] ?? order.status}</Text>
                     </View>
-                    <Pressable style={{ padding: 4 }} onPress={() => handleDelete(order.id)}>
-                      <Icon name="trash-2" size={16} color={colors.danger} />
-                    </Pressable>
+                    {order.status === 'DRAFT' ? (
+                      <Pressable style={{ padding: 4 }} onPress={() => handleDelete(order.id)}>
+                        <Icon name="trash-2" size={16} color={colors.danger} />
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
 

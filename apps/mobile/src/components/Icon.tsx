@@ -15,7 +15,7 @@ export type IconName =
   | 'file' | 'star' | 'tool' | 'smartphone' | 'shopping-bag' | 'briefcase'
   | 'arrow-up-circle' | 'arrow-down-circle' | 'check-circle' | 'check' | 'camera' | 'save'
   | 'square' | 'columns' | 'sidebar' | 'repeat' | 'arrow-left' | 'arrow-right' | 'download' | 'log-out' | 'edit-2'
-  | 'truck' | 'layout' | 'x' | 'circle' | 'trash-2' | 'check-square';
+  | 'truck' | 'layout' | 'x' | 'circle' | 'trash-2' | 'check-square' | 'search';
 
 export function Icon({ name, size = 22, color = colors.brandBlack.main }: { name: IconName; size?: number; color?: string }) {
   return <Feather name={name} size={size} color={color} />;

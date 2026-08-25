@@ -27,7 +27,10 @@ const actionFg: Record<string, string> = {
 
 type OrderRow = { id: string; code: string; status: string; totalAmount: number; totalKg: number };
 
-const ACTIVE_STATUSES = ['NEW', 'RECEIVED_BY_NPP', 'SENT_TO_ADMIN', 'PROCESSING', 'PARTIAL'];
+const ACTIVE_STATUSES = [
+  'NEW', 'NPP_REVIEWING', 'CONFIRMED', 'RESERVED', 'PICKING', 'SHIPPED', 'PARTIALLY_SHIPPED',
+  'RECEIVED_BY_NPP', 'SENT_TO_ADMIN', 'PROCESSING', 'PARTIAL',
+];
 
 export default function HomeScreen() {
   const { user } = useAuth();

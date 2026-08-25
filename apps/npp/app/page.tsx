@@ -10,6 +10,15 @@ import { currency, eyebrowStyle, pageTitleStyle, panelStyle, subtitleStyle, ui }
 
 const statusLabel: Record<string, string> = {
   NEW: 'Mới',
+  NPP_REVIEWING: 'Đã tiếp nhận',
+  CONFIRMED: 'Đã xác nhận',
+  RESERVED: 'Đã giữ hàng',
+  PICKING: 'Đang soạn hàng',
+  SHIPPED: 'Đã tạo đơn giao',
+  PARTIALLY_SHIPPED: 'Giao một phần',
+  DELIVERED: 'Đã giao hàng',
+  ADMIN_SENT_NPP: 'Công ty đã giao NPP',
+  NPP_RECEIVED: 'Đã nhận đủ từ công ty',
   RECEIVED_BY_NPP: 'Đã tiếp nhận',
   SENT_TO_ADMIN: 'Đã gửi công ty',
   PROCESSING: 'Đang xử lý',

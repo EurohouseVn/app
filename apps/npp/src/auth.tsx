@@ -9,6 +9,7 @@ const storageKey = 'eurohouse-npp-user';
 const rememberedLoginKey = 'eurohouse-npp-remember-login';
 const allowedRoles = new Set(['NPP', 'ADMIN']);
 const authClearedEvent = 'eurohouse:npp-auth-cleared';
+const authChangedEvent = 'eurohouse:npp-auth-changed';
 
 export const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -31,6 +32,22 @@ export function clearSession() {
   window.dispatchEvent(new Event(authClearedEvent));
 }
 
+export function waitForToken(timeoutMs = 60_000): Promise<string | null> {
+  const current = getToken();
+  if (current || typeof window === 'undefined') return Promise.resolve(current);
+  return new Promise((resolve) => {
+    const finish = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(authChangedEvent, finish);
+      window.removeEventListener(authClearedEvent, finish);
+      resolve(getToken());
+    };
+    const timer = window.setTimeout(finish, timeoutMs);
+    window.addEventListener(authChangedEvent, finish, { once: true });
+    window.addEventListener(authClearedEvent, finish, { once: true });
+  });
+}
+
 export function useDemoAuth() {
   const [user, setUser] = useState<DemoAdminUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -46,6 +63,7 @@ export function useDemoAuth() {
 
   function login(value: DemoAdminUser) {
     window.localStorage.setItem(storageKey, JSON.stringify(value));
+    window.dispatchEvent(new Event(authChangedEvent));
     setUser(value);
   }
 
@@ -58,8 +76,8 @@ export function useDemoAuth() {
 }
 
 export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) => void }) {
-  const [identifier, setIdentifier] = useState('npp@eurohouse.vn');
-  const [password, setPassword] = useState('Eurohouse@2026');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberPassword, setRememberPassword] = useState(true);
   const [error, setError] = useState('');
@@ -69,9 +87,8 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
     const saved = window.localStorage.getItem(rememberedLoginKey);
     if (!saved) return;
     try {
-      const parsed = JSON.parse(saved) as { identifier?: string; password?: string };
+      const parsed = JSON.parse(saved) as { identifier?: string };
       if (parsed.identifier) setIdentifier(parsed.identifier);
-      if (parsed.password) setPassword(parsed.password);
       setRememberPassword(true);
     } catch {
       window.localStorage.removeItem(rememberedLoginKey);
@@ -97,7 +114,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
         throw new Error('Tài khoản này không có quyền truy cập NPP Web Manager.');
       }
       if (rememberPassword) {
-        window.localStorage.setItem(rememberedLoginKey, JSON.stringify({ identifier: identifier.trim(), password }));
+        window.localStorage.setItem(rememberedLoginKey, JSON.stringify({ identifier: identifier.trim() }));
       } else {
         window.localStorage.removeItem(rememberedLoginKey);
       }
@@ -197,7 +214,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: ui.textMuted, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             <input type="checkbox" checked={rememberPassword} onChange={(event) => setRememberPassword(event.target.checked)} />
-            Nhớ email và mật khẩu cho lần đăng nhập sau
+            Nhớ email; mật khẩu do trình duyệt quản lý
           </label>
 
           {error ? (
@@ -226,11 +243,6 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
             <LogIn size={18} /> {loading ? 'Đang đăng nhập...' : 'Vào hệ thống'}
           </button>
 
-          <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 12, padding: 16, color: ui.textMuted, fontSize: 13, lineHeight: 1.7 }}>
-            <strong style={{ color: ui.text }}>Tài khoản demo</strong>
-            <p style={{ margin: '6px 0 0' }}>NPP: npp@eurohouse.vn</p>
-            <p style={{ margin: '2px 0 0' }}>Mật khẩu: Eurohouse@2026</p>
-          </div>
         </form>
       </section>
     </main>

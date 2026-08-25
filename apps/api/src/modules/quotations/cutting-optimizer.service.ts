@@ -1,135 +1,221 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { BarCuttingLayout, CutPieceRequest, CutRequest, CutResult, VisualCutSegment } from '@eurohouse/types';
 
-export interface CutRequest {
-  materialCode: string;
-  lengths: number[]; // mm
+export { CutPieceRequest, CutRequest, CutResult };
+
+const BLADE_LOSS_MM = 5; // Độ dày mạch cắt cưa nhôm
+const DE_XE_MIN_MM = 1000; // Đoạn thừa >= 1000mm được lưu lại thành Đề-xê
+
+export function calculateBarsNeeded(lengths: number[], barLengthMm: number, bladeLossMm = BLADE_LOSS_MM) {
+  if (!Number.isFinite(barLengthMm) || barLengthMm <= 0) throw new BadRequestException('Chiều dài cây tiêu chuẩn không hợp lệ.');
+  const bins: number[] = [];
+  for (const length of [...lengths].sort((a, b) => b - a)) {
+    if (!Number.isFinite(length) || length <= 0 || length > barLengthMm) {
+      throw new BadRequestException(`Chiều dài cắt ${length}mm không phù hợp cây ${barLengthMm}mm.`);
+    }
+    let bestIndex = -1;
+    let bestRemaining = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < bins.length; index += 1) {
+      const loss = bins[index] === length ? 0 : bladeLossMm;
+      const remaining = bins[index] - length - loss;
+      if (remaining >= 0 && remaining < bestRemaining) {
+        bestIndex = index;
+        bestRemaining = remaining;
+      }
+    }
+    if (bestIndex >= 0) bins[bestIndex] = bestRemaining;
+    else bins.push(barLengthMm - length - (barLengthMm === length ? 0 : bladeLossMm));
+  }
+  return bins.length;
 }
 
-export interface CutResult {
-  materialCode: string;
-  pieces: number[]; // original requested lengths
-  usedDeXeIds: string[]; // IDs of DE_XE items from inventory that were modified/consumed
-  newBarsNeeded: number; // how many new full bars were consumed
-  newDeXeGenerated: number[]; // lengths of new DE_XE generated (>= 1000mm)
-  scrapGeneratedKg: number; // calculated scrap weight (kg)
+interface BinTracker {
+  id: string;
+  originalLength: number;
+  remainingCapacity: number;
+  isNewBar: boolean;
+  cuts: VisualCutSegment[];
 }
-
-const BLADE_LOSS_MM = 5;
-const DE_XE_MIN_MM = 1000;
-
-// Mặc định cây dài 6m, trừ 3 mã KTL01, E70D150, E70D190 là 6m hoặc 5.3m (mặc định lấy 6m cho chuẩn, hoặc cấu hình sau)
-function getBarLength(materialCode: string): number {
-  // if (['KTL01', 'E70D150', 'E70D190'].includes(materialCode.toUpperCase())) return 5300; 
-  // User said "có 2 loại 5.3m và 6m". We default to 6000 for maximum yield, 
-  // unless user specifies, but for simplicity let's stick to 6000mm for all, or 5800mm if they meant standard.
-  // User said: "Đối với các hệ nhôm của Eurohouse, thì chiều dài mặc định là 6m".
-  return 6000; 
-}
-
-// Khối lượng trung bình 1 mét nhôm (giả định 1kg/m để tính scrap nếu chưa có số liệu chuẩn)
-// Sẽ lấy từ DB Profile nếu map được, tạm thời dùng ước tính 1kg/m.
-const KG_PER_MM = 1 / 1000; 
 
 @Injectable()
 export class CuttingOptimizerService {
-  private readonly logger = new Logger(CuttingOptimizerService.name);
-
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   public async optimizeCuts(userId: string, requests: CutRequest[]): Promise<CutResult[]> {
     const results: CutResult[] = [];
 
     for (const req of requests) {
-      if (req.lengths.length === 0) continue;
+      const requestedPieces: CutPieceRequest[] = req.pieces?.length
+        ? req.pieces
+        : (req.lengths ?? []).map((lengthMm) => ({ lengthMm }));
+      if (requestedPieces.length === 0) continue;
+      if (!req.materialCode?.trim()) throw new BadRequestException('Mã thanh nhôm là bắt buộc.');
 
-      // 1. Fetch available DE_XE from inventory
+      // 1. Tra cứu thông tin Profile từ Database (khối lượng kg/m, chiều dài cây tiêu chuẩn, tên)
+      const matchingProfiles = await this.prisma.profile.findMany({
+        where: { code: { equals: req.materialCode.trim(), mode: 'insensitive' } },
+        select: { name: true, kgPerMeter: true, barLengthMm: true, aluSystem: { select: { code: true, name: true } } },
+      });
+      const systemNeedle = req.systemCode?.trim().toLowerCase();
+      const profilesInSystem = systemNeedle
+        ? matchingProfiles.filter((item) => item.aluSystem.code.toLowerCase() === systemNeedle || item.aluSystem.name.toLowerCase() === systemNeedle)
+        : matchingProfiles;
+      const profile = profilesInSystem.length === 1 ? profilesInSystem[0] : undefined;
+      if (!profile) {
+        if (matchingProfiles.length > 1) {
+          throw new BadRequestException(`Mã ${req.materialCode} tồn tại ở nhiều hệ nhôm. Vui lòng truyền đúng systemCode.`);
+        }
+        throw new BadRequestException(`Không tìm thấy mã ${req.materialCode} trong catalog Eurohouse.`);
+      }
+
+      const barStandardLength = profile?.barLengthMm && profile.barLengthMm > 0 ? profile.barLengthMm : 6000;
+      const kgPerMeter = profile?.kgPerMeter && profile.kgPerMeter > 0 ? profile.kgPerMeter : 1.2;
+
+      // 2. Lấy danh sách nhôm Đề-xê có sẵn trong kho của Thợ
       const availableDeXe = await this.prisma.inventoryItem.findMany({
         where: {
           userId,
-          materialCode: req.materialCode,
+          materialCode: { equals: req.materialCode.trim(), mode: 'insensitive' },
           type: 'DE_XE',
-          quantity: { gt: 0 }
-        }
+          quantity: { gt: 0 },
+        },
+        orderBy: { lengthMm: 'asc' }, // Ưu tiên dùng đoạn ngắn trước để giảm phế
       });
 
-      // Expand quantity into individual bins
-      const bins: { id: string; capacity: number; original: number; isNew: boolean }[] = [];
+      // Tạo danh sách bins từ Đề-xê kho
+      const bins: BinTracker[] = [];
       for (const item of availableDeXe) {
         for (let i = 0; i < item.quantity; i++) {
-          bins.push({ id: item.id, capacity: item.lengthMm, original: item.lengthMm, isNew: false });
-        }
-      }
-
-      const pieces = [...req.lengths].sort((a, b) => b - a); // First Fit Decreasing
-      
-      let newBarsNeeded = 0;
-      const barLength = getBarLength(req.materialCode);
-
-      for (const p of pieces) {
-        let placed = false;
-        
-        // Try to fit in existing bins
-        // Sort bins by remaining capacity to minimize scrap (Best Fit)
-        bins.sort((a, b) => a.capacity - b.capacity);
-
-        for (const bin of bins) {
-          if (bin.capacity >= p + BLADE_LOSS_MM) {
-            bin.capacity -= (p + BLADE_LOSS_MM);
-            placed = true;
-            break;
-          } else if (bin.capacity === p) {
-             // Perfect fit, no blade loss for the rest of the piece
-            bin.capacity -= p;
-            placed = true;
-            break;
-          }
-        }
-
-        if (!placed) {
-          // Open a new bar
-          newBarsNeeded++;
           bins.push({
-            id: 'NEW',
-            capacity: barLength - (p + BLADE_LOSS_MM),
-            original: barLength,
-            isNew: true
+            id: item.id,
+            originalLength: item.lengthMm,
+            remainingCapacity: item.lengthMm,
+            isNewBar: false,
+            cuts: [],
           });
         }
       }
 
-      let scrapMmTotal = 0;
-      const usedDeXeIds = new Set<string>();
-      const newDeXeGenerated: number[] = [];
-
-      for (const bin of bins) {
-        if (bin.capacity < bin.original) {
-          if (!bin.isNew) usedDeXeIds.add(bin.id);
-          
-          if (bin.capacity >= DE_XE_MIN_MM) {
-            newDeXeGenerated.push(bin.capacity);
-          } else {
-            scrapMmTotal += bin.capacity;
-          }
-        } else {
-           // bin was untouched
+      // Chuẩn hóa danh sách đoạn cần cắt
+      const piecesToCut = requestedPieces.map((piece) => ({ ...piece, lengthMm: Number(piece.lengthMm) }));
+      for (const piece of piecesToCut) {
+        if (!Number.isFinite(piece.lengthMm) || piece.lengthMm <= 0) {
+          throw new BadRequestException(`Chiều dài cắt của mã ${req.materialCode} phải lớn hơn 0.`);
+        }
+        if (piece.lengthMm > barStandardLength) {
+          throw new BadRequestException(`Đoạn ${piece.lengthMm}mm vượt chiều dài cây ${barStandardLength}mm của mã ${req.materialCode}.`);
         }
       }
 
-      // Add blade loss to scrap
-      const totalCuts = pieces.length;
-      scrapMmTotal += totalCuts * BLADE_LOSS_MM;
+      // Sắp xếp các đoạn cắt theo chiều dài giảm dần (Best-Fit Decreasing)
+      piecesToCut.sort((a, b) => b.lengthMm - a.lengthMm);
 
-      // TODO: Lookup true kg/m from Profile table if needed, using 1kg/m fallback
-      const scrapGeneratedKg = scrapMmTotal * KG_PER_MM;
+      let newBarsNeeded = 0;
+
+      // 3. Xếp từng đoạn vào thanh phù hợp nhất (Best-Fit)
+      for (const piece of piecesToCut) {
+        const pLen = piece.lengthMm;
+        let bestBinIndex = -1;
+        let minRemainingAfterCut = Infinity;
+
+        for (let i = 0; i < bins.length; i++) {
+          const bin = bins[i];
+          if (bin.remainingCapacity >= pLen + BLADE_LOSS_MM) {
+            const rem = bin.remainingCapacity - (pLen + BLADE_LOSS_MM);
+            if (rem < minRemainingAfterCut) {
+              minRemainingAfterCut = rem;
+              bestBinIndex = i;
+            }
+          } else if (bin.remainingCapacity === pLen) {
+            bestBinIndex = i;
+            break;
+          }
+        }
+
+        if (bestBinIndex !== -1) {
+          const chosenBin = bins[bestBinIndex];
+          const loss = chosenBin.remainingCapacity === pLen ? 0 : BLADE_LOSS_MM;
+          chosenBin.remainingCapacity -= (pLen + loss);
+          chosenBin.cuts.push({
+            lengthMm: pLen,
+            doorName: piece.doorName,
+            profileName: piece.profileName,
+            cutAngle: piece.cutAngle || '90-90',
+          });
+        } else {
+          // Mở 1 cây nhôm nguyên mới
+          newBarsNeeded++;
+          const bladeLoss = pLen === barStandardLength ? 0 : BLADE_LOSS_MM;
+          const newBin: BinTracker = {
+            id: `NEW_BAR_${newBarsNeeded}`,
+            originalLength: barStandardLength,
+            remainingCapacity: barStandardLength - (pLen + bladeLoss),
+            isNewBar: true,
+            cuts: [{
+              lengthMm: pLen,
+              doorName: piece.doorName,
+              profileName: piece.profileName,
+              cutAngle: piece.cutAngle || '90-90',
+            }],
+          };
+          bins.push(newBin);
+        }
+      }
+
+      // 4. Thống kê kết quả & Sơ đồ cắt chi tiết
+      let scrapMmTotal = 0;
+      const usedDeXeIds = new Set<string>();
+      const newDeXeGenerated: number[] = [];
+      const barLayouts: BarCuttingLayout[] = [];
+
+      let barIdx = 1;
+      for (const bin of bins) {
+        if (bin.cuts.length === 0) continue;
+
+        if (!bin.isNewBar) {
+          usedDeXeIds.add(bin.id);
+        }
+
+        const usedLengthMm = bin.cuts.reduce((sum, c) => sum + c.lengthMm, 0);
+        const remainingLengthMm = bin.remainingCapacity;
+        const actualBladeLossMm = Math.max(0, bin.originalLength - remainingLengthMm - usedLengthMm);
+        const isNewDeXe = remainingLengthMm >= DE_XE_MIN_MM;
+        const scrapMm = isNewDeXe ? actualBladeLossMm : remainingLengthMm + actualBladeLossMm;
+
+        if (isNewDeXe) {
+          newDeXeGenerated.push(remainingLengthMm);
+        } else {
+          scrapMmTotal += remainingLengthMm;
+        }
+        scrapMmTotal += actualBladeLossMm;
+
+        barLayouts.push({
+          barIndex: barIdx++,
+          barLengthMm: bin.originalLength,
+          materialCode: req.materialCode,
+          materialName: profile?.name || req.materialCode,
+          isDeXe: !bin.isNewBar,
+          deXeId: bin.isNewBar ? undefined : bin.id,
+          cuts: bin.cuts,
+          usedLengthMm,
+          remainingLengthMm,
+          isNewDeXe,
+          scrapMm,
+        });
+      }
+
+      const scrapGeneratedKg = Number(((scrapMmTotal / 1000) * kgPerMeter).toFixed(2));
 
       results.push({
         materialCode: req.materialCode,
-        pieces: req.lengths,
+        materialName: profile?.name || req.materialCode,
+        pieces: piecesToCut.map((piece) => piece.lengthMm),
         usedDeXeIds: Array.from(usedDeXeIds),
         newBarsNeeded,
         newDeXeGenerated,
         scrapGeneratedKg,
+        barLayouts,
       });
     }
 
