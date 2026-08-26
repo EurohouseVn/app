@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Plus, Printer, Truck, UserRound } from 'lucide-react';
+import { fixLegacyUtf8Mojibake } from '@eurohouse/types';
 import type { PaginatedOrders } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
@@ -55,14 +56,7 @@ const statusFilters: { key: string; label: string }[] = [
 ];
 
 function fixVietnamese(value?: string) {
-  if (!value) return '';
-  if (!/[ÃÄÂÆáºá»]/.test(value)) return value;
-  try {
-    const bytes = Uint8Array.from(Array.from(value, (char) => char.charCodeAt(0) & 0xff));
-    return new TextDecoder('utf-8').decode(bytes);
-  } catch {
-    return value;
-  }
+  return value ? fixLegacyUtf8Mojibake(value) : '';
 }
 
 function StatusChip({ status }: { status: string }) {

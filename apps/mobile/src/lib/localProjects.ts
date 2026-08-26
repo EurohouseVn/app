@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import { fixLegacyUtf8Mojibake } from '@eurohouse/types';
 
 export type CategoryDetail = {
   id: string;
@@ -32,34 +33,16 @@ export type LocalProject = {
 
 const STORAGE_KEY = '@eurohouse_local_projects';
 
-const mojibakePattern = /(?:Ã|Ä|áº|á»|Â|Æ)/;
-
-function fixMojibake(value: string) {
-  if (!mojibakePattern.test(value)) return value;
-  try {
-    const encoded = Array.from(value, (char) => {
-      const code = char.charCodeAt(0);
-      if (code > 255) return '';
-      return `%${code.toString(16).padStart(2, '0')}`;
-    }).join('');
-    if (!encoded) return value;
-    const fixed = decodeURIComponent(encoded);
-    return fixed.includes('�') ? value : fixed;
-  } catch {
-    return value;
-  }
-}
-
 function normalizeProject(project: LocalProject): LocalProject {
   return {
     ...project,
-    name: fixMojibake(project.name),
-    customerName: fixMojibake(project.customerName),
-    customerPhone: fixMojibake(project.customerPhone),
-    address: fixMojibake(project.address),
-    projectType: fixMojibake(project.projectType),
-    categories: (project.categories || []).map(fixMojibake),
-    quotationCode: project.quotationCode ? fixMojibake(project.quotationCode) : project.quotationCode,
+    name: fixLegacyUtf8Mojibake(project.name),
+    customerName: fixLegacyUtf8Mojibake(project.customerName),
+    customerPhone: fixLegacyUtf8Mojibake(project.customerPhone),
+    address: fixLegacyUtf8Mojibake(project.address),
+    projectType: fixLegacyUtf8Mojibake(project.projectType),
+    categories: (project.categories || []).map(fixLegacyUtf8Mojibake),
+    quotationCode: project.quotationCode ? fixLegacyUtf8Mojibake(project.quotationCode) : project.quotationCode,
   };
 }
 

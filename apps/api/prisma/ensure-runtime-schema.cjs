@@ -211,6 +211,14 @@ async function main() {
       imageUrl: '/static/profiles/ECS18-2.png',
     },
   });
+
+  await prisma.orderStatusHistory.updateMany({
+    where: { status: 'NPP_REVIEWING' },
+    data: {
+      title: 'NPP tiếp nhận',
+      note: 'NPP đã tiếp nhận đơn hàng.',
+    },
+  });
 }
 
 main()
