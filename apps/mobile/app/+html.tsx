@@ -17,7 +17,7 @@ export default function Root({ children }: { children: ReactNode }) {
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <style dangerouslySetInnerHTML={{ __html: 'html,body,#root{width:100%;height:100%;margin:0}body{overflow:hidden}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html,body,#root{width:100%;height:100%;margin:0}body{overflow:hidden}#root{display:flex}' }} />
       </head>
       <body>{children}</body>
     </html>
