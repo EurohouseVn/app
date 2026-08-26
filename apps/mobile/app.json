@@ -7,8 +7,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./public/icon-512.png",
     "web": {
-      "output": "static"
+      "output": "static",
+      "favicon": "./public/icon-192.png"
     },
     "ios": {
       "supportsTablet": true

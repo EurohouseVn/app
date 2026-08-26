@@ -1,0 +1,39 @@
+{
+  "id": "/",
+  "name": "Eurohouse CSSX",
+  "short_name": "Eurohouse",
+  "description": "Đặt hàng và quản lý công trình dành cho cơ sở sản xuất Eurohouse.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#F47C20",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Đặt hàng",
+      "short_name": "Đặt hàng",
+      "url": "/orders"
+    },
+    {
+      "name": "Công thức cắt",
+      "short_name": "Công thức",
+      "url": "/formulas"
+    }
+  ]
+}

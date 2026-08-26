@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { tabBarIcon } from '../src/components/Icon';
 import { AuthProvider, useAuth } from '../src/lib/auth';
@@ -75,6 +76,11 @@ function Gate() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  }, []);
+
   return (
     <AuthProvider>
       <StatusBar style="light" />
