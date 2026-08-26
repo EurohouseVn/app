@@ -77,7 +77,9 @@ function Gate() {
 
 export default function RootLayout() {
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined') return;
+    document.title = 'Eurohouse CSSX';
+    if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('/sw.js').catch(() => undefined);
   }, []);
 
