@@ -89,7 +89,7 @@ Nhap phu kien/kinh thu cong va database noi bo da co nen tang. OCR anh don hang 
 
 ### Dong goi app native
 
-Expo iOS bundle build thanh cong. Mobile Web da co manifest, icon 192/512, che do standalone va service worker de cai PWA truc tiep len Android/iPhone trong dot pilot. Viec phat hanh TestFlight/Google Play hoac APK noi bo van can tai khoan Apple Developer/Google Play Console va cau hinh EAS signing rieng.
+Expo iOS bundle build thanh cong. Mobile Web da co manifest, icon 192/512, che do standalone va service worker de cai PWA truc tiep len Android/iPhone trong dot pilot. Service worker chi cache icon/manifest, luon lay HTML/JS moi tu mang va tu xoa cache cu; khoi phuc phien co timeout/finally de khong treo man hinh khoi dong khi API cham. Viec phat hanh TestFlight/Google Play hoac APK noi bo van can tai khoan Apple Developer/Google Play Console va cau hinh EAS signing rieng.
 
 ## 5. No ky thuat khong chan van hanh
 

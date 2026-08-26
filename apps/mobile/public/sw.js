@@ -1,8 +1,8 @@
-const CACHE_NAME = 'eurohouse-shell-v2';
-const APP_SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE_NAME = 'eurohouse-assets-v3';
+const INSTALL_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(INSTALL_ASSETS)));
   self.skipWaiting();
 });
 
@@ -18,22 +18,11 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => response.ok ? response : Promise.reject(new Error('Navigation failed')))
-        .catch(() => caches.match('/')),
-    );
+  const path = new URL(request.url).pathname;
+  if (!INSTALL_ASSETS.includes(path)) {
+    event.respondWith(fetch(request));
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-      }
-      return response;
-    })),
-  );
+  event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
 });

@@ -32,13 +32,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...(options?.headers as Record<string, string> | undefined),
   };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (!response.ok) {
-    if (response.status === 401) onUnauthorized?.();
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.message ?? `API ${path} lỗi ${response.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: options?.signal ?? controller.signal });
+    if (!response.ok) {
+      if (response.status === 401) onUnauthorized?.();
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.message ?? `API ${path} lỗi ${response.status}`);
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Máy chủ phản hồi quá chậm. Vui lòng kiểm tra mạng và thử lại.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return (await response.json()) as T;
 }
 
 export const api = {

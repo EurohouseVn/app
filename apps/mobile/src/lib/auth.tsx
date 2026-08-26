@@ -54,17 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(logout);
     (async () => {
-      const token = await storage.get(TOKEN_KEY);
-      if (token) {
-        setAuthToken(token);
-        try {
+      try {
+        const token = await storage.get(TOKEN_KEY);
+        if (token) {
+          setAuthToken(token);
           setUser(await api.get<AuthUser>('/auth/me'));
-        } catch {
+        }
+      } catch {
+        try {
           setAuthToken(null);
           await storage.remove(TOKEN_KEY);
+        } catch {
+          // Storage can be unavailable in a restricted webview; the login screen must still load.
         }
+      } finally {
+        setReady(true);
       }
-      setReady(true);
     })();
     return () => setUnauthorizedHandler(null);
   }, [logout]);
