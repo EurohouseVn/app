@@ -7,6 +7,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "web": {
+      "output": "static"
+    },
     "ios": {
       "supportsTablet": true
     },

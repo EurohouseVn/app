@@ -1,6 +1,6 @@
 # EUROHOUSE - Trang thai trien khai va audit
 
-Cap nhat: 25/08/2026
+Cap nhat: 26/08/2026
 
 ## 1. Kien truc va pham vi van hanh
 
@@ -40,6 +40,7 @@ Cap nhat: 25/08/2026
 - Banner khuyen mai dung chung voi WebAdmin/Web NPP, co trinh chieu va xem anh lon.
 - 11 he nhom Eurohouse hien thi trong Cong thuc cat; khong con so dem 544 mau toan cuc.
 - Menu day da duoc kiem tra o viewport 406 x 866, khong de len nut luu/xac nhan.
+- Expo Web xuat HTML tinh cho 24 route, tranh loi 404 khi mo truc tiep cac man hinh chinh tren Render.
 - App CSSX khong nhan hoac hien so ton kho cua NPP.
 
 ### Cong thuc cat va boc tach
@@ -68,6 +69,8 @@ Cap nhat: 25/08/2026
 - Luong giao hang thuc te: tru kho -> tao phieu -> hoan tat -> cong no; goi lap lai khong tao trung.
 - PDF da render thanh anh va kiem tra bo cuc/Unicode; Excel da doc lai bang `openpyxl` de doi chieu so lieu.
 - Health local: API 3001, NPP 3002, Admin 3005, Mobile 8081 deu HTTP 200.
+- Production: API/Admin/NPP/Mobile deu HTTP 200; NPP doc duoc 6 don hien co va lich su tieng Viet da duoc sua sach.
+- Production Mobile: dang nhap CSSX thanh cong, Cong thuc hien dung 11 he va menu day dat o viewport 406 x 866.
 - `git diff --check`: khong co loi whitespace.
 
 ## 4. Gioi han con lai can du lieu nghiep vu
