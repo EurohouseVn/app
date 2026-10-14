@@ -314,12 +314,12 @@ export default function QuoteScreen() {
     }
   }
 
-  async function exportPdf() {
+  async function exportPdf(type: 'quotation' | 'estimate' = 'quotation') {
     if (!saved) return;
     setBusy(true);
     try {
       if (Platform.OS === 'web') {
-        const response = await fetch(`${API_URL}/quotations/${saved.id}/pdf`, {
+        const response = await fetch(`${API_URL}/quotations/${saved.id}/pdf?type=${type}`, {
           headers: authHeaders(),
         });
         if (!response.ok) throw new Error('Không thể tải PDF');
@@ -327,18 +327,18 @@ export default function QuoteScreen() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `bao-gia-${saved.code}.pdf`;
+        a.download = `${type === 'estimate' ? 'du-toan' : 'bao-gia'}-${saved.code}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } else {
-        const target = `${FileSystem.cacheDirectory}bao-gia-${saved.code}.pdf`;
-        const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${saved.id}/pdf`, target, {
+        const target = `${FileSystem.cacheDirectory}${type === 'estimate' ? 'du-toan' : 'bao-gia'}-${saved.code}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${saved.id}/pdf?type=${type}`, target, {
           headers: authHeaders(),
         });
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Báo giá ${saved.code}` });
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${type === 'estimate' ? 'Dự toán' : 'Báo giá'} ${saved.code}` });
         } else {
           Alert.alert('Đã tải', `Đã lưu file tại: ${uri}`);
         }
@@ -939,11 +939,15 @@ export default function QuoteScreen() {
                     <Icon name="save" size={16} color={colors.white} />
                     <Text style={styles.darkButtonText}>{isEditing ? 'Cập nhật' : 'Lưu dự toán'}</Text>
                   </Pressable>
-                  <Pressable style={[styles.orangeButton, !saved && { opacity: 0.5 }]} onPress={exportPdf} disabled={busy || !saved}>
+                  <Pressable style={[styles.orangeButton, !saved && { opacity: 0.5 }]} onPress={() => exportPdf('quotation')} disabled={busy || !saved}>
                     <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-                    <Text style={styles.orangeButtonText}>Xuất PDF</Text>
+                    <Text style={styles.orangeButtonText}>Báo giá PDF</Text>
                   </Pressable>
                 </View>
+                <Pressable style={[styles.orangeButton, { marginTop: 10 }, !saved && { opacity: 0.5 }]} onPress={() => exportPdf('estimate')} disabled={busy || !saved}>
+                  <Icon name="file-text" size={16} color={colors.brandBlack.main} />
+                  <Text style={styles.orangeButtonText}>Dự toán PDF</Text>
+                </Pressable>
 
                 {/* NÚT TỐI ƯU CẮT & SƠ ĐỒ THANH NHÔM */}
                 <Pressable

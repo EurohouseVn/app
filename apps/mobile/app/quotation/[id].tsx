@@ -5,6 +5,9 @@ import { colors } from '@eurohouse/ui';
 import { Icon } from '../../src/components/Icon';
 import { api } from '../../src/lib/api';
 import type { QuotationRecord } from '@eurohouse/types';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { API_URL, authHeaders } from '../../src/lib/api';
 
 export default function QuotationDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -13,6 +16,7 @@ export default function QuotationDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [optimizing, setOptimizing] = useState(false);
   const [optResult, setOptResult] = useState<any>(null);
+  const [exporting, setExporting] = useState<'quotation' | 'estimate' | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,6 +57,25 @@ export default function QuotationDetailScreen() {
     }
   };
 
+  const exportPdf = async (type: 'quotation' | 'estimate') => {
+    if (!q) return;
+    setExporting(type);
+    try {
+      const prefix = type === 'estimate' ? 'du-toan' : 'bao-gia';
+      const target = `${FileSystem.cacheDirectory}${prefix}-${q.code}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${q.id}/pdf?type=${type}`, target, { headers: authHeaders() });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${type === 'estimate' ? 'Dự toán' : 'Báo giá'} ${q.code}` });
+      } else {
+        Alert.alert('Đã tải', `Đã lưu file tại: ${uri}`);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', error instanceof Error ? error.message : 'Không xuất được PDF.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator color={colors.brandOrange} size="large" /></View>;
   if (!q) return <View style={styles.center}><Text>Không tìm thấy báo giá</Text></View>;
 
@@ -68,6 +91,17 @@ export default function QuotationDetailScreen() {
           <Text style={styles.code}>{q.code}</Text>
           <Text style={styles.meta}>Khách hàng: {q.customerName || 'Khách lẻ'}</Text>
           <Text style={styles.total}>{q.totalAmount.toLocaleString('vi-VN')} đ</Text>
+        </View>
+
+        <View style={styles.documentRow}>
+          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => exportPdf('quotation')}>
+            <Icon name="download" size={16} color={colors.brandBlack.main} />
+            <Text style={styles.documentButtonText}>{exporting === 'quotation' ? 'Đang xuất...' : 'Báo giá PDF'}</Text>
+          </Pressable>
+          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => exportPdf('estimate')}>
+            <Icon name="file-text" size={16} color={colors.brandBlack.main} />
+            <Text style={styles.documentButtonText}>{exporting === 'estimate' ? 'Đang xuất...' : 'Dự toán PDF'}</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.sectionTitle}>Tính công thức & Tối ưu cắt</Text>
@@ -120,6 +154,9 @@ const styles = StyleSheet.create({
   code: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 18 },
   meta: { color: colors.brandGrey[500], marginTop: 4 },
   total: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 24, marginTop: 12 },
+  documentRow: { flexDirection: 'row', gap: 10, marginTop: -12, marginBottom: 24 },
+  documentButton: { flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: colors.orangeSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  documentButtonText: { color: colors.brandBlack.main, fontSize: 12, fontWeight: '900' },
   sectionTitle: { color: colors.brandBlack.main, fontSize: 18, fontWeight: '800' },
   sectionDesc: { color: colors.brandGrey[500], fontSize: 13, marginTop: 4, marginBottom: 16 },
   btnAction: { backgroundColor: colors.brandOrange, padding: 16, borderRadius: 12, alignItems: 'center' },

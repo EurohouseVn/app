@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import type { ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -8,6 +8,14 @@ import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
 import { OrderPdfService } from './order-pdf.service';
 import { CatalogService } from '../catalog/catalog.service';
 import * as exceljs from 'exceljs';
+import { assertInventoryMutationAllowed } from '../inventory/inventory-mutation-policy';
+import type { InventoryCommandContext } from '../inventory/inventory-command.service';
+
+function inventoryCommand(user: JwtUser, key: string | undefined, ownerType: 'COMPANY_STOCK' | 'NPP_STOCK', ownerId: string, command: string): InventoryCommandContext {
+  if (!key) throw new BadRequestException('Idempotency-Key header is required for inventory mutations.');
+  assertInventoryMutationAllowed({ actorId: user.sub, role: user.role, organizationId: user.organizationId }, ownerType, ownerId);
+  return { idempotencyKey: key, actorId: user.sub, organizationId: user.organizationId, ownerType, ownerId, command };
+}
 
 @Controller()
 export class OrdersController {
@@ -285,8 +293,8 @@ export class OrdersController {
   @Post('admin/npp-shipments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
-  createAdminToNppShipment(@Body() body: CreateAdminToNppShipmentInput, @CurrentUser() user: JwtUser) {
-    return this.service.createAdminToNppShipment(body, user.sub);
+  createAdminToNppShipment(@Body() body: CreateAdminToNppShipmentInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.service.createAdminToNppShipment(body, user.sub, inventoryCommand(user, key, 'COMPANY_STOCK', 'GLOBAL', 'CREATE_ADMIN_NPP_SHIPMENT'));
   }
 
   @Post('npp/orders/:id/receive')
@@ -306,8 +314,9 @@ export class OrdersController {
   @Post('npp/orders/:id/delivery')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  createNppDelivery(@Param('id') id: string, @Body() body: { actualTotalKg?: number }, @CurrentUser() user: JwtUser) {
-    return this.service.createNppDelivery(id, user, body);
+  createNppDelivery(@Param('id') id: string, @Body() body: { actualTotalKg?: number }, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    const ownerId = user.organizationId!;
+    return this.service.createNppDelivery(id, user, body, inventoryCommand(user, key, 'NPP_STOCK', ownerId, 'CREATE_NPP_DELIVERY'));
   }
 
   @Post('npp/orders/:id/complete')

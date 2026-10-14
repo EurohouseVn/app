@@ -25,7 +25,7 @@ function serviceWithOrderCapture() {
       },
     },
   };
-  return { service: new OrdersService(prisma as never, {} as never), calls };
+  return { service: new OrdersService(prisma as never, {} as never, {} as never), calls };
 }
 
 test('CSSX list is always scoped to the authenticated user', async () => {
@@ -63,7 +63,7 @@ test('CSSX cannot convert another user quotation into an order', async () => {
       findUnique: async () => ({ id: 'quote-other', createdById: 'user-other', items: [] }),
     },
   };
-  const service = new OrdersService(prisma as never, {} as never);
+  const service = new OrdersService(prisma as never, {} as never, {} as never);
   await assert.rejects(
     service.convertQuotationToOrder({ quotationId: 'quote-other' }, user({ role: 'FACTORY' })),
     ForbiddenException,
@@ -86,7 +86,7 @@ test('submitting an already sent order is idempotent', async () => {
     order: { findFirst: async () => sentOrder },
     $transaction: async () => { transactionCalls += 1; },
   };
-  const service = new OrdersService(prisma as never, {} as never);
+  const service = new OrdersService(prisma as never, {} as never, {} as never);
   const result = await service.submitOrderToNpp('order-1', user({ role: 'FACTORY' }));
   assert.equal(result.status, 'NEW');
   assert.equal(transactionCalls, 0);
@@ -100,7 +100,7 @@ test('sent orders cannot be hard deleted', async () => {
       }),
     },
   };
-  const service = new OrdersService(prisma as never, {} as never);
+  const service = new OrdersService(prisma as never, {} as never, {} as never);
   await assert.rejects(
     service.deleteOrder('order-1', user({ role: 'FACTORY' })),
     BadRequestException,

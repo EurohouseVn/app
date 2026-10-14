@@ -16,6 +16,7 @@ import type {
   UpsertNppAccessoryInput,
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
+import { InventoryCommandService, type InventoryCommandContext } from './inventory-command.service';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-55': 'Hệ 55 Euroqueen',
@@ -45,20 +46,7 @@ function displaySystemName(code?: string, fallback?: string) {
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private nppColorSchemaReady = false;
-
-  private async ensureNppColorSchema() {
-    if (this.nppColorSchemaReady) return;
-    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppProfileStock" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
-    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppStockMovement" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
-    await this.prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "NppProfileStock_nppOrgId_profileId_key"');
-    await this.prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NppProfileStock_nppOrgId_profileId_colorCode_key" ON "NppProfileStock"("nppOrgId", "profileId", "colorCode")');
-    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppProfileStock_colorCode_idx" ON "NppProfileStock"("colorCode")');
-    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppStockMovement_colorCode_idx" ON "NppStockMovement"("colorCode")');
-    this.nppColorSchemaReady = true;
-  }
+  constructor(private readonly prisma: PrismaService, private readonly commands: InventoryCommandService) {}
 
   private toNppAccessory(item: {
     id: string; name: string; brand: string; category: string; unit: string; quantity: number; unitCost: number; note: string; createdAt: Date;
@@ -288,25 +276,28 @@ export class InventoryService {
     return this.listStockMovements({ materialId });
   }
 
-  async createStockMovement(input: CreateStockMovementInput, userId?: string): Promise<StockMovementItem> {
-    const material = await this.prisma.material.findUnique({ where: { id: input.materialId } });
-    if (!material) throw new NotFoundException('Không tìm thấy vật tư.');
-    const unitPrice = input.unitPrice ?? material.unitPrice;
-    const totalAmount = Math.round(unitPrice * input.quantity);
-    const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
-
-    const created = await this.prisma.$transaction(async (tx) => {
+  async createStockMovement(input: CreateStockMovementInput, command: InventoryCommandContext): Promise<StockMovementItem> {
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new BadRequestException('Số lượng phải lớn hơn 0.');
+    return this.commands.execute(command, input, async (tx) => {
+      const material = await tx.material.findUnique({ where: { id: input.materialId } });
+      if (!material) throw new NotFoundException('Không tìm thấy vật tư.');
+      const unitPrice = input.unitPrice ?? material.unitPrice;
+      const totalAmount = Math.round(unitPrice * input.quantity);
+      if (input.direction === 'OUT') {
+        const updated = await tx.material.updateMany({ where: { id: input.materialId, stockQty: { gte: input.quantity } }, data: { stockQty: { decrement: input.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException('Tồn vật tư công ty không đủ để xuất.');
+      } else {
+        await tx.material.update({ where: { id: input.materialId }, data: { stockQty: { increment: input.quantity } } });
+      }
       const movement = await tx.stockMovement.create({
         data: {
           materialId: input.materialId, direction: input.direction, quantity: input.quantity,
-          unitPrice, totalAmount, reason: input.reason ?? '', note: input.note ?? '', createdById: userId ?? null,
+          unitPrice, totalAmount, reason: input.reason ?? '', note: input.note ?? '', createdById: command.actorId,
         },
         include: { material: true, createdBy: true },
       });
-      await tx.material.update({ where: { id: input.materialId }, data: { stockQty: { increment: delta } } });
-      return movement;
+      return this.toStockMovementItem(movement);
     });
-    return this.toStockMovementItem(created);
   }
 
   async listProfileMovements(profileId: string): Promise<ProfileStockMovementItem[]> {
@@ -326,22 +317,8 @@ export class InventoryService {
       this.prisma.aluSystem.findMany({ where: { code: { startsWith: 'EU-' } }, orderBy: { sortOrder: 'asc' } }),
       this.prisma.profile.findMany({ orderBy: { code: 'asc' } }),
     ]);
-    let stocks: { profileId: string; colorCode?: string | null; stockBars: number; lowStockAlert: number }[] = [];
-    try {
-      await this.ensureNppColorSchema();
-      stocks = await this.prisma.nppProfileStock.findMany({ where: { nppOrgId } });
-    } catch (error) {
-      console.warn('Falling back to legacy NPP profile stock query.', error);
-      try {
-        stocks = await this.prisma.$queryRawUnsafe(
-          'SELECT "profileId", \'\' AS "colorCode", "stockBars", "lowStockAlert" FROM "NppProfileStock" WHERE "nppOrgId" = $1',
-          nppOrgId,
-        );
-      } catch (fallbackError) {
-        console.warn('Legacy NPP profile stock query failed.', fallbackError);
-        stocks = [];
-      }
-    }
+    const stocks: { profileId: string; colorCode?: string | null; stockBars: number; lowStockAlert: number }[] =
+      await this.prisma.nppProfileStock.findMany({ where: { nppOrgId } });
     const systemById = new Map(systems.map((system) => [system.id, system]));
     const stocksByProfileId = new Map<string, typeof stocks>();
     for (const stock of stocks) {
@@ -381,7 +358,6 @@ export class InventoryService {
   }
 
   async listNppProfileMovements(nppOrgId: string, profileId?: string): Promise<ProfileStockMovementItem[]> {
-    await this.ensureNppColorSchema();
     const list = await this.prisma.nppStockMovement.findMany({
       where: { nppOrgId, profileId },
       orderBy: { createdAt: 'desc' },
@@ -394,14 +370,13 @@ export class InventoryService {
     }));
   }
 
-  async adjustNppProfileStock(nppOrgId: string, profileId: string, input: AdjustProfileStockInput, userId?: string): Promise<ProfileStockMovementItem> {
-    await this.ensureNppColorSchema();
-    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
-    if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
-    const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
-    const colorCode = normalizeColorCode(input.colorCode);
-
-    const created = await this.prisma.$transaction(async (tx) => {
+  async adjustNppProfileStock(nppOrgId: string, profileId: string, input: AdjustProfileStockInput, command: InventoryCommandContext): Promise<ProfileStockMovementItem> {
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new BadRequestException('Số lượng phải lớn hơn 0.');
+    return this.commands.execute(command, { profileId, ...input }, async (tx) => {
+      const profile = await tx.profile.findUnique({ where: { id: profileId } });
+      if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
+      const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
+      const colorCode = normalizeColorCode(input.colorCode);
       if (input.direction === 'OUT') {
         const stock = await tx.nppProfileStock.findUnique({ where: { nppOrgId_profileId_colorCode: { nppOrgId, profileId, colorCode } } });
         if (!stock || stock.stockBars < input.quantity) {
@@ -413,7 +388,7 @@ export class InventoryService {
         update: { stockBars: { increment: delta } },
         create: { nppOrgId, profileId, colorCode, stockBars: Math.max(0, delta), lowStockAlert: profile.lowStockAlert },
       });
-      return tx.nppStockMovement.create({
+      const created = await tx.nppStockMovement.create({
         data: {
           nppOrgId,
           profileId,
@@ -422,15 +397,15 @@ export class InventoryService {
           quantity: input.quantity,
           reason: input.reason ?? 'Điều chỉnh kiểm kê',
           note: input.note ?? '',
-          createdById: userId ?? null,
+          createdById: command.actorId,
         },
       });
+      return {
+        id: created.id, profileId: created.profileId, colorCode: (created as any).colorCode || undefined, direction: created.direction as ProfileStockMovementItem['direction'],
+        quantity: created.quantity, reason: created.reason, orderId: created.orderId ?? undefined, note: created.note,
+        createdAt: created.createdAt.toISOString(),
+      };
     });
-    return {
-      id: created.id, profileId: created.profileId, colorCode: (created as any).colorCode || undefined, direction: created.direction as ProfileStockMovementItem['direction'],
-      quantity: created.quantity, reason: created.reason, orderId: created.orderId ?? undefined, note: created.note,
-      createdAt: created.createdAt.toISOString(),
-    };
   }
 
   private toNppInboundShipment(order: {
@@ -470,17 +445,15 @@ export class InventoryService {
     return orders.map((order) => this.toNppInboundShipment(order));
   }
 
-  async receiveNppInboundShipment(orderId: string, nppOrgId: string, userId: string): Promise<NppInboundShipment> {
-    await this.ensureNppColorSchema();
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId, sourceType: 'ADMIN_TO_NPP', nppOrgId },
-      include: { items: true },
-    });
-    if (!order) throw new NotFoundException('Không tìm thấy phiếu giao về NPP.');
-    if (order.status === 'NPP_RECEIVED') return this.toNppInboundShipment(order);
-    if (order.status !== 'ADMIN_SENT_NPP') throw new BadRequestException('Phiếu giao không ở trạng thái chờ nhận.');
-
-    const updated = await this.prisma.$transaction(async (tx) => {
+  async receiveNppInboundShipment(orderId: string, nppOrgId: string, command: InventoryCommandContext): Promise<NppInboundShipment> {
+    return this.commands.execute(command, { orderId }, async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { id: orderId, sourceType: 'ADMIN_TO_NPP', nppOrgId },
+        include: { items: true },
+      });
+      if (!order) throw new NotFoundException('Không tìm thấy phiếu giao về NPP.');
+      if (order.status === 'NPP_RECEIVED') return this.toNppInboundShipment(order);
+      if (order.status !== 'ADMIN_SENT_NPP') throw new BadRequestException('Phiếu giao không ở trạng thái chờ nhận.');
       for (const item of order.items) {
         if (!item.profileId) continue;
         const colorCode = normalizeColorCode(item.colorCode);
@@ -498,7 +471,7 @@ export class InventoryService {
             quantity: item.quantity,
             reason: 'Nhập từ phiếu công ty giao',
             orderId: order.id,
-            createdById: userId,
+            createdById: command.actorId,
             note: order.code,
           },
         });
@@ -506,36 +479,38 @@ export class InventoryService {
       await tx.orderStatusHistory.create({
         data: { orderId: order.id, status: 'NPP_RECEIVED', title: 'NPP xác nhận nhận đủ hàng', actor: 'NPP', note: 'Kho NPP đã được cập nhật.' },
       });
-      return tx.order.update({
+      const updated = await tx.order.update({
         where: { id: order.id },
         data: { status: 'NPP_RECEIVED', dueNote: 'NPP đã nhận đủ hàng' },
         include: { items: true },
       });
+      return this.toNppInboundShipment(updated);
     });
-
-    return this.toNppInboundShipment(updated);
   }
 
-  async adjustProfileStock(profileId: string, input: AdjustProfileStockInput, userId?: string): Promise<ProfileStockMovementItem> {
-    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
-    if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
-    const delta = input.direction === 'IN' ? input.quantity : -input.quantity;
-
-    const created = await this.prisma.$transaction(async (tx) => {
+  async adjustProfileStock(profileId: string, input: AdjustProfileStockInput, command: InventoryCommandContext): Promise<ProfileStockMovementItem> {
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new BadRequestException('Số lượng phải lớn hơn 0.');
+    return this.commands.execute(command, { profileId, ...input }, async (tx) => {
+      const profile = await tx.profile.findUnique({ where: { id: profileId } });
+      if (!profile) throw new NotFoundException('Không tìm thấy thanh nhôm.');
+      if (input.direction === 'OUT') {
+        const updated = await tx.profile.updateMany({ where: { id: profileId, stockBars: { gte: input.quantity } }, data: { stockBars: { decrement: input.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException('Tồn thanh nhôm công ty không đủ để xuất.');
+      } else {
+        await tx.profile.update({ where: { id: profileId }, data: { stockBars: { increment: input.quantity } } });
+      }
       const movement = await tx.profileStockMovement.create({
         data: {
           profileId, direction: input.direction, quantity: input.quantity,
-          reason: input.reason ?? 'Điều chỉnh kiểm kê', note: input.note ?? '', createdById: userId ?? null,
+          reason: input.reason ?? 'Điều chỉnh kiểm kê', note: input.note ?? '', createdById: command.actorId,
         },
       });
-      await tx.profile.update({ where: { id: profileId }, data: { stockBars: { increment: delta } } });
-      return movement;
+      return {
+        id: movement.id, profileId: movement.profileId, direction: movement.direction as ProfileStockMovementItem['direction'],
+        quantity: movement.quantity, reason: movement.reason, orderId: movement.orderId ?? undefined, note: movement.note,
+        createdAt: movement.createdAt.toISOString(),
+      };
     });
-    return {
-      id: created.id, profileId: created.profileId, direction: created.direction as ProfileStockMovementItem['direction'],
-      quantity: created.quantity, reason: created.reason, orderId: created.orderId ?? undefined, note: created.note,
-      createdAt: created.createdAt.toISOString(),
-    };
   }
 
   async getInventorySummary(userId: string) {
@@ -561,20 +536,16 @@ export class InventoryService {
     };
   }
 
-  async syncOrderStock(orderId: string, userId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
-    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
-
-    await this.prisma.$transaction(async (tx) => {
+  async syncOrderStock(orderId: string, command: InventoryCommandContext) {
+    return this.commands.execute(command, { orderId }, async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+      if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
       for (const item of order.items) {
         if (!item.profileId) continue;
         await tx.profileStockMovement.create({
           data: {
             profileId: item.profileId, direction: 'IN', quantity: item.quantity,
-            reason: 'Nhập kho từ đơn hàng ' + order.code, orderId, createdById: userId,
+            reason: 'Nhập kho từ đơn hàng ' + order.code, orderId, createdById: command.actorId,
           },
         });
         await tx.profile.update({
@@ -582,30 +553,29 @@ export class InventoryService {
           data: { stockBars: { increment: item.quantity } },
         });
       }
+      return { success: true };
     });
-    return { success: true };
   }
 
-  async cutProfile(profileId: string, cutLengths: number[], projectId: string | undefined, userId: string) {
+  async cutProfile(profileId: string, cutLengths: number[], projectId: string | undefined, command: InventoryCommandContext) {
     // 1 bar = 6000mm. 
     // This function assumes one bar is cut. If multiple bars are cut, they should be called per bar or handle total quantity.
     // Assuming cutLengths are the final usable lengths needed. 
     // The sum of cutLengths + leftover must be <= 6000.
     const totalCut = cutLengths.reduce((a, b) => a + b, 0);
-    if (totalCut > 6000) throw new Error('Tổng chiều dài cắt vượt quá 6000mm của 1 cây nhôm.');
+    if (!cutLengths.length || cutLengths.some((length) => !Number.isFinite(length) || length <= 0)) throw new BadRequestException('Danh sách cắt không hợp lệ.');
+    if (totalCut > 6000) throw new BadRequestException('Tổng chiều dài cắt vượt quá 6000mm của 1 cây nhôm.');
 
     const leftover = 6000 - totalCut;
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.commands.execute(command, { profileId, cutLengths, projectId }, async (tx) => {
       // Trừ 1 cây nguyên
-      await tx.profile.update({
-        where: { id: profileId },
-        data: { stockBars: { decrement: 1 } },
-      });
+      const updated = await tx.profile.updateMany({ where: { id: profileId, stockBars: { gte: 1 } }, data: { stockBars: { decrement: 1 } } });
+      if (updated.count !== 1) throw new BadRequestException('Tồn thanh nhôm công ty không đủ để cắt.');
       await tx.profileStockMovement.create({
         data: {
           profileId, direction: 'OUT', quantity: 1,
-          reason: 'Xuất cắt cho công trình', createdById: userId,
+          reason: 'Xuất cắt cho công trình', createdById: command.actorId,
         },
       });
 
@@ -614,7 +584,7 @@ export class InventoryService {
         // Lưu vào ProfileCutoff (Đề xê)
         await tx.profileCutoff.create({
           data: {
-            profileId, lengthMm: leftover, quantity: 1, projectId, createdById: userId,
+            profileId, lengthMm: leftover, quantity: 1, projectId, createdById: command.actorId,
           },
         });
       } else if (leftover > 0) {
@@ -625,12 +595,11 @@ export class InventoryService {
         const scrapWeight = (leftover / 1000) * kgPerMeter;
         
         await tx.user.update({
-          where: { id: userId },
+          where: { id: command.actorId },
           data: { scrapKg: { increment: scrapWeight } },
         });
       }
+      return { success: true, leftover, isScrap: leftover < 1000 };
     });
-
-    return { success: true, leftover, isScrap: leftover < 1000 };
   }
 }

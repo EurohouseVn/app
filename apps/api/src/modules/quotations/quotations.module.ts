@@ -13,6 +13,6 @@ import { QuotationBomService } from './quotation-bom.service';
   imports: [PrismaModule, MulterModule.register({ dest: './uploads' })],
   controllers: [QuotationsController, SystemFormulasController],
   providers: [QuotationsService, QuotationPdfService, FormulaEvaluatorService, CuttingOptimizerService, QuotationBomService],
-  exports: [QuotationsService, QuotationBomService],
+  exports: [QuotationsService, QuotationBomService, FormulaEvaluatorService, CuttingOptimizerService],
 })
 export class QuotationsModule {}

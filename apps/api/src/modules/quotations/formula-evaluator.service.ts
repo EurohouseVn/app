@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import * as path from 'path';
 import * as fs from 'fs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 function normalizeText(val: any): string {
   if (!val) return '';
@@ -185,7 +186,7 @@ export class FormulaEvaluatorService {
   private templatesDir = resolveApiPublicPath('templates');
   private doorImagesDir = resolveApiPublicPath('images', 'doors');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly storage?: StorageService) {}
 
   public async getTemplates(keyword?: string, systemName?: string, windowTypeName?: string, onlyPopular?: boolean) {
     const where: any = { ...selectedTemplateWhere() };
@@ -395,7 +396,7 @@ export class FormulaEvaluatorService {
     if (!formula) throw new NotFoundException(`System formula ${systemFormulaId} not found`);
 
     let inputs: any[] = [];
-    if (formula.excelFilePath && fs.existsSync(formula.excelFilePath)) {
+    if (formula.excelFilePath && (formula.excelFilePath.startsWith('storage://') || fs.existsSync(formula.excelFilePath))) {
       const workbook = await this.loadWorkbookFile(formula.excelFilePath);
       const sheet = workbook.worksheets.find(w => w.name.toUpperCase() !== 'TSS1') || workbook.worksheets[0];
       inputs = this.extractInputsFromSheet(sheet).inputs;
@@ -442,7 +443,7 @@ export class FormulaEvaluatorService {
     });
     if (!formula) throw new NotFoundException(`System formula ${systemFormulaId} not found`);
     
-    if (!formula.excelFilePath || !fs.existsSync(formula.excelFilePath)) {
+    if (!formula.excelFilePath || (!formula.excelFilePath.startsWith('storage://') && !fs.existsSync(formula.excelFilePath))) {
       throw new NotFoundException(`XLSX file for formula ${systemFormulaId} not found`);
     }
 
@@ -462,6 +463,17 @@ export class FormulaEvaluatorService {
 
   private async loadWorkbookFile(filePath: string) {
     const workbook = new exceljs.Workbook();
+    if (filePath.startsWith('storage://')) {
+      if (!this.storage) throw new InternalServerErrorException('Durable storage is unavailable for this formula.');
+      const stored = await this.storage.read(filePath.slice('storage://'.length));
+      try {
+        await workbook.xlsx.load(stored.body as any);
+        return workbook;
+      } catch (error: any) {
+        this.logger.error(`Error reading stored workbook ${stored.object.id}: ${error.message}`);
+        throw new InternalServerErrorException(`XLSX parse error: ${error.message}`);
+      }
+    }
     try {
       await workbook.xlsx.readFile(filePath);
     } catch (initialError: any) {

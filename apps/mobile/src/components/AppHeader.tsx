@@ -1,18 +1,20 @@
-import { ImageBackground, Image, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { Icon } from './Icon';
 // Logo (nền trong suốt) + ảnh nhà hiện đại cho header
 import logo from '../../assets/logo.png';
 import headerBg from '../../assets/header-house.jpg';
 
-export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export function AppHeader({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack?: () => void }) {
   return (
     <ImageBackground source={headerBg} style={styles.header} imageStyle={styles.bgImage}>
       <View style={styles.overlay} />
       <View style={styles.row}>
-        <View style={styles.logoCircle}>
+        <Pressable disabled={!onBack} onPress={onBack} style={styles.logoCircle} accessibilityLabel={onBack ? 'Quay lại' : undefined}>
+          {onBack ? <Icon name="chevron-left" size={22} color={colors.brandOrangeText} /> : (
           <Image source={logo} style={styles.logo} resizeMode="contain" />
-        </View>
+          )}
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

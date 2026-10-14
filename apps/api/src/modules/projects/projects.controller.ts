@@ -13,21 +13,21 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import * as fs from 'fs';
-import * as path from 'path';
 import type { ProjectDetail } from '@eurohouse/types';
 import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { RolesGuard } from '../../auth/roles.guard';
 import { ProjectsService } from './projects.service';
-import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile } from '../../common/upload';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
+import { StorageService } from '../storage/storage.service';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 const ALLOWED_ROLES = ['ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY'] as const;
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly service: ProjectsService) {}
+  constructor(private readonly service: ProjectsService, private readonly storage: StorageService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,8 +65,9 @@ export class ProjectsController {
   }
 
   @Post(':id/images')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
   @Roles(...ALLOWED_ROLES)
+  @Throttle({ default: { limit: 12, ttl: 600_000 } })
   @UseInterceptors(FileInterceptor('image', IMAGE_UPLOAD_OPTIONS))
   async uploadProjectImage(@Param('id') id: string, @UploadedFile() file: any, @CurrentUser() user: JwtUser) {
     if (!file) throw new BadRequestException('Chua chon file anh');
@@ -75,14 +76,19 @@ export class ProjectsController {
     const currentImages = project.images || [];
     if (currentImages.length >= 5) throw new BadRequestException('Công trình chỉ được lưu tối đa 5 ảnh.');
 
-    const imagesDir = path.join(process.cwd(), 'public', 'images', 'projects');
-    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-
     const ext = imageExtension(file);
-    const filename = `project-${id}-${Date.now()}${ext}`;
-    const targetPath = path.join(imagesDir, filename);
-    persistUploadedFile(file, targetPath);
-    const imageUrl = `/static/images/projects/${filename}`;
+    const stored = await this.storage.putUpload({
+      buffer: await uploadedFileBuffer(file),
+      originalName: file.originalname,
+      mime: file.mimetype,
+      purpose: 'project-image',
+      ownerOrganizationId: user.organizationId,
+      ownerUserId: user.sub,
+      extension: ext,
+      metadata: { projectId: id },
+    });
+    if (!stored.publicUrl) throw new BadRequestException('Storage provider does not expose a public URL for project images.');
+    const imageUrl = stored.publicUrl;
 
     const updatedImages = [...currentImages, imageUrl];
     await this.service.updateProject(id, { images: updatedImages }, user);

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Post, Body, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Delete, Query } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -8,7 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { FormulaEvaluatorService } from './formula-evaluator.service';
-import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile, persistValidatedXlsx, XLSX_UPLOAD_OPTIONS } from '../../common/upload';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistValidatedXlsx, uploadedFileBuffer, XLSX_UPLOAD_OPTIONS } from '../../common/upload';
+import { StorageService } from '../storage/storage.service';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-55': 'Hệ 55 Euroqueen',
@@ -23,7 +25,8 @@ function displaySystemName(code: string, fallback: string) {
 export class SystemFormulasController {
   constructor(
     private prisma: PrismaService,
-    private formulaService: FormulaEvaluatorService
+    private formulaService: FormulaEvaluatorService,
+    private storage: StorageService,
   ) {}
 
   @Get('systems')
@@ -127,8 +130,9 @@ export class SystemFormulasController {
   }
 
   @Post('systems/:systemId/formulas/:doorModelId/upload')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
   @Roles('ADMIN')
+  @Throttle({ default: { limit: 10, ttl: 600_000 } })
   @UseInterceptors(FileInterceptor('file', XLSX_UPLOAD_OPTIONS))
   async uploadExcel(
     @Param('systemId') systemId: string,
@@ -148,16 +152,26 @@ export class SystemFormulasController {
 
     const filePath = path.join(uploadsDir, `${doorModelId}.xlsx`);
     await persistValidatedXlsx(file, filePath);
+    const stored = await this.storage.putUpload({
+      buffer: await fs.promises.readFile(filePath),
+      originalName: file.originalname,
+      mime: file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      purpose: 'system-formula-xlsx',
+      extension: '.xlsx',
+      metadata: { systemId, doorModelId, systemFormulaId: formula.id },
+    });
+    await fs.promises.rm(filePath, { force: true });
 
     return this.prisma.systemFormula.update({
       where: { id: formula.id },
-      data: { excelFilePath: filePath }
+      data: { excelFilePath: `storage://${stored.id}` }
     });
   }
 
   @Post('door-designs/:id/image')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
   @Roles('ADMIN')
+  @Throttle({ default: { limit: 15, ttl: 600_000 } })
   @UseInterceptors(FileInterceptor('image', IMAGE_UPLOAD_OPTIONS))
   async uploadDoorImage(
     @Param('id') id: string,
@@ -165,20 +179,10 @@ export class SystemFormulasController {
   ) {
     if (!file) throw new BadRequestException('No image provided');
 
-    // Create public directory for static images if it doesn't exist
-    const imagesDir = path.join(process.cwd(), 'public', 'images', 'doors');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
-
     const fileExt = imageExtension(file);
-    const fileName = `${id}-${Date.now()}${fileExt}`;
-    const filePath = path.join(imagesDir, fileName);
-    
-    persistUploadedFile(file, filePath);
-
-    // Update the door model with the new image URL relative to public dir
-    const imageUrl = `/static/images/doors/${fileName}`;
+    const stored = await this.storage.putUpload({ buffer: await uploadedFileBuffer(file), originalName: file.originalname, mime: file.mimetype, purpose: 'door-model-image', extension: fileExt, metadata: { doorModelId: id } });
+    if (!stored.publicUrl) throw new BadRequestException('Storage provider does not expose a public URL for door images.');
+    const imageUrl = stored.publicUrl;
     return this.prisma.doorModel.update({
       where: { id },
       data: { imageUrl }
@@ -191,6 +195,8 @@ export class SystemFormulasController {
   }
 
   @Post('formulas/:id/calc')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async calcSystemFormula(@Param('id') id: string, @Body() body: Record<string, any>) {
     return this.formulaService.evaluateSystemFormula(id, body);
   }

@@ -13,7 +13,6 @@ import {
   LogOut,
   Megaphone,
   Package,
-  Receipt,
   ShieldAlert,
   ShieldCheck,
   Users,
@@ -32,7 +31,10 @@ import {
   Store,
   ChevronDown,
   ChevronRight,
-  type LucideIcon,
+  Database,
+  BadgeCheck,
+  ScanSearch,
+  ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { DemoAdminUser } from '@eurohouse/types';
@@ -66,10 +68,14 @@ const navGroups = [
       { label: 'Dashboard SX', href: '/production/dashboard', icon: ActivitySquare, moduleKey: 'prod-dashboard' },
       { label: 'Lệnh sản xuất', href: '/production/work-orders', icon: Factory, moduleKey: 'prod-work-orders' },
       { label: 'Xưởng Kiosk', href: '/production/shop-floor', icon: MonitorPlay, moduleKey: 'prod-shop-floor' },
+      { label: 'Điều hành xưởng', href: '/workshop/operations', icon: ClipboardList, moduleKey: 'workshop-operations' },
       { label: 'Khuôn đùn', href: '/production/dies', icon: Wrench, moduleKey: 'prod-dies' },
       { label: 'Hệ nhôm', href: '/catalog', icon: LayoutGrid, moduleKey: 'catalog' },
       { label: 'Quản lý Công thức', href: '/formulas', icon: LayoutGrid, moduleKey: 'formulas' },
       { label: 'Kho 500+ Mẫu Cửa', href: '/door-models-filter', icon: LayoutGrid, moduleKey: 'formulas' },
+      { label: 'Dataset kỹ thuật', href: '/manufacturing/datasets', icon: Database, moduleKey: 'manufacturing-datasets' },
+      { label: 'Xác minh sản xuất', href: '/manufacturing/verification', icon: BadgeCheck, moduleKey: 'manufacturing-verification' },
+      { label: 'Trace tính toán', href: '/manufacturing/traces', icon: ScanSearch, moduleKey: 'manufacturing-traces' },
     ]
   },
   {

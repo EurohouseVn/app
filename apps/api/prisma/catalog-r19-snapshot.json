@@ -1,0 +1,1870 @@
+{
+  "revision": "R19 / 2026-10-02",
+  "generatedFrom": {
+    "catalogSha256": "2F2395F6E4A9383D8000AC643F50DB3BB90E2944899448D015F850AC6406D979",
+    "workbookSha256": "E8C3BA878026104C30E87A8F6713F284446D4A152B37D17E4A4CE4B4B507848D"
+  },
+  "profiles": [
+    {
+      "systemCode": "EU-55",
+      "code": "LH5110",
+      "name": "Khung bao VIP",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.387,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "LH11801",
+      "name": "Cánh cửa đi VIP",
+      "thicknessMm": "1.2-1.4",
+      "kgPerMeter": 1.369,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DATD91",
+      "name": "Đố cánh cửa bản rộng",
+      "thicknessMm": null,
+      "kgPerMeter": 1.061,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DAK55",
+      "name": "Khung bao",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.82,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DAD91",
+      "name": "Cánh cửa đi",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.07,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DAS76",
+      "name": "Cánh cửa sổ",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.9,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "E55-D125P",
+      "name": "Cánh cửa đi liền phào",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.392,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "E55-S100P",
+      "name": "Cánh cửa sổ liền phào",
+      "thicknessMm": "1.1",
+      "kgPerMeter": 1.165,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DAT55",
+      "name": "Đố chia khung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.89,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DATD76",
+      "name": "Đố cánh 76",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.91,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR-DD55",
+      "name": "Đố động",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.664,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DAS14",
+      "name": "Sập vách vuông",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.217,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "DA3002",
+      "name": "Pano",
+      "thicknessMm": "0.7",
+      "kgPerMeter": 0.484,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "CN55",
+      "name": "Ốp đáy cửa đi",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.229,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR5542",
+      "name": "Khung cửa trượt",
+      "thicknessMm": "1-1.25",
+      "kgPerMeter": 0.78,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR2966",
+      "name": "Cánh cửa trượt",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.681,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR55M",
+      "name": "Nẹp móc cửa trượt",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.341,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR5512",
+      "name": "Ray mỏng cửa lùa",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.381,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR2990",
+      "name": "Cánh trượt bản 90mm",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.923,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR55M90",
+      "name": "Nẹp móc cửa trượt bản 90",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.381,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "PR55N",
+      "name": "Nẹp sập cửa trượt",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.258,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "C3300",
+      "name": "Thanh nối khung",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 0.348,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "C3326",
+      "name": "Nối khung 90 độ",
+      "thicknessMm": "2.2",
+      "kgPerMeter": 1.275,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PRD91",
+      "name": "Cánh đi mỏng 91",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.877,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PRS76",
+      "name": "Cánh sổ mỏng 76",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.744,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PRK55",
+      "name": "Khung PRK55",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.65,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PRK50",
+      "name": "Khung cửa",
+      "thicknessMm": "1-1.1",
+      "kgPerMeter": 0.664,
+      "barsPerBundle": 4,
+      "barLengthMm": 7000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PR5542",
+      "name": "Khung cửa trượt",
+      "thicknessMm": "1-1.25",
+      "kgPerMeter": 0.78,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PR2966",
+      "name": "Cánh cửa trượt",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.681,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PR55M",
+      "name": "Nẹp móc cửa trượt",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.341,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "DA3002",
+      "name": "Pano",
+      "thicknessMm": "0.7",
+      "kgPerMeter": 0.484,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "CN55",
+      "name": "Ốp đáy cửa đi",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.207,
+      "barsPerBundle": 20,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "DAS14",
+      "name": "Sập vách",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.217,
+      "barsPerBundle": 20,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "DAT55",
+      "name": "Đố khung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.89,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "DATD76",
+      "name": "Đố cánh",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.91,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PR-DD55",
+      "name": "Đố động",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.664,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3318",
+      "name": "Khung bao cửa sổ",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.751,
+      "barsPerBundle": 6,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3209",
+      "name": "Khung bao vách",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.805,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3202",
+      "name": "Cánh cửa sổ",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.981,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3313",
+      "name": "Đố cố định chia khung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.905,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3328",
+      "name": "Khung bao cửa đi",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.948,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3303",
+      "name": "Cánh cửa đi mở ngoài",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 1.173,
+      "barsPerBundle": 3,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3332",
+      "name": "Cánh cửa đi mở trong",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 1.174,
+      "barsPerBundle": 3,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3203",
+      "name": "Đố chia cánh",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.853,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3304",
+      "name": "Cánh ngang dưới cửa đi",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 1.529,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3323",
+      "name": "Đố động dùng chung",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.856,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3329",
+      "name": "Ốp đáy cửa đi",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.428,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3300",
+      "name": "Sập nối khung",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 0.348,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3295",
+      "name": "Nẹp kính cánh",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.271,
+      "barsPerBundle": 12,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3296",
+      "name": "Nẹp kính khung",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.237,
+      "barsPerBundle": 16,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3225",
+      "name": "Nẹp khung kính hộp",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.211,
+      "barsPerBundle": 16,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH14",
+      "name": "U8",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.146,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH05",
+      "name": "Khung vách",
+      "thicknessMm": "0.8",
+      "kgPerMeter": 0.351,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH10",
+      "name": "Thanh ngang",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.497,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "DA3002",
+      "name": "Pano",
+      "thicknessMm": null,
+      "kgPerMeter": 0.441,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH03",
+      "name": "Pano 16",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.755,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH17",
+      "name": "Cánh tủ",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.502,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH01",
+      "name": "Phào nóc",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.72,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH13",
+      "name": "Cột trước nhỏ",
+      "thicknessMm": "0.8",
+      "kgPerMeter": 0.484,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH06",
+      "name": "Cột trước",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.817,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH09",
+      "name": "U16",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.13,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH08",
+      "name": "Lá chớp",
+      "thicknessMm": "0.7",
+      "kgPerMeter": 0.422,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH04",
+      "name": "Cột sau",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.312,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH12",
+      "name": "Phào nhỏ",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.303,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH07",
+      "name": "Đố chia vách",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.219,
+      "barsPerBundle": 10,
+      "barLengthMm": 7000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH11",
+      "name": "Cây ngăn kéo",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.205,
+      "barsPerBundle": 10,
+      "barLengthMm": 8000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH16",
+      "name": "Nan trang trí",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.065,
+      "barsPerBundle": 20,
+      "barLengthMm": 10000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-05",
+      "name": "Khung bao 200",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 3.37,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL08",
+      "name": "Nẹp kính hộp vuông",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.301,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-03",
+      "name": "Nẹp kính hộp",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.23,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-07",
+      "name": "Nẹp kính vuông",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.344,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-04",
+      "name": "Nẹp kính",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.364,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "C101",
+      "name": "Nẹp vách",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.133,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "TL03",
+      "name": "Khung Bao 120",
+      "thicknessMm": null,
+      "kgPerMeter": 1.9,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS01",
+      "name": "Khung chấn song hệ 55",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.391,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS02",
+      "name": "Khung ôm tường Ecento 70",
+      "thicknessMm": "1.2-1.45",
+      "kgPerMeter": 1.852,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS03",
+      "name": "Nối khung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.275,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS04",
+      "name": "Phào rời",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.374,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS05",
+      "name": "Chấn song D28",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 0.424,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS06",
+      "name": "Thanh định vị chấn song",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.279,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS07",
+      "name": "Thanh đố ngang",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.581,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS08",
+      "name": "Nắp bịt khung",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.125,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS09",
+      "name": "Nối phào",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.233,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS10",
+      "name": "Phào dài",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.458,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS11",
+      "name": "Nối khung 3cm",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.491,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS12",
+      "name": "Thanh song lục giác",
+      "thicknessMm": "1.8",
+      "kgPerMeter": 0.537,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS13",
+      "name": "Thanh đố ngang 75mm",
+      "thicknessMm": "1.1",
+      "kgPerMeter": 0.81,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS14",
+      "name": "Phào 55mm",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.494,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS15",
+      "name": "Chấn song chữ nhật",
+      "thicknessMm": "1.1",
+      "kgPerMeter": 0.409,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS17",
+      "name": "Hộp 25x120",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.2,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS19",
+      "name": "Phào gài",
+      "thicknessMm": null,
+      "kgPerMeter": 0.36,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS20-30X150",
+      "name": "Hộp 30x150",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.367,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS21-P100",
+      "name": "Phào nóc 100mm",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 1.076,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS22-P75",
+      "name": "Phào ôm tường 75mm",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.643,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "50X150",
+      "name": "Hộp 50x150",
+      "thicknessMm": "1.8",
+      "kgPerMeter": 2.134,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3318",
+      "name": "Khung bao cửa sổ",
+      "thicknessMm": null,
+      "kgPerMeter": 0.751,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPK116",
+      "name": "Khung ôm tường Ecento Plus",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.553,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3328P",
+      "name": "Khung liền phào",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.179,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3328",
+      "name": "Khung bao đơn",
+      "thicknessMm": null,
+      "kgPerMeter": 0.948,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPD98",
+      "name": "Cánh cửa đi",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 1.363,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPD98S",
+      "name": "Cánh cửa đi sập rời",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 1.275,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPS78",
+      "name": "Cánh cửa sổ",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.127,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPS78S",
+      "name": "Cánh cửa sổ sập rời",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.012,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPD138",
+      "name": "Cánh Ecento Plus 138mm",
+      "thicknessMm": "1.5-1.7",
+      "kgPerMeter": 1.817,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPD138P",
+      "name": "Cánh liền phào 138",
+      "thicknessMm": "1.6-2.0",
+      "kgPerMeter": 2.113,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3313",
+      "name": "Đố chia khung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.899,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPTD80",
+      "name": "Đố cánh",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.008,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3329A",
+      "name": "Ốp chân cánh",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.458,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3323-ND",
+      "name": "Đố động dùng chung",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.789,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3296",
+      "name": "Nẹp kính vách",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.237,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3225",
+      "name": "Sập khung kính hộp",
+      "thicknessMm": null,
+      "kgPerMeter": 0.251,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "E70SH",
+      "name": "Sập kính thường",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.266,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "T9809",
+      "name": "Sập kính hộp",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.214,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPSV11",
+      "name": "Sập vách phẳng",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.338,
+      "barsPerBundle": 11,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPS12-125",
+      "name": "Nẹp kính 12mm",
+      "thicknessMm": "1.1",
+      "kgPerMeter": 0.343,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPS20-125",
+      "name": "Nẹp kính hộp 20mm",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.311,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPD125P",
+      "name": "Cánh cửa đi liền phào 125",
+      "thicknessMm": "1.4-1.7",
+      "kgPerMeter": 1.525,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "DH01",
+      "name": "Khung chính",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 1.423,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "DH02",
+      "name": "Cột phụ",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.361,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "DH03",
+      "name": "Đế ốp",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.228,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "DH04",
+      "name": "Cột chính ghép pano",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.606,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "DH05",
+      "name": "Cột phụ cải tiến",
+      "thicknessMm": "1.1",
+      "kgPerMeter": 0.439,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "KH10",
+      "name": "Thanh ngang",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.497,
+      "barsPerBundle": 5,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "KH01CT",
+      "name": "Phào đỉnh",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.69,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "ECS18",
+      "name": "Phào cân",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.344,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "EPV02",
+      "name": "Đế khung tranh",
+      "thicknessMm": null,
+      "kgPerMeter": 0.23,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E701A",
+      "name": "Khung liền phào",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 1.385,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70D110",
+      "name": "Cánh đi E70 sập rời",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 1.963,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E702",
+      "name": "Nẹp phẳng",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.096,
+      "barsPerBundle": 20,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E704A",
+      "name": "Đố chia khung",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 1.214,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E705",
+      "name": "Đố động",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.914,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E706",
+      "name": "Nẹp chân cánh",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.34,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70S86",
+      "name": "Cánh sổ E70 sập rời",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.515,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70SH",
+      "name": "Sập kính thường",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.266,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "T9809",
+      "name": "Sập kính hộp",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.214,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70T98",
+      "name": "Đố khung 98mm",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.498,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70D190",
+      "name": "Cánh cửa đi Ecento 190",
+      "thicknessMm": "1.8",
+      "kgPerMeter": 2.91,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70NK",
+      "name": "Nối khung",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 0.373,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "KTL-04",
+      "name": "Nẹp kính cong cho cánh 150 và 190",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.364,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70D150",
+      "name": "Cánh cửa đi Ecento 150",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 2.393,
+      "barsPerBundle": 1,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70KD",
+      "name": "Khung đơn cửa đi",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 1.214,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "C3296",
+      "name": "Nẹp kính vách",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.237,
+      "barsPerBundle": 16,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "KTL-07",
+      "name": "Nẹp kính vuông cho cánh 150 và 190",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.344,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "C3225",
+      "name": "Nẹp vách kính hộp",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.211,
+      "barsPerBundle": 16,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "KTL-03",
+      "name": "Nẹp kính hộp cho cánh 150 và 190",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.23,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-70",
+      "code": "E70KT",
+      "name": "Khung thấp",
+      "thicknessMm": "1.8",
+      "kgPerMeter": 0.72,
+      "barsPerBundle": 5,
+      "barLengthMm": 3000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ01A",
+      "name": "RAY KHUNG GIẢM CHẤN",
+      "thicknessMm": null,
+      "kgPerMeter": 1.057995,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ02A",
+      "name": "RAY CÁNH GIẢM CHẤN",
+      "thicknessMm": null,
+      "kgPerMeter": 1.507356,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ04",
+      "name": "Cánh trên",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.422,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ07",
+      "name": "Cánh dưới",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.23,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ09",
+      "name": "Sập nối cánh",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 0.32,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ10",
+      "name": "Nẹp che phụ kiện",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 0.092,
+      "barsPerBundle": 20,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9801",
+      "name": "Cánh trượt",
+      "thicknessMm": "1.3-1.5",
+      "kgPerMeter": 1.4,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9802",
+      "name": "Khung",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 1.43,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9803",
+      "name": "Ray dưới",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 0.714,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9804",
+      "name": "Khung đơn",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.653,
+      "barsPerBundle": 4,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9805",
+      "name": "Ray đơn",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.44,
+      "barsPerBundle": 6,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9806",
+      "name": "Nẹp đối đầu",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.282,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9807",
+      "name": "Ray U",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 0.206,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9808",
+      "name": "Nẹp móc liền tay cầm",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 1.04,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-K9809",
+      "name": "Nẹp kính",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.214,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-K9810",
+      "name": "Nẹp kính hộp",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.18,
+      "barsPerBundle": 20,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9811",
+      "name": "Chuyển góc 90 độ",
+      "thicknessMm": null,
+      "kgPerMeter": 1.583,
+      "barsPerBundle": 2,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-K9812",
+      "name": "Nẹp đối đầu 90 độ",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.487,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9813",
+      "name": "Nẹp móc",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.47,
+      "barsPerBundle": 10,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "KHK65",
+      "name": "Khung bao phào ngoài",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 1.13,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "E192",
+      "name": "Lá chớp",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.317,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "E1283A",
+      "name": "Khung chớp",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.29,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "ECS01",
+      "name": "Khung ôm tường",
+      "thicknessMm": "1.3",
+      "kgPerMeter": 1.391,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-55",
+      "code": "EPV55",
+      "name": "Phào viền cánh",
+      "thicknessMm": "0.8",
+      "kgPerMeter": 0.509,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3326",
+      "name": "Chuyển góc 90 độ",
+      "thicknessMm": "2.2",
+      "kgPerMeter": 1.275,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "PR55N",
+      "name": "Nẹp sập cửa trượt",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.258,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3329A",
+      "name": "Ốp đáy cửa đi cải tiến",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.458,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "E192",
+      "name": "Lá chớp",
+      "thicknessMm": "0.9",
+      "kgPerMeter": 0.317,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "E1283A",
+      "name": "Khung chớp",
+      "thicknessMm": "1.2",
+      "kgPerMeter": 0.29,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PRECO",
+      "code": "C3336",
+      "name": "Nẹp cánh kính hộp",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.227,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-NOITHAT",
+      "code": "KH15",
+      "name": "Pano",
+      "thicknessMm": "0.6",
+      "kgPerMeter": 0.441,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ01",
+      "name": "Ray khung",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 1.058,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ02",
+      "name": "Ray cánh",
+      "thicknessMm": "2-2.8",
+      "kgPerMeter": 1.507,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ03",
+      "name": "Khung",
+      "thicknessMm": "1.6",
+      "kgPerMeter": 1.718,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ05",
+      "name": "Cánh đứng móc",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.385,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ06",
+      "name": "Cánh bản lề",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.521,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TQ",
+      "code": "KH-TQ08",
+      "name": "Cánh ngoài",
+      "thicknessMm": "1.7",
+      "kgPerMeter": 1.712,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TRUOT",
+      "code": "KH-T9814",
+      "name": "Thanh U đứng",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.24,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-01",
+      "name": "Cánh cửa 180",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 3.06,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL-06",
+      "name": "Đế sập",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.377,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-TL",
+      "code": "KTL09",
+      "name": "Đế sập kính hộp",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.417,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-CS",
+      "code": "ECS18",
+      "name": "Phào cân",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.345,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "C3328-1.4",
+      "name": "Khung phẳng",
+      "thicknessMm": "1.4",
+      "kgPerMeter": 0.948,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-ECPLUS",
+      "code": "EPT90",
+      "name": "Đố khung bản 90mm",
+      "thicknessMm": "1.8",
+      "kgPerMeter": 1.331,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "ECS23",
+      "name": "Định vị phào kiểu Pháp",
+      "thicknessMm": "5.0",
+      "kgPerMeter": 1.251,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "EPV01",
+      "name": "Phào nối đỉnh",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.348,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "ECS21-P100",
+      "name": "Phào nóc 100mm",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 1.076,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-PDH",
+      "code": "KH09",
+      "name": "U16",
+      "thicknessMm": "1.0",
+      "kgPerMeter": 0.13,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMD6577",
+      "name": "Khung mặt dựng 65x77",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 1.615,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMD65100",
+      "name": "Khung mặt dựng 65x100",
+      "thicknessMm": "2.5",
+      "kgPerMeter": 2.245,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMD65120",
+      "name": "Khung mặt dựng 65x120",
+      "thicknessMm": "2.0",
+      "kgPerMeter": 2.106,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMDK46",
+      "name": "Khung cửa sổ",
+      "thicknessMm": "1.5-2.0",
+      "kgPerMeter": 0.75,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMDS38",
+      "name": "Cánh cửa sổ",
+      "thicknessMm": "1.5",
+      "kgPerMeter": 0.8,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    },
+    {
+      "systemCode": "EU-MD",
+      "code": "EMD52X120",
+      "name": "Khung mặt dựng 52x120",
+      "thicknessMm": "1.5-2.0",
+      "kgPerMeter": 1.612,
+      "barsPerBundle": 0,
+      "barLengthMm": 6000
+    }
+  ],
+  "excluded": {
+    "workbookConflicts": [
+      {
+        "key": "EU-TL:KTL-01",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      },
+      {
+        "key": "EU-TL:KTL09",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      },
+      {
+        "key": "EU-TQ:KH-TQ03",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      },
+      {
+        "key": "EU-TQ:KH-TQ05",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      },
+      {
+        "key": "EU-TQ:KH-TQ06",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      },
+      {
+        "key": "EU-TQ:KH-TQ08",
+        "reason": "Một mã có nhiều tỷ trọng/quy cách/chiều dài trong cùng sheet."
+      }
+    ],
+    "sourceConflicts": [
+      {
+        "source": "R19",
+        "page": 17,
+        "code": "EMD52D",
+        "systemCode": "EU-MD",
+        "reason": "Catalog in cùng mã EMD52D cho cả đế nẹp và thanh nẹp; không thể tạo hai Profile cùng mã."
+      },
+      {
+        "source": "R19",
+        "page": 14,
+        "code": "NT700/EPV01/TQ10/EPV02/EPV55",
+        "reason": "Trang EuroART không chỉ rõ một hệ chuẩn duy nhất; không dùng riêng trang 14 để tự đổi phân hệ. Mã chỉ được map khi có bằng chứng độc lập ở sheet/hệ khác."
+      }
+    ],
+    "sheets": [
+      {
+        "sheet": "ITARICO_",
+        "reason": "Ngoài 11 hệ Eurohouse đang được duyệt."
+      },
+      {
+        "sheet": "TẤM_",
+        "reason": "Nhôm tấm không cùng mô hình dữ liệu Profile dạng cây."
+      },
+      {
+        "sheet": "02_03_25_(5)",
+        "reason": "Sheet tổng hợp bị lỗi #REF và lặp dữ liệu các sheet nguồn."
+      },
+      {
+        "sheet": "TỔNG_HỢP_SỐ_LG_ĐƠN_HÀNG",
+        "reason": "Sheet tổng hợp số lượng, không phải dữ liệu danh mục."
+      }
+    ]
+  }
+}

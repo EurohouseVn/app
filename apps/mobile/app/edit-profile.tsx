@@ -101,7 +101,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Cấu hình Tài khoản" />
+      <AppHeader title="Hồ sơ cơ sở sản xuất" />
       
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -110,7 +110,7 @@ export default function SettingsScreen() {
       ) : (
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={styles.card}>
-            <Text style={styles.subtitle}>Thông tin này sẽ hiển thị trên tiêu đề báo giá PDF xuất ra.</Text>
+            <Text style={styles.subtitle}>Thông tin và logo này chỉ thuộc cơ sở đang đăng nhập, được dùng trên báo giá, dự toán và báo cáo PDF.</Text>
 
             <View style={styles.field}>
               <Text style={styles.label}>Tên cơ sở / NPP</Text>
@@ -130,6 +130,11 @@ export default function SettingsScreen() {
                 <TouchableOpacity onPress={handlePickImage} style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.brandGrey[100], borderRadius: 8 }}>
                   <Text style={{ fontWeight: '600', color: colors.brandBlack.main }}>Chọn ảnh từ máy</Text>
                 </TouchableOpacity>
+                {form.logoUrl ? (
+                  <TouchableOpacity onPress={() => update('logoUrl', '')} style={{ paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFF1F2', borderRadius: 8 }}>
+                    <Text style={{ fontWeight: '700', color: '#B42318' }}>Gỡ logo</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
 

@@ -10,40 +10,43 @@ datasource db {
 // ---------- Tổ chức & người dùng ----------
 
 model Organization {
-  id               String         @id @default(cuid())
-  code             String         @unique
-  name             String
-  type             String // COMPANY | FACTORY | NPP | DEALER
-  shortLabel       String? // Ký hiệu ngắn dùng để sinh mã đơn, ví dụ "X.MinhViet" (chỉ Xưởng cần đặt)
-  phone            String?
-  address          String?
-  province         String? // Tỉnh/Thành phố hoạt động (dùng cho Phân vùng)
-  
-  // Profile Fields cho Báo giá
-  productionName   String?
-  logoUrl          String?
-  mainCategories   String?
-  email            String?
-  fanpage          String?
+  id         String  @id @default(cuid())
+  code       String  @unique
+  name       String
+  type       String // COMPANY | FACTORY | NPP | DEALER
+  shortLabel String? // Ký hiệu ngắn dùng để sinh mã đơn, ví dụ "X.MinhViet" (chỉ Xưởng cần đặt)
+  phone      String?
+  address    String?
+  province   String? // Tỉnh/Thành phố hoạt động (dùng cho Phân vùng)
 
-  users            User[]
-  managedByNppId   String?
-  managedByNpp     Organization?  @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
-  managedFactories Organization[] @relation("NppManagesFactory")
-  ordersAsNpp      Order[]        @relation("OrderNppOrg")
-  ordersAsFactory  Order[]        @relation("OrderFactoryOrg")
-  debtsAsNpp       Debt[]         @relation("DebtNppOrg")
-  debtsAsFactory   Debt[]         @relation("DebtFactoryOrg")
-  nppProfileStocks NppProfileStock[] @relation("NppProfileStockOrg")
-  nppStockMovements NppStockMovement[] @relation("NppStockMovementOrg")
-  nppAccessories NppAccessory[] @relation("NppAccessoryOrg")
-  nppGlassSheets NppGlassSheet[] @relation("NppGlassSheetOrg")
-  salesTargets     SalesTarget[]  @relation("NppSalesTarget")
-  tier             String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
-  targetRevenue    Float          @default(0) // Mục tiêu doanh số
-  purchasingPower  String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  // Profile Fields cho Báo giá
+  productionName String?
+  logoUrl        String?
+  mainCategories String?
+  email          String?
+  fanpage        String?
+
+  users               User[]
+  managedByNppId      String?
+  managedByNpp        Organization?        @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
+  managedFactories    Organization[]       @relation("NppManagesFactory")
+  ordersAsNpp         Order[]              @relation("OrderNppOrg")
+  ordersAsFactory     Order[]              @relation("OrderFactoryOrg")
+  debtsAsNpp          Debt[]               @relation("DebtNppOrg")
+  debtsAsFactory      Debt[]               @relation("DebtFactoryOrg")
+  nppProfileStocks    NppProfileStock[]    @relation("NppProfileStockOrg")
+  nppStockMovements   NppStockMovement[]   @relation("NppStockMovementOrg")
+  nppAccessories      NppAccessory[]       @relation("NppAccessoryOrg")
+  nppGlassSheets      NppGlassSheet[]      @relation("NppGlassSheetOrg")
+  salesTargets        SalesTarget[]        @relation("NppSalesTarget")
+  workshopWorkers     WorkshopWorker[]     @relation("WorkshopWorkerOrg")
+  workshopAttendances WorkshopAttendance[] @relation("WorkshopAttendanceOrg")
+  workshopReminders   WorkshopReminder[]   @relation("WorkshopReminderOrg")
+  tier                String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
+  targetRevenue       Float                @default(0) // Mục tiêu doanh số
+  purchasingPower     String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 }
 
 model User {
@@ -83,6 +86,7 @@ model User {
   scrapKg               Float                  @default(0) // Nhôm phế liệu dự tính (kg)
   inventoryItems        InventoryItem[]        @relation("UserInventory")
   profileCutoffs        ProfileCutoff[]
+  workshopReminders     WorkshopReminder[]     @relation("WorkshopReminderCreator")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
@@ -116,41 +120,41 @@ model Role {
 // ---------- Danh mục hệ nhôm ----------
 
 model AluSystem {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  name        String
-  description String?
-  sortOrder   Int       @default(0)
-  profiles    Profile[]
-  systemFormulas SystemFormula[]
+  id                String             @id @default(cuid())
+  code              String             @unique
+  name              String
+  description       String?
+  sortOrder         Int                @default(0)
+  profiles          Profile[]
+  systemFormulas    SystemFormula[]
   knowledgeArticles KnowledgeArticle[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model Profile {
-  id             String                 @id @default(cuid())
-  aluSystemId    String
-  aluSystem      AluSystem              @relation(fields: [aluSystemId], references: [id])
-  code           String // mã cây — không unique toàn cục vì nhiều hệ dùng chung phụ kiện/thanh giống nhau
-  name           String
-  thicknessMm    String? // ví dụ "1.0" hoặc "1 - 1.25"
-  kgPerMeter     Float                  @default(0)
-  barLengthMm    Int                    @default(6000) // chiều dài cây tiêu chuẩn
-  barsPerBundle  Int                    @default(0) // quy cách bó
-  pricePerKg     Int                    @default(0)
-  imageUrl       String? // ảnh mặt cắt
-  stockBars      Int                    @default(0) // tồn hiện tại theo cây
-  lowStockAlert  Int                    @default(0) // ngưỡng cảnh báo tồn thấp (0 = không cảnh báo)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  orderItems     OrderItem[]
-  stockMovements ProfileStockMovement[]
-  nppProfileStocks NppProfileStock[]
+  id                String                 @id @default(cuid())
+  aluSystemId       String
+  aluSystem         AluSystem              @relation(fields: [aluSystemId], references: [id])
+  code              String // mã cây — không unique toàn cục vì nhiều hệ dùng chung phụ kiện/thanh giống nhau
+  name              String
+  thicknessMm       String? // ví dụ "1.0" hoặc "1 - 1.25"
+  kgPerMeter        Float                  @default(0)
+  barLengthMm       Int                    @default(6000) // chiều dài cây tiêu chuẩn
+  barsPerBundle     Int                    @default(0) // quy cách bó
+  pricePerKg        Int                    @default(0)
+  imageUrl          String? // ảnh mặt cắt
+  stockBars         Int                    @default(0) // tồn hiện tại theo cây
+  lowStockAlert     Int                    @default(0) // ngưỡng cảnh báo tồn thấp (0 = không cảnh báo)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  orderItems        OrderItem[]
+  stockMovements    ProfileStockMovement[]
+  nppProfileStocks  NppProfileStock[]
   nppStockMovements NppStockMovement[]
-  profileCutoffs ProfileCutoff[]
-  dies           Die[]
-  workOrders     WorkOrder[]
+  profileCutoffs    ProfileCutoff[]
+  dies              Die[]
+  workOrders        WorkOrder[]
 
   @@unique([aluSystemId, code])
 }
@@ -205,20 +209,20 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  profileId   String?
-  profile     Profile? @relation(fields: [profileId], references: [id])
-  productCode String
-  productName String
-  colorCode   String   @default("")
-  quantity    Int      @default(0) // số cây
-  unit        String   @default("cây")
-  totalKg     Float    @default(0)
-  theoreticalTotalKg Float @default(0)
-  unitPrice   Int      @default(0)
-  totalPrice  Int      @default(0)
+  id                 String   @id @default(cuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  profileId          String?
+  profile            Profile? @relation(fields: [profileId], references: [id])
+  productCode        String
+  productName        String
+  colorCode          String   @default("")
+  quantity           Int      @default(0) // số cây
+  unit               String   @default("cây")
+  totalKg            Float    @default(0)
+  theoreticalTotalKg Float    @default(0)
+  unitPrice          Int      @default(0)
+  totalPrice         Int      @default(0)
 }
 
 model OrderStatusHistory {
@@ -235,60 +239,73 @@ model OrderStatusHistory {
 // ---------- Quản lý công trình & lợi nhuận (App Xưởng) ----------
 
 model Project {
-  id               String            @id @default(cuid())
-  code             String            @unique
-  name             String
-  ownerId          String?
-  owner            User?             @relation(fields: [ownerId], references: [id])
-  customerName     String            @default("")
-  customerPhone    String            @default("")
-  address          String            @default("")
-  scale            String            @default("") // Quy mô dự án
-  potentialRating  Int               @default(0) // Mức độ tiềm năng 1-5
-  productsUsed     String            @default("") // Dòng hàng sử dụng chủ đạo
-  status           String            @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
-  startDate        DateTime? // Thời gian bắt đầu
-  endDate          DateTime? // Thời gian kết thúc
+  id              String            @id @default(cuid())
+  code            String            @unique
+  name            String
+  organizationId  String?
+  customerV2Id    String?
+  customerV2      WorkshopCustomer? @relation(fields: [customerV2Id], references: [id], onDelete: SetNull)
+  ownerId         String?
+  owner           User?             @relation(fields: [ownerId], references: [id])
+  customerName    String            @default("")
+  customerPhone   String            @default("")
+  address         String            @default("")
+  scale           String            @default("") // Quy mô dự án
+  potentialRating Int               @default(0) // Mức độ tiềm năng 1-5
+  productsUsed    String            @default("") // Dòng hàng sử dụng chủ đạo
+  status          String            @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
+  startDate       DateTime? // Thời gian bắt đầu
+  endDate         DateTime? // Thời gian kết thúc
   // Giá trị nhận với chủ nhà / Tổng doanh thu
-  contractValue    Int               @default(0)
-  
+  contractValue   Int               @default(0)
+
   // Nâng cấp tài chính công trình
-  quotationId      String?           // Lấy giá trị từ báo giá nào
-  estimatedValue   Int               @default(0) // Dự toán ban đầu (Lấy từ báo giá)
-  incurredValue    Int               @default(0) // Phát sinh
-  incurredType     String            @default("INCREASE") // INCREASE | DECREASE
-  settledValue     Int               @default(0) // Quyết toán
-  images           String[]          @default([]) // Danh sách ảnh (tối đa 5 ảnh)
-  
+  quotationId    String? // Lấy giá trị từ báo giá nào
+  estimatedValue Int      @default(0) // Dự toán ban đầu (Lấy từ báo giá)
+  incurredValue  Int      @default(0) // Phát sinh
+  incurredType   String   @default("INCREASE") // INCREASE | DECREASE
+  settledValue   Int      @default(0) // Quyết toán
+  images         String[] @default([]) // Danh sách ảnh (tối đa 5 ảnh)
+
   // Chi phí đầu vào
-  costAluminum     Int               @default(0)
-  costAccessory    Int               @default(0)
-  costLockHinge    Int               @default(0)
-  costGlass        Int               @default(0)
-  costGasket       Int               @default(0) // zoăng
-  costSilicone     Int               @default(0)
-  costScrew        Int               @default(0)
-  costLabor        Int               @default(0)
-  costPartnerPct   Float             @default(0) // % chi phí cho đối tác
-  costConsumables  Int               @default(0) // Vật tư phụ
-  costTransport    Int               @default(0) // Vận chuyển
-  costInstallation Int               @default(0) // Nhân công lắp đặt
-  costOther        Int               @default(0) // Chi phí khác
-  extraRevenue     Int               @default(0) // phát sinh tăng từ khách
-  
+  costAluminum     Int   @default(0)
+  costAccessory    Int   @default(0)
+  costLockHinge    Int   @default(0)
+  costGlass        Int   @default(0)
+  costGasket       Int   @default(0) // zoăng
+  costSilicone     Int   @default(0)
+  costScrew        Int   @default(0)
+  costLabor        Int   @default(0)
+  costPartnerPct   Float @default(0) // % chi phí cho đối tác
+  costConsumables  Int   @default(0) // Vật tư phụ
+  costTransport    Int   @default(0) // Vận chuyển
+  costInstallation Int   @default(0) // Nhân công lắp đặt
+  costOther        Int   @default(0) // Chi phí khác
+  extraRevenue     Int   @default(0) // phát sinh tăng từ khách
+
   // Nợ đọng
-  debtNpp          Int               @default(0) // Nợ NPP
-  debtAccessory    Int               @default(0) // Nợ NCC Phụ kiện
-  debtGlass        Int               @default(0) // Nợ NCC Kính
-  debtOther        Int               @default(0) // Nợ NCC Khác
-  debtCustomer     Int               @default(0) // Khách nợ mình
-  
-  note             String            @default("")
-  costs            ProjectCost[]
-  debts            Debt[]
-  cashTransactions CashTransaction[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  debtNpp       Int @default(0) // Nợ NPP
+  debtAccessory Int @default(0) // Nợ NCC Phụ kiện
+  debtGlass     Int @default(0) // Nợ NCC Kính
+  debtOther     Int @default(0) // Nợ NCC Khác
+  debtCustomer  Int @default(0) // Khách nợ mình
+
+  note                 String                    @default("")
+  costs                ProjectCost[]
+  debts                Debt[]
+  cashTransactions     CashTransaction[]
+  sites                ProjectSite[]
+  openings             WorkshopOpening[]
+  quickQuotes          WorkshopQuickQuote[]
+  activities           WorkshopActivity[]
+  operationsWorkOrders WorkshopWorkOrder[]
+  installationJobs     WorkshopInstallationJob[]
+  warrantyAssets       WorkshopWarrantyAsset[]
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([organizationId, updatedAt])
+  @@index([customerV2Id])
 }
 
 model ProjectCost {
@@ -334,8 +351,8 @@ model Debt {
 // ---------- Báo giá tự động ----------
 
 model Quotation {
-  id            String          @id @default(cuid())
-  code          String          @unique
+  id              String          @id @default(cuid())
+  code            String          @unique
   createdById     String?
   createdBy       User?           @relation(fields: [createdById], references: [id])
   customerName    String          @default("")
@@ -344,56 +361,56 @@ model Quotation {
   items           QuotationItem[]
 
   // Tổng hợp chi phí từ các items
-  areaM2        Float           @default(0)
-  baseAmount    Int             @default(0)
-  
+  areaM2     Float @default(0)
+  baseAmount Int   @default(0)
+
   // Chi phí cộng thêm cho toàn bộ báo giá
-  accessoryCost Int             @default(0)
-  laborCost     Int             @default(0)
-  installCost   Int             @default(0)
-  depreciation  Int             @default(0)
-  profitPct     Float           @default(0)
-  profitAmount  Int             @default(0)
-  vatPct        Float           @default(0)
-  vatAmount     Int             @default(0)
-  totalAmount   Int             @default(0)
-  notes         String?         @default("")
-  extraProducts String?         @db.Text
-  isFinalSettlement Boolean     @default(false)
-  depositAmount     Int         @default(0)
-  
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @default(now()) @updatedAt
-  
+  accessoryCost     Int     @default(0)
+  laborCost         Int     @default(0)
+  installCost       Int     @default(0)
+  depreciation      Int     @default(0)
+  profitPct         Float   @default(0)
+  profitAmount      Int     @default(0)
+  vatPct            Float   @default(0)
+  vatAmount         Int     @default(0)
+  totalAmount       Int     @default(0)
+  notes             String? @default("")
+  extraProducts     String? @db.Text
+  isFinalSettlement Boolean @default(false)
+  depositAmount     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
   @@index([createdById])
 }
 
 model QuotationItem {
-  id            String    @id @default(cuid())
-  quotationId   String
-  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  
-  name                String    @default("") // VD: D1, VK1 (Ký hiệu)
-  system              String    @default("") // Hệ nhôm
-  doorType            String    @default("") // Loại cửa
-  templateId          String?   // Mã template Excel
-  widthMm             Int       @default(0)
-  heightMm            Int       @default(0)
-  wallHugging         String    @default("Non") // Tường 200, 150, 250, Non
-  quantity            Int       @default(1)
-  includesAccessories Boolean   @default(true)
-  accessoriesPrice    Int       @default(0)
-  
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  name                String  @default("") // VD: D1, VK1 (Ký hiệu)
+  system              String  @default("") // Hệ nhôm
+  doorType            String  @default("") // Loại cửa
+  templateId          String? // Mã template Excel
+  widthMm             Int     @default(0)
+  heightMm            Int     @default(0)
+  wallHugging         String  @default("Non") // Tường 200, 150, 250, Non
+  quantity            Int     @default(1)
+  includesAccessories Boolean @default(true)
+  accessoriesPrice    Int     @default(0)
+
   // Bóc tách của từng bộ
-  areaM2        Float     @default(0)
-  pricePerM2    Int       @default(0) // Đơn giá / m2
-  totalPrice    Int       @default(0) // Thành tiền
+  areaM2     Float @default(0)
+  pricePerM2 Int   @default(0) // Đơn giá / m2
+  totalPrice Int   @default(0) // Thành tiền
 
   // Thêm mới
-  color         String?
-  glassType     String?
-  glassColor    String?
-  dynamicInputs Json?
+  color           String?
+  glassType       String?
+  glassColor      String?
+  dynamicInputs   Json?
   formulaSnapshot Json?
 }
 
@@ -601,20 +618,20 @@ model CashTransaction {
 // ---------- Nội dung từ Web Admin ----------
 
 model Promotion {
-  id        String    @id @default(cuid())
-  title     String
-  subtitle  String    @default("")
-  imageUrl  String
-  bannerUrl String    @default("")
-  gallery   String    @default("[]") // JSON danh sách ảnh poster
-  content   String    @default("") // mô tả chi tiết
-  active    Boolean   @default(true)
-  startDate DateTime?
-  endDate   DateTime?
-  sortOrder      Int       @default(0)
+  id             String         @id @default(cuid())
+  title          String
+  subtitle       String         @default("")
+  imageUrl       String
+  bannerUrl      String         @default("")
+  gallery        String         @default("[]") // JSON danh sách ảnh poster
+  content        String         @default("") // mô tả chi tiết
+  active         Boolean        @default(true)
+  startDate      DateTime?
+  endDate        DateTime?
+  sortOrder      Int            @default(0)
   targetAudience AudienceTarget @default(ALL)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Gift {
@@ -728,6 +745,65 @@ model Payroll {
   @@unique([userId, month])
 }
 
+// ---------- Vận hành hằng ngày của Cơ sở sản xuất ----------
+
+model WorkshopWorker {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  organization        Organization         @relation("WorkshopWorkerOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  name                String
+  phone               String               @default("")
+  roleName            String               @default("Thợ sản xuất")
+  payType             String               @default("DAILY") // DAILY | HOURLY | MONTHLY
+  baseRate            Int                  @default(0)
+  overtimeRate        Int                  @default(0)
+  standardMonthlyDays Int                  @default(26)
+  active              Boolean              @default(true)
+  attendances         WorkshopAttendance[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([organizationId, active])
+}
+
+model WorkshopAttendance {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation("WorkshopAttendanceOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  workerId       String
+  worker         WorkshopWorker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  workDate       DateTime
+  checkInAt      DateTime?
+  checkOutAt     DateTime?
+  regularHours   Float          @default(0)
+  overtimeHours  Float          @default(0)
+  status         String         @default("PRESENT") // PRESENT | ABSENT | LEAVE
+  note           String         @default("")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([workerId, workDate])
+  @@index([organizationId, workDate])
+}
+
+model WorkshopReminder {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation("WorkshopReminderOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation("WorkshopReminderCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  title          String
+  dueAt          DateTime
+  priority       String       @default("NORMAL") // LOW | NORMAL | HIGH
+  note           String       @default("")
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, dueAt])
+  @@index([createdById])
+}
+
 // ---------- Sản Xuất (MES) ----------
 
 model Die {
@@ -807,15 +883,15 @@ model AluminumPrice {
 // ---------- Công thức cắt & Dự toán của Thợ (App Mobile) ----------
 
 model DoorModel {
-  id          String           @id @default(cuid())
-  name        String // VD: Cửa sổ lùa 2 cánh hệ 55, Cửa đi 1 cánh mở quay
-  type        String // WINDOW_SLIDING, DOOR_OPEN...
-  imageUrl    String           @default("") // Ảnh minh hoạ kiểu dáng cửa
-  description String           @default("")
-  formulas    CuttingFormula[]
+  id             String           @id @default(cuid())
+  name           String // VD: Cửa sổ lùa 2 cánh hệ 55, Cửa đi 1 cánh mở quay
+  type           String // WINDOW_SLIDING, DOOR_OPEN...
+  imageUrl       String           @default("") // Ảnh minh hoạ kiểu dáng cửa
+  description    String           @default("")
+  formulas       CuttingFormula[]
   systemFormulas SystemFormula[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 }
 
 model CuttingFormula {
@@ -861,8 +937,8 @@ model InventoryItem {
   id           String        @id @default(cuid())
   userId       String
   user         User          @relation("UserInventory", fields: [userId], references: [id])
-  materialCode String        // Mã nhôm
-  lengthMm     Int           // Chiều dài (mm)
+  materialCode String // Mã nhôm
+  lengthMm     Int // Chiều dài (mm)
   quantity     Int           @default(0)
   type         InventoryType
   createdAt    DateTime      @default(now())
@@ -870,32 +946,32 @@ model InventoryItem {
 }
 
 model FormulaTemplate {
-  id               String   @id @default(cuid())
-  templateId       String   @unique // ID gốc từ hệ thống cũ (6a1c4105c...)
-  numericId        Int
-  systemName       String
-  windowTypeName   String
-  templateName     String
-  imagePath        String
-  filePath         String
-  variantCount     Int      @default(0)
-  isPopular        Boolean  @default(false) // Đánh dấu mẫu thông dụng
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String   @id @default(cuid())
+  templateId     String   @unique // ID gốc từ hệ thống cũ (6a1c4105c...)
+  numericId      Int
+  systemName     String
+  windowTypeName String
+  templateName   String
+  imagePath      String
+  filePath       String
+  variantCount   Int      @default(0)
+  isPopular      Boolean  @default(false) // Đánh dấu mẫu thông dụng
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([systemName])
   @@index([windowTypeName])
 }
 
 model SystemFormula {
-  id           String    @id @default(cuid())
-  aluSystemId  String
-  aluSystem    AluSystem @relation(fields: [aluSystemId], references: [id], onDelete: Cascade)
-  doorModelId  String
-  doorModel    DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
-  excelFilePath String   @default("") // Đường dẫn tới file Excel chứa công thức
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  aluSystemId   String
+  aluSystem     AluSystem @relation(fields: [aluSystemId], references: [id], onDelete: Cascade)
+  doorModelId   String
+  doorModel     DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
+  excelFilePath String    @default("") // Đường dẫn tới file Excel chứa công thức
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([aluSystemId, doorModelId])
 }
@@ -957,11 +1033,2013 @@ model Notification {
   userId    String
   title     String
   body      String
-  type      String   // ORDER_STATUS | POINT_EARNED | WARRANTY_ACTIVATED | PROMO | SYSTEM
+  type      String // ORDER_STATUS | POINT_EARNED | WARRANTY_ACTIVATED | PROMO | SYSTEM
   refId     String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
+}
+
+// ---------- Workshop OS V2.1 manufacturing foundation ----------
+
+enum DatasetVerificationStatus {
+  DRAFT
+  PARTIALLY_VERIFIED
+  VERIFIED
+  RETIRED
+  // Phase 0 compatibility values.
+  COMMUNITY
+  CUSTOM
+}
+
+enum DatasetRevisionStatus {
+  DRAFT
+  REVIEW
+  RELEASED
+  RETIRED
+  // Phase 0 compatibility values. Phase 1 authoring never creates these.
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum DoorDesignRevisionStatus {
+  DRAFT
+  RELEASED
+  SUPERSEDED
+}
+
+enum BomRevisionStatus {
+  DRAFT
+  CALCULATED
+  TECHNICAL_REVIEW
+  APPROVED
+  VALIDATED
+  RELEASED
+  SUPERSEDED
+}
+
+enum TechnicalSourceType {
+  OFFICIAL_CATALOGUE
+  PROFILE_DRAWING
+  SYSTEM_DRAWING
+  FABRICATION_DRAWING
+  CUTTING_FORMULA
+  HARDWARE_SPECIFICATION
+  GLASS_SPECIFICATION
+  PRODUCTION_CUTTING_SHEET
+  SIGNED_TECHNICAL_CONFIRMATION
+  TECHNICAL_DRAWING
+  TECHNICAL_BULLETIN
+  MANUFACTURING_STANDARD
+  ENGINEERING_CONFIRMATION
+  LEGACY_DATA
+  OTHER
+}
+
+enum TechnicalReviewState {
+  UNREVIEWED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum GoldenFixtureStatus {
+  CANDIDATE
+  CALCULATED
+  TECHNICAL_REVIEW
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+}
+
+enum FixtureEvidenceKind {
+  SYNTHETIC_CANDIDATE
+  REAL_MANUFACTURED
+}
+
+enum ExpectedOutputRevisionStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SUPERSEDED
+}
+
+enum CalculationComparisonKind {
+  LEGACY_V2
+  DESIGN_REVISION
+  TECHNICAL_TRUTH_THREE_WAY
+}
+
+enum CalculationComparisonStatus {
+  PENDING
+  MATCH
+  EXPLAINED_DIFFERENCE
+  UNEXPLAINED_DIFFERENCE
+  NOT_COMPARABLE
+}
+
+enum DifferenceClassification {
+  MATCH
+  EXPLAINED_DIFFERENCE
+  UNEXPLAINED_DIFFERENCE
+  NOT_COMPARABLE
+  V2_MATCH_TECHNICAL
+  LEGACY_MATCH_TECHNICAL
+  BOTH_MATCH
+  BOTH_DIFFER
+  MISSING_TECHNICAL_TRUTH
+}
+
+enum DifferenceReviewStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+enum TechnicalIssueStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum BomMaterialCategory {
+  ALUMINIUM
+  GLASS
+  HARDWARE
+  GASKET
+  FASTENER
+  SEALANT
+  ACCESSORY
+  PACKAGING
+  OTHER
+}
+
+enum PriceBookVersionStatus {
+  DRAFT
+  ACTIVE
+  SUPERSEDED
+}
+
+enum StockRemnantStatus {
+  AVAILABLE
+  RESERVED
+  CONSUMED
+  SCRAPPED
+}
+
+model Manufacturer {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  country   String            @default("")
+  metadata  Json?
+  datasets  MaterialDataset[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model MaterialDataset {
+  id                  String                    @id @default(cuid())
+  stableKey           String                    @unique
+  name                String
+  manufacturerId      String?
+  manufacturer        Manufacturer?             @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  ownerOrganizationId String?
+  verificationStatus  DatasetVerificationStatus @default(DRAFT)
+  description         String                    @default("")
+  revisions           DatasetRevision[]
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([manufacturerId])
+  @@index([ownerOrganizationId])
+}
+
+model DatasetRevision {
+  id                      String                    @id @default(cuid())
+  datasetId               String
+  dataset                 MaterialDataset           @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  revisionNumber          Int
+  versionTag              String
+  status                  DatasetRevisionStatus     @default(DRAFT)
+  contentHash             String                    @default("")
+  provenance              Json?
+  verificationNote        String                    @default("")
+  verificationStatus      DatasetVerificationStatus @default(DRAFT)
+  verificationCoverage    Json?
+  coverageCalculatedAt    DateTime?
+  validationReport        Json?
+  validationHash          String                    @default("")
+  reviewNotes             String                    @default("")
+  reviewedById            String?
+  reviewedAt              DateTime?
+  releasedById            String?
+  releasedAt              DateTime?
+  publishedAt             DateTime?
+  systems                 AluminiumSystemV2[]
+  profileRevisions        ProfileRevision[]
+  roleMappings            ProfileRoleMapping[]
+  compatibilityRules      CompatibilityRule[]
+  hardwareItems           DatasetHardwareItem[]
+  gasketItems             DatasetGasketItem[]
+  glassRules              DatasetGlassRule[]
+  finishCompatibilities   FinishCompatibility[]
+  assemblyRules           AssemblyRule[]
+  calculationTraces       CalculationTrace[]
+  bomRevisions            BomRevision[]
+  technicalSources        TechnicalSource[]
+  ruleDefinitions         ManufacturingRuleRecord[]
+  goldenFixtures          GoldenFixture[]
+  expectedOutputRevisions ExpectedOutputRevision[]
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@unique([datasetId, revisionNumber])
+  @@unique([datasetId, versionTag])
+  @@index([status])
+}
+
+model AluminiumSystemV2 {
+  id                 String               @id @default(cuid())
+  datasetRevisionId  String
+  datasetRevision    DatasetRevision      @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  stableKey          String
+  code               String
+  name               String
+  legacyAluSystemId  String?
+  attributes         Json?
+  profiles           ProfileRevision[]
+  roleMappings       ProfileRoleMapping[]
+  compatibilityRules CompatibilityRule[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([datasetRevisionId, stableKey])
+  @@unique([datasetRevisionId, code])
+  @@index([legacyAluSystemId])
+}
+
+model ProfileRevision {
+  id                String               @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision      @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  aluminiumSystemId String
+  aluminiumSystem   AluminiumSystemV2    @relation(fields: [aluminiumSystemId], references: [id], onDelete: Cascade)
+  stableKey         String
+  code              String
+  name              String
+  stockLengthMm     Int
+  kgPerMeter        Float
+  thicknessMm       String?
+  legacyProfileId   String?
+  technicalData     Json?
+  roleMappings      ProfileRoleMapping[]
+  bomItems          BomItem[]
+  stockRemnants     StockRemnant[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@unique([datasetRevisionId, stableKey])
+  @@unique([aluminiumSystemId, code])
+  @@index([legacyProfileId])
+}
+
+model ProfileRoleMapping {
+  id                String            @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  aluminiumSystemId String
+  aluminiumSystem   AluminiumSystemV2 @relation(fields: [aluminiumSystemId], references: [id], onDelete: Cascade)
+  roleCode          String
+  profileRevisionId String
+  profileRevision   ProfileRevision   @relation(fields: [profileRevisionId], references: [id], onDelete: Cascade)
+  priority          Int               @default(100)
+  attributes        Json?
+  constraints       Json?
+  createdAt         DateTime          @default(now())
+
+  @@unique([datasetRevisionId, aluminiumSystemId, roleCode, profileRevisionId])
+  @@index([aluminiumSystemId, roleCode])
+}
+
+model CompatibilityRule {
+  id                String             @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision    @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  aluminiumSystemId String?
+  aluminiumSystem   AluminiumSystemV2? @relation(fields: [aluminiumSystemId], references: [id], onDelete: Cascade)
+  ruleType          String
+  ruleKey           String
+  expression        Json
+  message           String             @default("")
+  priority          Int                @default(100)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+
+  @@unique([datasetRevisionId, ruleKey])
+  @@index([aluminiumSystemId, active])
+}
+
+model DatasetHardwareItem {
+  id                String          @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  stableKey         String
+  code              String
+  name              String
+  roleCode          String
+  attributes        Json?
+  createdAt         DateTime        @default(now())
+
+  @@unique([datasetRevisionId, stableKey])
+  @@index([roleCode])
+}
+
+model DatasetGasketItem {
+  id                String          @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  stableKey         String
+  code              String
+  name              String
+  attributes        Json?
+  createdAt         DateTime        @default(now())
+
+  @@unique([datasetRevisionId, stableKey])
+}
+
+model DatasetGlassRule {
+  id                String          @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  ruleKey           String
+  glassType         String
+  expression        Json
+  constraints       Json?
+  createdAt         DateTime        @default(now())
+
+  @@unique([datasetRevisionId, ruleKey])
+}
+
+model FinishCompatibility {
+  id                String          @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  finishKey         String
+  materialKey       String
+  compatible        Boolean         @default(true)
+  constraints       Json?
+  createdAt         DateTime        @default(now())
+
+  @@unique([datasetRevisionId, finishKey, materialKey])
+}
+
+model AssemblyRule {
+  id                String          @id @default(cuid())
+  datasetRevisionId String
+  datasetRevision   DatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  ruleKey           String
+  appliesTo         String
+  rule              Json
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+
+  @@unique([datasetRevisionId, ruleKey])
+}
+
+model DoorDesign {
+  id                  String               @id @default(cuid())
+  stableKey           String               @unique
+  code                String               @unique
+  name                String
+  category            String
+  ownerOrganizationId String?
+  revisions           DoorDesignRevision[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([ownerOrganizationId])
+}
+
+model DoorDesignRevision {
+  id                String                      @id @default(cuid())
+  doorDesignId      String
+  doorDesign        DoorDesign                  @relation(fields: [doorDesignId], references: [id], onDelete: Cascade)
+  revisionNumber    Int
+  status            DoorDesignRevisionStatus    @default(DRAFT)
+  widthMm           Int
+  heightMm          Int
+  openingType       String
+  leafCount         Int                         @default(1)
+  handing           String                      @default("NONE")
+  openingDirection  String                      @default("NONE")
+  constraints       Json?
+  source            Json?
+  releasedAt        DateTime?
+  openings          DesignOpening[]
+  panels            DesignPanel[]
+  members           DesignMember[]
+  connections       DesignConnection[]
+  glazingPanels     DesignGlazingPanel[]
+  hardwareNeeds     DesignHardwareRequirement[]
+  calculationTraces CalculationTrace[]
+  boms              Bom[]
+  goldenFixtures    GoldenFixture[]
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@unique([doorDesignId, revisionNumber])
+  @@index([status])
+}
+
+model DesignOpening {
+  id                   String             @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  componentId          String
+  kind                 String
+  geometry             Json
+  attributes           Json?
+  panels               DesignPanel[]
+  createdAt            DateTime           @default(now())
+
+  @@unique([doorDesignRevisionId, componentId])
+}
+
+model DesignPanel {
+  id                   String               @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision   @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  openingId            String?
+  opening              DesignOpening?       @relation(fields: [openingId], references: [id], onDelete: SetNull)
+  parentPanelId        String?
+  parentPanel          DesignPanel?         @relation("DesignPanelTree", fields: [parentPanelId], references: [id])
+  childPanels          DesignPanel[]        @relation("DesignPanelTree")
+  componentId          String
+  kind                 String
+  operation            String
+  geometry             Json
+  attributes           Json?
+  glazingPanels        DesignGlazingPanel[]
+  createdAt            DateTime             @default(now())
+
+  @@unique([doorDesignRevisionId, componentId])
+  @@index([openingId])
+  @@index([parentPanelId])
+}
+
+model DesignMember {
+  id                   String             @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  componentId          String
+  roleCode             String
+  geometry             Json
+  attributes           Json?
+  createdAt            DateTime           @default(now())
+
+  @@unique([doorDesignRevisionId, componentId])
+  @@index([roleCode])
+}
+
+model DesignConnection {
+  id                   String             @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  componentId          String
+  fromComponentId      String
+  toComponentId        String
+  connectionType       String
+  attributes           Json?
+  createdAt            DateTime           @default(now())
+
+  @@unique([doorDesignRevisionId, componentId])
+}
+
+model DesignGlazingPanel {
+  id                   String             @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  panelId              String?
+  panel                DesignPanel?       @relation(fields: [panelId], references: [id], onDelete: SetNull)
+  componentId          String
+  glassIntent          String
+  geometry             Json
+  constraints          Json?
+  createdAt            DateTime           @default(now())
+
+  @@unique([doorDesignRevisionId, componentId])
+  @@index([panelId])
+}
+
+model DesignHardwareRequirement {
+  id                   String             @id @default(cuid())
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Cascade)
+  componentId          String
+  roleCode             String
+  quantity             Float
+  unit                 String
+  attributes           Json?
+  constraints          Json?
+  createdAt            DateTime           @default(now())
+
+  @@unique([doorDesignRevisionId, componentId, roleCode])
+  @@index([roleCode])
+}
+
+model CalculationTrace {
+  id                   String                  @id @default(cuid())
+  executionId          String                  @unique
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision      @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Restrict)
+  datasetRevisionId    String
+  datasetRevision      DatasetRevision         @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
+  engineVersion        String
+  rulePackVersion      String
+  priceBookVersion     String?
+  input                Json
+  output               Json
+  warnings             Json?
+  startedAt            DateTime
+  completedAt          DateTime
+  steps                CalculationTraceStep[]
+  bomRevisions         BomRevision[]
+  comparisonsAsLeft    CalculationComparison[] @relation("ComparisonLeftTrace")
+  comparisonsAsRight   CalculationComparison[] @relation("ComparisonRightTrace")
+  createdAt            DateTime                @default(now())
+
+  @@index([doorDesignRevisionId])
+  @@index([datasetRevisionId])
+  @@index([completedAt])
+}
+
+model CalculationTraceStep {
+  id          String           @id @default(cuid())
+  traceId     String
+  trace       CalculationTrace @relation(fields: [traceId], references: [id], onDelete: Cascade)
+  sequence    Int
+  stage       String
+  sourceRule  String?
+  input       Json?
+  output      Json?
+  diagnostics Json?
+  createdAt   DateTime         @default(now())
+
+  @@unique([traceId, sequence])
+}
+
+model Bom {
+  id                   String             @id @default(cuid())
+  stableKey            String             @unique
+  doorDesignRevisionId String
+  doorDesignRevision   DoorDesignRevision @relation(fields: [doorDesignRevisionId], references: [id], onDelete: Restrict)
+  ownerOrganizationId  String?
+  revisions            BomRevision[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([doorDesignRevisionId])
+  @@index([ownerOrganizationId])
+}
+
+model BomRevision {
+  id                 String            @id @default(cuid())
+  bomId              String
+  bom                Bom               @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  revisionNumber     Int
+  status             BomRevisionStatus @default(DRAFT)
+  datasetRevisionId  String
+  datasetRevision    DatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
+  calculationTraceId String?
+  calculationTrace   CalculationTrace? @relation(fields: [calculationTraceId], references: [id], onDelete: SetNull)
+  engineVersion      String
+  rulePackVersion    String
+  priceBookVersion   String?
+  lineage            Json
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNotes        String            @default("")
+  approvedById       String?
+  approvedAt         DateTime?
+  releasedById       String?
+  releasedAt         DateTime?
+  items              BomItem[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([bomId, revisionNumber])
+  @@index([status])
+  @@index([datasetRevisionId])
+  @@index([calculationTraceId])
+}
+
+model TechnicalSource {
+  id                      String                        @id @default(cuid())
+  datasetRevisionId       String?
+  datasetRevision         DatasetRevision?              @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  sourceType              TechnicalSourceType
+  sourceDocument          String
+  sourceRevision          String                        @default("")
+  sourcePage              String                        @default("")
+  sourceFileObjectId      String?
+  sourceHash              String                        @default("")
+  sourceDate              DateTime?
+  technicalOwner          String                        @default("")
+  ownerOrganizationId     String?
+  reviewState             TechnicalReviewState          @default(UNREVIEWED)
+  enteredById             String
+  enteredAt               DateTime                      @default(now())
+  reviewedById            String?
+  reviewedAt              DateTime?
+  releasedById            String?
+  releasedAt              DateTime?
+  notes                   String                        @default("")
+  metadata                Json?
+  links                   TechnicalSourceLink[]
+  ruleDefinitions         ManufacturingRuleRecord[]
+  goldenFixtures          GoldenFixture[]
+  expectedOutputRevisions ExpectedOutputRevision[]
+  differences             CalculationDifference[]
+  technicalIssues         ManufacturingTechnicalIssue[]
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([datasetRevisionId])
+  @@index([sourceType])
+  @@index([sourceHash])
+  @@index([ownerOrganizationId, reviewState])
+}
+
+model TechnicalSourceLink {
+  id                String          @id @default(cuid())
+  technicalSourceId String
+  technicalSource   TechnicalSource @relation(fields: [technicalSourceId], references: [id], onDelete: Cascade)
+  entityType        String
+  entityId          String
+  fieldPath         String          @default("")
+  notes             String          @default("")
+  createdAt         DateTime        @default(now())
+
+  @@unique([technicalSourceId, entityType, entityId, fieldPath])
+  @@index([entityType, entityId])
+}
+
+model ManufacturingRuleRecord {
+  id                     String                        @id @default(cuid())
+  datasetRevisionId      String?
+  datasetRevision        DatasetRevision?              @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  technicalSourceId      String?
+  technicalSource        TechnicalSource?              @relation(fields: [technicalSourceId], references: [id], onDelete: SetNull)
+  ruleId                 String
+  ruleVersion            String
+  purpose                String
+  inputs                 Json
+  outputSemantics        Json
+  implementation         Json
+  technicalJustification String                        @default("")
+  effectiveRevision      String                        @default("")
+  systemStableKey        String                        @default("")
+  constants              Json?
+  sourceReference        String                        @default("")
+  reviewState            TechnicalReviewState          @default(UNREVIEWED)
+  reviewedById           String?
+  reviewedAt             DateTime?
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+  fixtureUsages          GoldenFixtureRuleUsage[]
+  differences            CalculationDifference[]
+  technicalIssues        ManufacturingTechnicalIssue[]
+
+  @@unique([ruleId, ruleVersion])
+  @@index([datasetRevisionId])
+  @@index([reviewState])
+}
+
+model GoldenFixture {
+  id                               String                        @id @default(cuid())
+  fixtureId                        String                        @unique
+  name                             String
+  doorDesignRevisionId             String?
+  doorDesignRevision               DoorDesignRevision?           @relation(fields: [doorDesignRevisionId], references: [id], onDelete: SetNull)
+  datasetRevisionId                String?
+  datasetRevision                  DatasetRevision?              @relation(fields: [datasetRevisionId], references: [id], onDelete: SetNull)
+  technicalSourceId                String?
+  technicalSource                  TechnicalSource?              @relation(fields: [technicalSourceId], references: [id], onDelete: SetNull)
+  evidenceKind                     FixtureEvidenceKind           @default(SYNTHETIC_CANDIDATE)
+  doorWindowType                   String
+  systemStableKey                  String
+  dimensions                       Json
+  openingTopology                  Json
+  referenceImageObjectId           String?
+  profileRoleMapping               Json
+  expectedProfileIdentities        Json
+  expectedCuttingLengths           Json
+  expectedCuttingAngles            Json
+  expectedGlass                    Json
+  expectedGasket                   Json
+  expectedHardware                 Json
+  expectedAccessories              Json
+  expectedBom                      Json
+  expectedCuttingRequirements      Json
+  verifiedExpectedOutputRevisionId String?                       @unique
+  verifiedExpectedOutputRevision   ExpectedOutputRevision?       @relation("VerifiedFixtureExpectedOutput", fields: [verifiedExpectedOutputRevisionId], references: [id], onDelete: SetNull)
+  candidateDesign                  Json
+  actualOutput                     Json?
+  ruleVersion                      String                        @default("")
+  engineVersion                    String                        @default("")
+  status                           GoldenFixtureStatus           @default(CANDIDATE)
+  reviewChecks                     Json?
+  reviewerId                       String?
+  approvalTimestamp                DateTime?
+  rejectionReason                  String                        @default("")
+  notes                            String                        @default("")
+  comparisons                      CalculationComparison[]
+  expectedOutputRevisions          ExpectedOutputRevision[]      @relation("FixtureExpectedOutputs")
+  ruleUsages                       GoldenFixtureRuleUsage[]
+  technicalIssues                  ManufacturingTechnicalIssue[]
+  createdAt                        DateTime                      @default(now())
+  updatedAt                        DateTime                      @updatedAt
+
+  @@index([status])
+  @@index([datasetRevisionId])
+  @@index([systemStableKey])
+}
+
+model CalculationComparison {
+  id                       String                      @id @default(cuid())
+  kind                     CalculationComparisonKind
+  fixtureId                String?
+  fixture                  GoldenFixture?              @relation(fields: [fixtureId], references: [id], onDelete: SetNull)
+  leftTraceId              String?
+  leftTrace                CalculationTrace?           @relation("ComparisonLeftTrace", fields: [leftTraceId], references: [id], onDelete: SetNull)
+  rightTraceId             String?
+  rightTrace               CalculationTrace?           @relation("ComparisonRightTrace", fields: [rightTraceId], references: [id], onDelete: SetNull)
+  leftLabel                String
+  rightLabel               String
+  leftOutput               Json
+  rightOutput              Json
+  technicalTruthOutput     Json?
+  expectedOutputRevisionId String?
+  expectedOutputRevision   ExpectedOutputRevision?     @relation(fields: [expectedOutputRevisionId], references: [id], onDelete: SetNull)
+  status                   CalculationComparisonStatus @default(PENDING)
+  summary                  Json?
+  createdById              String
+  createdAt                DateTime                    @default(now())
+  differences              CalculationDifference[]
+
+  @@index([fixtureId])
+  @@index([kind, status])
+}
+
+model CalculationDifference {
+  id                     String                       @id @default(cuid())
+  comparisonId           String
+  comparison             CalculationComparison        @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  entity                 String
+  field                  String
+  legacyValue            Json?
+  v2Value                Json?
+  approvedExpected       Json?
+  delta                  Json?
+  classification         DifferenceClassification
+  reason                 String                       @default("")
+  source                 String                       @default("")
+  technicalSourceId      String?
+  technicalSource        TechnicalSource?             @relation(fields: [technicalSourceId], references: [id], onDelete: SetNull)
+  responsibleRuleId      String?
+  responsibleRule        ManufacturingRuleRecord?     @relation(fields: [responsibleRuleId], references: [id], onDelete: SetNull)
+  responsibleDatasetItem String                       @default("")
+  resolution             String                       @default("")
+  resolvedById           String?
+  resolvedAt             DateTime?
+  reviewStatus           DifferenceReviewStatus       @default(PENDING)
+  reviewedById           String?
+  reviewedAt             DateTime?
+  createdAt              DateTime                     @default(now())
+  technicalIssue         ManufacturingTechnicalIssue?
+
+  @@index([comparisonId, classification])
+  @@index([reviewStatus])
+}
+
+model ExpectedOutputRevision {
+  id                 String                       @id @default(cuid())
+  goldenFixtureId    String
+  goldenFixture      GoldenFixture                @relation("FixtureExpectedOutputs", fields: [goldenFixtureId], references: [id], onDelete: Cascade)
+  revisionNumber     Int
+  status             ExpectedOutputRevisionStatus @default(DRAFT)
+  output             Json
+  contentHash        String                       @default("")
+  technicalSourceId  String
+  technicalSource    TechnicalSource              @relation(fields: [technicalSourceId], references: [id], onDelete: Restrict)
+  datasetRevisionId  String
+  datasetRevision    DatasetRevision              @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
+  enteredById        String
+  reviewedById       String?
+  reviewedAt         DateTime?
+  approvedById       String?
+  approvedAt         DateTime?
+  reviewNotes        String                       @default("")
+  technicalNotes     String                       @default("")
+  verifiedByFixtures GoldenFixture[]              @relation("VerifiedFixtureExpectedOutput")
+  comparisons        CalculationComparison[]
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  @@unique([goldenFixtureId, revisionNumber])
+  @@index([status])
+  @@index([technicalSourceId])
+}
+
+model GoldenFixtureRuleUsage {
+  id              String                  @id @default(cuid())
+  goldenFixtureId String
+  goldenFixture   GoldenFixture           @relation(fields: [goldenFixtureId], references: [id], onDelete: Cascade)
+  ruleRecordId    String
+  ruleRecord      ManufacturingRuleRecord @relation(fields: [ruleRecordId], references: [id], onDelete: Restrict)
+  purpose         String                  @default("")
+  createdAt       DateTime                @default(now())
+
+  @@unique([goldenFixtureId, ruleRecordId])
+  @@index([ruleRecordId])
+}
+
+model ManufacturingTechnicalIssue {
+  id                     String                   @id @default(cuid())
+  fixtureId              String?
+  fixture                GoldenFixture?           @relation(fields: [fixtureId], references: [id], onDelete: SetNull)
+  differenceId           String?                  @unique
+  difference             CalculationDifference?   @relation(fields: [differenceId], references: [id], onDelete: SetNull)
+  responsibleRuleId      String?
+  responsibleRule        ManufacturingRuleRecord? @relation(fields: [responsibleRuleId], references: [id], onDelete: SetNull)
+  technicalSourceId      String?
+  technicalSource        TechnicalSource?         @relation(fields: [technicalSourceId], references: [id], onDelete: SetNull)
+  title                  String
+  description            String
+  status                 TechnicalIssueStatus     @default(OPEN)
+  responsibleDatasetItem String                   @default("")
+  resolution             String                   @default("")
+  openedById             String
+  resolvedById           String?
+  resolvedAt             DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  @@index([fixtureId, status])
+  @@index([responsibleRuleId])
+}
+
+model TechnicalReviewEvent {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  fromStatus String   @default("")
+  toStatus   String
+  actorId    String
+  notes      String   @default("")
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model BomItem {
+  id                String              @id @default(cuid())
+  bomRevisionId     String
+  bomRevision       BomRevision         @relation(fields: [bomRevisionId], references: [id], onDelete: Cascade)
+  category          BomMaterialCategory
+  roleCode          String
+  componentId       String
+  profileRevisionId String?
+  profileRevision   ProfileRevision?    @relation(fields: [profileRevisionId], references: [id], onDelete: Restrict)
+  description       String
+  quantity          Float
+  unit              String
+  lengthMm          Float?
+  widthMm           Float?
+  heightMm          Float?
+  attributes        Json?
+  constraints       Json?
+  sourceRule        String?
+  trace             Json?
+  createdAt         DateTime            @default(now())
+
+  @@index([bomRevisionId, category])
+  @@index([profileRevisionId])
+  @@index([roleCode])
+}
+
+model PriceBook {
+  id                  String             @id @default(cuid())
+  stableKey           String             @unique
+  name                String
+  ownerOrganizationId String?
+  currency            String             @default("VND")
+  versions            PriceBookVersion[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([ownerOrganizationId])
+}
+
+model PriceBookVersion {
+  id            String                 @id @default(cuid())
+  priceBookId   String
+  priceBook     PriceBook              @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  versionTag    String
+  status        PriceBookVersionStatus @default(DRAFT)
+  validFrom     DateTime?
+  validTo       DateTime?
+  contentHash   String                 @default("")
+  items         PriceItem[]
+  activatedAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([priceBookId, versionNumber])
+  @@unique([priceBookId, versionTag])
+  @@index([status])
+}
+
+model PriceItem {
+  id                 String           @id @default(cuid())
+  priceBookVersionId String
+  priceBookVersion   PriceBookVersion @relation(fields: [priceBookVersionId], references: [id], onDelete: Cascade)
+  itemType           String
+  itemKey            String
+  supplierKey        String?
+  customerTier       String?
+  unit               String
+  unitPrice          Decimal          @db.Decimal(18, 2)
+  attributes         Json?
+  createdAt          DateTime         @default(now())
+
+  @@unique([priceBookVersionId, itemType, itemKey, supplierKey, customerTier])
+  @@index([itemType, itemKey])
+}
+
+model StockRemnant {
+  id                  String             @id @default(cuid())
+  profileRevisionId   String
+  profileRevision     ProfileRevision    @relation(fields: [profileRevisionId], references: [id], onDelete: Restrict)
+  ownerOrganizationId String
+  warehouseRef        String
+  rackLocation        String             @default("")
+  finishKey           String
+  lengthMm            Int
+  status              StockRemnantStatus @default(AVAILABLE)
+  sourceCutPlanRef    String?
+  reservedByRef       String?
+  reservedAt          DateTime?
+  consumedAt          DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([ownerOrganizationId, warehouseRef, status])
+  @@index([profileRevisionId, finishKey, lengthMm])
+  @@index([reservedByRef])
+}
+
+model StorageObject {
+  id                  String   @id @default(cuid())
+  provider            String
+  objectKey           String   @unique
+  sha256              String
+  mime                String
+  sizeBytes           Int
+  revision            Int      @default(1)
+  ownerOrganizationId String?
+  ownerUserId         String?
+  purpose             String
+  metadata            Json?
+  publicUrl           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([sha256])
+  @@index([ownerOrganizationId, purpose])
+}
+
+model InventoryCommand {
+  id             String    @id @default(cuid())
+  idempotencyKey String
+  actorId        String
+  organizationId String?
+  ownerType      String
+  ownerId        String
+  command        String
+  requestHash    String
+  status         String    @default("PENDING")
+  result         Json?
+  errorCode      String?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([ownerType, ownerId, command, idempotencyKey])
+  @@index([actorId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+}
+
+// ---------- Workshop OS Track A: operations foundation ----------
+
+enum SurveyMeasurementStatus {
+  DRAFT
+  MEASURED
+  REVIEWED
+  APPROVED
+}
+
+enum OperationsInventoryTransactionType {
+  RECEIVE
+  ISSUE
+  TRANSFER
+  ADJUST
+  RESERVE
+  UNRESERVE
+  RETURN
+  SCRAP
+}
+
+enum OperationsReservationStatus {
+  ACTIVE
+  RELEASED
+  CONSUMED
+  CANCELLED
+}
+
+enum OperationsRemnantStatus {
+  AVAILABLE
+  RESERVED
+  CONSUMED
+  SCRAPPED
+}
+
+enum WorkshopWorkOrderType {
+  MEASUREMENT
+  MATERIAL_PREP
+  CUTTING
+  MACHINING
+  ASSEMBLY
+  GLAZING
+  QC
+  PACKING
+  DELIVERY
+  INSTALLATION
+}
+
+enum WorkshopWorkOrderStatus {
+  DRAFT
+  READY
+  IN_PROGRESS
+  PAUSED
+  DONE
+  CANCELLED
+}
+
+enum WorkshopQcResult {
+  PASS
+  FAIL
+  REWORK
+}
+
+enum WorkshopInstallationStatus {
+  DRAFT
+  SCHEDULED
+  EN_ROUTE
+  ON_SITE
+  IN_PROGRESS
+  QC_PENDING
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkshopWarrantyAssetStatus {
+  ACTIVE
+  EXPIRED
+  VOID
+}
+
+enum WorkshopWarrantyTicketStatus {
+  OPEN
+  SCHEDULED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum DomainEventOutboxStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  DEAD_LETTER
+}
+
+enum OfflineMutationStatus {
+  PENDING
+  APPLIED
+  CONFLICT
+  FAILED
+}
+
+enum WorkshopMediaUploadStatus {
+  PENDING
+  UPLOADING
+  UPLOADED
+  FAILED
+  CANCELLED
+}
+
+enum WorkshopWorkspaceRole {
+  OWNER
+  WORKSHOP_MANAGER
+  SUPERVISOR
+  WORKER
+  INSTALLER
+  ADMIN
+}
+
+model WorkshopCustomer {
+  id             String    @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  phone          String    @default("")
+  email          String    @default("")
+  address        String    @default("")
+  taxCode        String    @default("")
+  note           String    @default("")
+  active         Boolean   @default(true)
+  projects       Project[]
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, name])
+  @@index([organizationId, phone])
+}
+
+model ProjectSite {
+  id             String        @id @default(cuid())
+  organizationId String
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  address        String        @default("")
+  contactName    String        @default("")
+  contactPhone   String        @default("")
+  note           String        @default("")
+  zones          ProjectZone[]
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, projectId])
+}
+
+model ProjectZone {
+  id             String            @id @default(cuid())
+  organizationId String
+  projectSiteId  String
+  projectSite    ProjectSite       @relation(fields: [projectSiteId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  floorLabel     String            @default("")
+  sortOrder      Int               @default(0)
+  openings       WorkshopOpening[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([projectSiteId, code])
+  @@index([organizationId, projectSiteId])
+}
+
+model WorkshopOpening {
+  id                String                  @id @default(cuid())
+  organizationId    String
+  projectId         String
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  zoneId            String?
+  zone              ProjectZone?            @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  stableCode        String
+  description       String                  @default("")
+  widthMm           Int?
+  heightMm          Int?
+  wallThicknessMm   Int?
+  sillLevelMm       Int?
+  installationNotes String                  @default("")
+  measurementStatus SurveyMeasurementStatus @default(DRAFT)
+  revision          Int                     @default(1)
+  measurements      OpeningMeasurement[]
+  doorRequest       WorkshopDoorRequest?
+  createdById       String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@unique([organizationId, stableCode])
+  @@index([organizationId, projectId, zoneId])
+  @@index([organizationId, measurementStatus])
+}
+
+model OpeningMeasurement {
+  id              String                  @id @default(cuid())
+  organizationId  String
+  openingId       String
+  opening         WorkshopOpening         @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  revision        Int
+  widthMm         Int
+  heightMm        Int
+  wallThicknessMm Int?
+  sillLevelMm     Int?
+  status          SurveyMeasurementStatus @default(MEASURED)
+  note            String                  @default("")
+  measuredById    String
+  measuredAt      DateTime                @default(now())
+  supersedesId    String?
+  createdAt       DateTime                @default(now())
+
+  @@unique([openingId, revision])
+  @@index([organizationId, openingId, measuredAt])
+}
+
+model WorkshopDoorRequest {
+  id             String          @id @default(cuid())
+  organizationId String
+  openingId      String          @unique
+  opening        WorkshopOpening @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  intentType     String
+  operationType  String          @default("")
+  leafCount      Int?
+  glassIntent    String          @default("")
+  hardwareIntent String          @default("")
+  colorIntent    String          @default("")
+  note           String          @default("")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([organizationId, intentType])
+}
+
+model WorkshopSitePhoto {
+  id              String   @id @default(cuid())
+  organizationId  String
+  projectId       String
+  openingId       String?
+  storageObjectId String?
+  url             String
+  caption         String   @default("")
+  metadata        Json?
+  createdById     String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, projectId, openingId])
+}
+
+model WorkshopSiteNote {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  openingId      String?
+  noteType       String   @default("TEXT")
+  content        String
+  voiceObjectId  String?
+  metadata       Json?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, projectId, openingId])
+}
+
+model WorkshopSettings {
+  id                 String   @id @default(cuid())
+  organizationId     String   @unique
+  timezone           String   @default("Asia/Ho_Chi_Minh")
+  defaultCurrency    String   @default("VND")
+  defaultWarehouseId String?
+  quoteValidityDays  Int      @default(15)
+  warrantyMonths     Int      @default(12)
+  settings           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model WorkshopTeam {
+  id             String               @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  teamType       String               @default("PRODUCTION")
+  active         Boolean              @default(true)
+  members        WorkshopTeamMember[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, active])
+}
+
+model WorkshopTeamMember {
+  id       String       @id @default(cuid())
+  teamId   String
+  team     WorkshopTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workerId String
+  roleName String       @default("")
+  joinedAt DateTime     @default(now())
+  leftAt   DateTime?
+
+  @@unique([teamId, workerId])
+  @@index([workerId])
+}
+
+model WorkshopWarehouse {
+  id             String                      @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  address        String                      @default("")
+  active         Boolean                     @default(true)
+  locations      WorkshopWarehouseLocation[]
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, active])
+}
+
+model WorkshopWarehouseLocation {
+  id             String            @id @default(cuid())
+  organizationId String
+  warehouseId    String
+  warehouse      WorkshopWarehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  locationType   String            @default("RACK")
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([warehouseId, code])
+  @@index([organizationId, warehouseId])
+}
+
+model WorkshopMachine {
+  id                String   @id @default(cuid())
+  organizationId    String
+  code              String
+  name              String
+  machineType       String
+  kerfMm            Float?
+  minimumCutMm      Int?
+  maximumStockMm    Int?
+  angleCapabilities Json?
+  active            Boolean  @default(true)
+  note              String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, machineType, active])
+}
+
+model WorkshopSupplier {
+  id             String                     @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  phone          String                     @default("")
+  email          String                     @default("")
+  address        String                     @default("")
+  leadTimeDays   Int?
+  minimumOrder   Decimal?                   @db.Decimal(18, 2)
+  paymentTerms   String                     @default("")
+  deliveryNotes  String                     @default("")
+  status         String                     @default("ACTIVE")
+  materials      WorkshopSupplierMaterial[]
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, name])
+}
+
+model WorkshopSupplierMaterial {
+  id             String           @id @default(cuid())
+  supplierId     String
+  supplier       WorkshopSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  materialKey    String
+  materialName   String
+  unit           String
+  referencePrice Decimal?         @db.Decimal(18, 2)
+  currency       String           @default("VND")
+  note           String           @default("")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([supplierId, materialKey])
+}
+
+model WorkshopStockItem {
+  id              String                         @id @default(cuid())
+  organizationId  String
+  code            String
+  name            String
+  category        String
+  unit            String
+  materialRefType String                         @default("MANUAL")
+  materialRefId   String?
+  finishKey       String                         @default("")
+  minimumLevel    Decimal                        @default(0) @db.Decimal(18, 3)
+  active          Boolean                        @default(true)
+  lots            WorkshopStockLot[]
+  reservations    WorkshopInventoryReservation[]
+  remnants        WorkshopStockRemnant[]
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, category, active])
+  @@index([materialRefType, materialRefId])
+}
+
+model WorkshopStockLot {
+  id             String            @id @default(cuid())
+  organizationId String
+  stockItemId    String
+  stockItem      WorkshopStockItem @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  lotCode        String
+  warehouseId    String
+  locationId     String?
+  supplierId     String?
+  receivedAt     DateTime?
+  expiresAt      DateTime?
+  unitCost       Decimal?          @db.Decimal(18, 2)
+  attributes     Json?
+  closedAt       DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([organizationId, lotCode])
+  @@index([organizationId, stockItemId, warehouseId, locationId])
+}
+
+model WorkshopInventoryTransaction {
+  id              String                             @id @default(cuid())
+  organizationId  String
+  transactionType OperationsInventoryTransactionType
+  stockItemId     String
+  lotId           String?
+  quantity        Decimal                            @db.Decimal(18, 3)
+  adjustmentDelta Decimal?                           @db.Decimal(18, 3)
+  unit            String
+  fromWarehouseId String?
+  fromLocationId  String?
+  toWarehouseId   String?
+  toLocationId    String?
+  reservationId   String?
+  remnantId       String?
+  sourceType      String                             @default("")
+  sourceId        String?
+  reason          String                             @default("")
+  note            String                             @default("")
+  actorId         String
+  idempotencyKey  String
+  occurredAt      DateTime                           @default(now())
+  createdAt       DateTime                           @default(now())
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, stockItemId, occurredAt])
+  @@index([organizationId, lotId, occurredAt])
+  @@index([sourceType, sourceId])
+}
+
+model WorkshopInventoryReservation {
+  id             String                      @id @default(cuid())
+  organizationId String
+  stockItemId    String
+  stockItem      WorkshopStockItem           @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  lotId          String?
+  quantity       Decimal                     @db.Decimal(18, 3)
+  consumedQty    Decimal                     @default(0) @db.Decimal(18, 3)
+  status         OperationsReservationStatus @default(ACTIVE)
+  referenceType  String
+  referenceId    String
+  reservedById   String
+  reservedAt     DateTime                    @default(now())
+  releasedAt     DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@index([organizationId, stockItemId, status])
+  @@index([organizationId, referenceType, referenceId])
+}
+
+model WorkshopStockRemnant {
+  id                      String                  @id @default(cuid())
+  organizationId          String
+  stockItemId             String
+  stockItem               WorkshopStockItem       @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  lotId                   String?
+  materialIdentity        String
+  finishKey               String                  @default("")
+  lengthMm                Int
+  quantity                Int                     @default(1)
+  warehouseId             String
+  locationId              String?
+  rackLocation            String                  @default("")
+  status                  OperationsRemnantStatus @default(AVAILABLE)
+  sourceTransactionId     String?
+  sourceCutPlanRef        String?
+  reservedByRef           String?
+  reservedAt              DateTime?
+  consumedAt              DateTime?
+  consumedByTransactionId String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([organizationId, stockItemId, status, lengthMm])
+  @@index([organizationId, warehouseId, locationId])
+  @@index([reservedByRef])
+}
+
+model WorkshopQuickQuote {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  code               String
+  projectId          String?
+  project            Project?                 @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  customerId         String?
+  status             String                   @default("DRAFT")
+  methodLabel        String                   @default("COMMERCIAL_ESTIMATE")
+  currency           String                   @default("VND")
+  priceBookVersionId String?
+  subtotal           Decimal                  @default(0) @db.Decimal(18, 2)
+  discount           Decimal                  @default(0) @db.Decimal(18, 2)
+  tax                Decimal                  @default(0) @db.Decimal(18, 2)
+  total              Decimal                  @default(0) @db.Decimal(18, 2)
+  note               String                   @default("")
+  lines              WorkshopQuickQuoteLine[]
+  createdById        String
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, createdAt])
+  @@index([projectId])
+}
+
+model WorkshopQuickQuoteLine {
+  id           String             @id @default(cuid())
+  quickQuoteId String
+  quickQuote   WorkshopQuickQuote @relation(fields: [quickQuoteId], references: [id], onDelete: Cascade)
+  lineType     String
+  description  String
+  quantity     Decimal            @db.Decimal(18, 3)
+  unit         String
+  unitPrice    Decimal            @db.Decimal(18, 2)
+  total        Decimal            @db.Decimal(18, 2)
+  metadata     Json?
+  sortOrder    Int                @default(0)
+
+  @@index([quickQuoteId, sortOrder])
+}
+
+model WorkshopActivity {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  customerId     String?
+  activityType   String
+  title          String
+  description    String   @default("")
+  referenceType  String   @default("")
+  referenceId    String?
+  actorId        String
+  metadata       Json?
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, projectId, occurredAt])
+  @@index([organizationId, customerId, occurredAt])
+}
+
+model WorkshopWorkOrder {
+  id               String                     @id @default(cuid())
+  organizationId   String
+  code             String
+  type             WorkshopWorkOrderType
+  status           WorkshopWorkOrderStatus    @default(DRAFT)
+  title            String
+  projectId        String?
+  project          Project?                   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  openingId        String?
+  assignedTeamId   String?
+  assignedWorkerId String?
+  scheduledStart   DateTime?
+  scheduledEnd     DateTime?
+  startedAt        DateTime?
+  pausedAt         DateTime?
+  completedAt      DateTime?
+  sourceType       String                     @default("MANUAL")
+  sourceId         String?
+  instructions     String                     @default("")
+  priority         Int                        @default(0)
+  histories        WorkshopWorkOrderHistory[]
+  createdById      String
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, scheduledStart])
+  @@index([organizationId, assignedWorkerId, status])
+  @@index([projectId, openingId])
+}
+
+model WorkshopWorkOrderHistory {
+  id             String            @id @default(cuid())
+  workOrderId    String
+  workOrder      WorkshopWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  action         String
+  fromStatus     String            @default("")
+  toStatus       String            @default("")
+  reason         String            @default("")
+  actorId        String
+  issueCode      String?
+  photoObjectIds String[]          @default([])
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+
+  @@index([workOrderId, createdAt])
+}
+
+model WorkshopPackage {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  projectId      String?
+  workOrderId    String?
+  status         String   @default("OPEN")
+  itemRefs       Json?
+  sealedAt       DateTime?
+  deliveredAt    DateTime?
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, createdAt])
+  @@index([projectId, workOrderId])
+}
+
+model WorkshopQrIdentity {
+  id             String   @id @default(cuid())
+  organizationId String
+  publicId       String   @unique
+  entityType     String
+  entityId       String
+  active         Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, entityType, entityId])
+  @@index([organizationId, active])
+}
+
+model WorkshopQcTemplate {
+  id             String                   @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  appliesTo      String
+  version        Int                      @default(1)
+  active         Boolean                  @default(true)
+  items          WorkshopQcTemplateItem[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@unique([organizationId, code, version])
+  @@index([organizationId, appliesTo, active])
+}
+
+model WorkshopQcTemplateItem {
+  id           String             @id @default(cuid())
+  templateId   String
+  template     WorkshopQcTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  checkKey     String
+  label        String
+  required     Boolean            @default(true)
+  instructions String             @default("")
+  sortOrder    Int                @default(0)
+
+  @@unique([templateId, checkKey])
+}
+
+model WorkshopQcInspection {
+  id             String                       @id @default(cuid())
+  organizationId String
+  templateId     String
+  workOrderId    String?
+  installationId String?
+  entityType     String
+  entityId       String
+  status         String                       @default("DRAFT")
+  overallResult  WorkshopQcResult?
+  reviewerId     String?
+  reviewedAt     DateTime?
+  note           String                       @default("")
+  photoObjectIds String[]                     @default([])
+  results        WorkshopQcInspectionResult[]
+  createdById    String
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, status, createdAt])
+}
+
+model WorkshopQcInspectionResult {
+  id             String               @id @default(cuid())
+  inspectionId   String
+  inspection     WorkshopQcInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checkKey       String
+  label          String
+  result         WorkshopQcResult
+  note           String               @default("")
+  photoObjectIds String[]             @default([])
+
+  @@unique([inspectionId, checkKey])
+}
+
+model WorkshopInstallationJob {
+  id                        String                     @id @default(cuid())
+  organizationId            String
+  code                      String
+  projectId                 String
+  project                   Project                    @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  teamId                    String?
+  vehicleRef                String                     @default("")
+  scheduledStart            DateTime?
+  scheduledEnd              DateTime?
+  status                    WorkshopInstallationStatus @default(DRAFT)
+  openingIds                String[]                   @default([])
+  materialsChecklist        Json?
+  toolsChecklist            Json?
+  requiredQcTemplateId      String?
+  requiredPhotoCount        Int                        @default(1)
+  requiresCustomerSignature Boolean                    @default(true)
+  arrivedAt                 DateTime?
+  startedAt                 DateTime?
+  acceptedAt                DateTime?
+  completedAt               DateTime?
+  customerName              String                     @default("")
+  customerSignatureObjectId String?
+  photoObjectIds            String[]                   @default([])
+  note                      String                     @default("")
+  createdById               String
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, scheduledStart])
+  @@index([projectId])
+}
+
+model WorkshopWarrantyAsset {
+  id                         String                      @id @default(cuid())
+  organizationId             String
+  assetCode                  String
+  projectId                  String
+  project                    Project                     @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  openingId                  String?
+  installationJobId          String?
+  installedAt                DateTime
+  installerTeamId            String?
+  warrantyMonths             Int
+  expiresAt                  DateTime
+  status                     WorkshopWarrantyAssetStatus @default(ACTIVE)
+  qrIdentityId               String?
+  manufacturingBomRevisionId String?
+  metadata                   Json?
+  tickets                    WorkshopWarrantyTicket[]
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+
+  @@unique([organizationId, assetCode])
+  @@index([organizationId, status, expiresAt])
+  @@index([projectId, openingId])
+}
+
+model WorkshopWarrantyTicket {
+  id             String                         @id @default(cuid())
+  organizationId String
+  code           String
+  assetId        String
+  asset          WorkshopWarrantyAsset          @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  status         WorkshopWarrantyTicketStatus   @default(OPEN)
+  issueType      String
+  description    String
+  photoObjectIds String[]                       @default([])
+  requestedById  String
+  assignedTeamId String?
+  assignedTechnicianId String?
+  scheduledAt    DateTime?
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  resolution     String                         @default("")
+  serviceHistory WorkshopWarrantyServiceEvent[]
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status, createdAt])
+  @@index([assetId])
+}
+
+model WorkshopWarrantyServiceEvent {
+  id             String                 @id @default(cuid())
+  ticketId       String
+  ticket         WorkshopWarrantyTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  action         String
+  note           String                 @default("")
+  parts          Json?
+  photoObjectIds String[]               @default([])
+  actorId        String
+  occurredAt     DateTime               @default(now())
+
+  @@index([ticketId, occurredAt])
+}
+
+model WorkshopDomainEventOutbox {
+  id             String                  @id @default(cuid())
+  organizationId String
+  eventType      String
+  aggregateType  String
+  aggregateId    String
+  payload        Json
+  status         DomainEventOutboxStatus @default(PENDING)
+  attempts       Int                     @default(0)
+  availableAt    DateTime                @default(now())
+  nextAttemptAt  DateTime                @default(now())
+  lockedAt       DateTime?
+  lockToken      String?
+  publishedAt    DateTime?
+  processedAt    DateTime?
+  processingLatencyMs Int?
+  lastError      String                  @default("")
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([status, availableAt])
+  @@index([organizationId, aggregateType, aggregateId])
+}
+
+model WorkshopOfflineMutation {
+  id               String                @id @default(cuid())
+  organizationId   String
+  clientMutationId String
+  deviceId         String
+  entityType       String
+  entityId         String?
+  operation        String
+  baseRevision     Int?
+  payload          Json
+  status           OfflineMutationStatus @default(PENDING)
+  result           Json?
+  conflict         Json?
+  actorId          String
+  appliedAt        DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@unique([organizationId, clientMutationId])
+  @@index([organizationId, deviceId, status, createdAt])
+}
+
+model WorkshopAuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  action         String
+  fromStatus     String   @default("")
+  toStatus       String   @default("")
+  reason         String   @default("")
+  actorId        String
+  referenceIds   Json?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model WorkshopPilotConfig {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  active         Boolean  @default(false)
+  survey         Boolean  @default(false)
+  inventory      Boolean  @default(false)
+  shopFloor      Boolean  @default(false)
+  quality        Boolean  @default(false)
+  installation   Boolean  @default(false)
+  warranty       Boolean  @default(false)
+  version        Int      @default(1)
+  previousConfig Json?
+  enabledAt      DateTime?
+  disabledAt     DateTime?
+  updatedById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([active, updatedAt])
+}
+
+model WorkshopRoleAssignment {
+  id             String                @id @default(cuid())
+  organizationId String
+  userId         String
+  role           WorkshopWorkspaceRole
+  active         Boolean               @default(true)
+  assignedById   String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role, active])
+}
+
+model WorkshopMediaUpload {
+  id              String                    @id @default(cuid())
+  organizationId  String
+  localId         String
+  deviceId        String
+  entityType      String
+  entityId        String
+  mime            String
+  sizeBytes       Int
+  checksum        String
+  required        Boolean                   @default(false)
+  uploadState     WorkshopMediaUploadStatus @default(PENDING)
+  retryCount      Int                       @default(0)
+  lastError       String                    @default("")
+  storageObjectId String?
+  metadata        Json?
+  createdById     String
+  uploadedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@unique([organizationId, deviceId, localId])
+  @@index([organizationId, entityType, entityId, uploadState], map: "WorkshopMediaUpload_organizationId_entityType_entityId_uploadSt")
+  @@index([organizationId, checksum, uploadState])
+}
+
+model WorkshopEventConsumption {
+  id             String   @id @default(cuid())
+  organizationId String
+  outboxId       String
+  consumerKey    String
+  sideEffectRef  String?
+  processedAt    DateTime @default(now())
+
+  @@unique([outboxId, consumerKey])
+  @@index([organizationId, processedAt])
+}
+
+model WorkshopTelemetryEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String?
+  deviceId       String?
+  sessionId      String?
+  eventType      String
+  entityType     String?
+  entityId       String?
+  durationMs     Int?
+  success        Boolean  @default(true)
+  metadata       Json?
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, eventType, occurredAt])
+  @@index([organizationId, actorId, occurredAt])
 }

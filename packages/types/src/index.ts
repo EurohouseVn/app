@@ -59,6 +59,7 @@ export interface AuthUser {
   organizationId?: string;
   organizationName?: string;
   organizationType?: OrganizationType;
+  organizationProvince?: string;
   points?: number;
   isCeo: boolean;
   modules: string[];
@@ -683,8 +684,12 @@ export const ADMIN_MODULES: AdminModule[] = [
   { key: 'prod-dashboard', label: 'Dashboard Sản Xuất', href: '/production/dashboard' },
   { key: 'prod-work-orders', label: 'Lệnh Sản Xuất', href: '/production/work-orders' },
   { key: 'prod-shop-floor', label: 'Xưởng (Kiosk)', href: '/production/shop-floor' },
+  { key: 'workshop-operations', label: 'Điều hành xưởng', href: '/workshop/operations' },
   { key: 'prod-dies', label: 'Khuôn Đùn', href: '/production/dies' },
   { key: 'formulas', label: 'Mẫu Cửa', href: '/formulas' },
+  { key: 'manufacturing-datasets', label: 'Dataset kỹ thuật', href: '/manufacturing/datasets' },
+  { key: 'manufacturing-verification', label: 'Xác minh sản xuất', href: '/manufacturing/verification' },
+  { key: 'manufacturing-traces', label: 'Trace tính toán', href: '/manufacturing/traces' },
 ];
 
 export const ADMIN_MODULE_KEYS: string[] = ADMIN_MODULES.map((m) => m.key);
@@ -1127,6 +1132,93 @@ export interface CutRequest {
   pieces?: CutPieceRequest[];
 }
 
+export type WorkshopPayType = 'DAILY' | 'HOURLY' | 'MONTHLY';
+export type WorkshopAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE';
+export type WorkshopReminderPriority = 'LOW' | 'NORMAL' | 'HIGH';
+
+export interface WorkshopWorker {
+  id: string;
+  organizationId: string;
+  name: string;
+  phone: string;
+  roleName: string;
+  payType: WorkshopPayType;
+  baseRate: number;
+  overtimeRate: number;
+  standardMonthlyDays: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkshopAttendance {
+  id: string;
+  organizationId: string;
+  workerId: string;
+  worker: WorkshopWorker;
+  workDate: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  regularHours: number;
+  overtimeHours: number;
+  status: WorkshopAttendanceStatus;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkshopReminder {
+  id: string;
+  organizationId: string;
+  createdById: string;
+  title: string;
+  dueAt: string;
+  priority: WorkshopReminderPriority;
+  note: string;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkshopPayrollRow {
+  worker: WorkshopWorker;
+  daysWorked: number;
+  regularHours: number;
+  overtimeHours: number;
+  basePay: number;
+  overtimePay: number;
+  estimatedPay: number;
+}
+
+export interface WorkforceDashboard {
+  date: string;
+  month: string;
+  workerCount: number;
+  presentCount: number;
+  checkedInCount: number;
+  overtimeHours: number;
+  estimatedPayroll: number;
+  reminders: WorkshopReminder[];
+  attendance: WorkshopAttendance[];
+}
+
+export interface CreateWorkshopWorkerInput {
+  name: string;
+  phone?: string;
+  roleName?: string;
+  payType: WorkshopPayType;
+  baseRate: number;
+  overtimeRate?: number;
+  standardMonthlyDays?: number;
+}
+
+export interface CreateWorkshopReminderInput {
+  title: string;
+  dueAt: string;
+  priority?: WorkshopReminderPriority;
+  note?: string;
+}
+
 export interface CutResult {
   materialCode: string;
   materialName?: string;
@@ -1218,3 +1310,6 @@ export function fixLegacyUtf8Mojibake(value: string): string {
     return value;
   }
 }
+
+export { mediaRetryDelayMs, recoverInterruptedMediaUploads } from './mediaQueuePolicy.js';
+export type { RecoverableMediaUpload } from './mediaQueuePolicy.js';

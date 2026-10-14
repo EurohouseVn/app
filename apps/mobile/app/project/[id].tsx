@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Switch, Alert, Modal } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Switch, Alert, Modal, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -46,6 +46,7 @@ export default function ProjectDetailScreen() {
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [quotesList, setQuotesList] = useState<any[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [exportingFinancialPdf, setExportingFinancialPdf] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -174,6 +175,41 @@ export default function ProjectDetailScreen() {
     }
   };
 
+  const exportFinancialPdf = async () => {
+    if (!project || !id) return;
+    if (project.id.startsWith('local-')) {
+      Alert.alert('Chưa đồng bộ', 'Công trình cần được đồng bộ lên hệ thống trước khi xuất báo cáo thu chi.');
+      return;
+    }
+    setExportingFinancialPdf(true);
+    try {
+      const url = `${API_URL}/workshop/v2/projects/${project.id}/financial-pdf`;
+      if (Platform.OS === 'web') {
+        const response = await fetch(url, { headers: authHeaders() });
+        if (!response.ok) throw new Error('Không thể tải báo cáo thu chi.');
+        const blob = await response.blob();
+        const objectUrl = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = `tong-hop-thu-chi-${project.code}.pdf`;
+        anchor.click();
+        window.URL.revokeObjectURL(objectUrl);
+      } else {
+        const target = `${FileSystem.cacheDirectory}tong-hop-thu-chi-${project.code}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(url, target, { headers: authHeaders() });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Tổng hợp thu chi ${project.code}` });
+        } else {
+          Alert.alert('Đã tải', `Đã lưu file tại: ${uri}`);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', error instanceof Error ? error.message : 'Không xuất được báo cáo thu chi.');
+    } finally {
+      setExportingFinancialPdf(false);
+    }
+  };
+
   const pickImage = async () => {
     if (images.length >= 5) {
       Alert.alert('Giới hạn', 'Tối đa 5 ảnh công trình');
@@ -231,6 +267,13 @@ export default function ProjectDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
+        <Pressable
+          onPress={() => router.push({ pathname: '/survey', params: { projectId: id } } as never)}
+          style={{ backgroundColor: colors.brandBlack.main, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <Icon name="maximize-2" size={18} color={colors.white} />
+          <Text style={{ color: colors.white, fontWeight: '900' }}>Khảo sát & đo ô chờ</Text>
+        </Pressable>
         <Text style={styles.sectionTitle}>Thông tin chung</Text>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Tên công trình</Text>
@@ -339,6 +382,11 @@ export default function ProjectDetailScreen() {
           <TextInput value={expectedProfit} onChangeText={setExpectedProfit} keyboardType="numeric" style={styles.input} placeholder="0" placeholderTextColor="#94a3b8" />
         </View>
 
+        <Pressable style={[styles.financialPdfButton, exportingFinancialPdf && { opacity: 0.6 }]} disabled={exportingFinancialPdf} onPress={exportFinancialPdf}>
+          <Icon name="file-text" size={18} color={colors.brandBlack.main} />
+          <Text style={styles.financialPdfButtonText}>{exportingFinancialPdf ? 'Đang tạo báo cáo...' : 'Xuất bảng tổng hợp thu chi PDF'}</Text>
+        </Pressable>
+
         {/* ẢNH CÔNG TRÌNH (TỐI ĐA 5 ẢNH) */}
         <Text style={styles.sectionTitle}>Ảnh công trình ({images.length}/5)</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
@@ -408,6 +456,8 @@ const styles = StyleSheet.create({
   importBtnText: { color: colors.brandOrangeText, fontSize: 12, fontWeight: '800' },
   quoteLinkedBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF8F0', padding: 12, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: colors.orangeSoft },
   quoteLinkedText: { color: colors.brandOrangeText, fontSize: 13 },
+  financialPdfButton: { minHeight: 52, borderRadius: 14, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2, marginBottom: 8 },
+  financialPdfButtonText: { color: colors.brandBlack.main, fontSize: 13, fontWeight: '900' },
   field: { marginBottom: 14 },
   fieldLabel: { color: colors.brandBlack.main, fontWeight: '700', marginBottom: 8, fontSize: 13 },
   input: { backgroundColor: '#F7F8FA', borderRadius: 14, padding: 14, color: colors.brandBlack.main },

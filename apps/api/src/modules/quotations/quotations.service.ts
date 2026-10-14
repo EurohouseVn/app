@@ -8,72 +8,71 @@ import { FormulaEvaluatorService } from './formula-evaluator.service';
 @Injectable()
 export class QuotationsService {
 
-  async getNppProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) return null;
-    if (user.organization) {
-      return {
-        name: user.organization.name || user.displayName,
-        address: user.organization.address || '',
-        phone: user.organization.phone || user.phone || '',
-        productionName: user.organization.productionName || user.organization.name || user.displayName,
-        logoUrl: user.organization.logoUrl || '',
-        mainCategories: user.organization.mainCategories || '',
-        email: user.organization.email || user.email || '',
-        fanpage: user.organization.fanpage || ''
-      };
-    }
+  private profileFromUser(user: any) {
+    const organization = user.organization;
     return {
-      name: user.displayName,
-      address: '',
-      phone: user.phone || '',
-      productionName: user.displayName,
-      logoUrl: '',
-      mainCategories: '',
-      email: user.email || '',
-      fanpage: ''
+      organizationId: organization?.id || null,
+      organizationCode: organization?.code || '',
+      organizationType: organization?.type || (user.role === 'NPP' ? 'NPP' : 'FACTORY'),
+      name: organization?.name || user.displayName,
+      address: organization?.address || '',
+      phone: organization?.phone || user.phone || '',
+      productionName: organization?.productionName || organization?.name || user.displayName,
+      logoUrl: organization?.logoUrl || '',
+      mainCategories: organization?.mainCategories || '',
+      email: organization?.email || user.email || '',
+      fanpage: organization?.fanpage || '',
     };
   }
 
-  async updateNppProfile(userId: string, data: any) {
-    let user = await this.prisma.user.findUnique({ where: { id: userId } });
+  private profileUpdate(data: Record<string, unknown>) {
+    const fields = ['productionName', 'logoUrl', 'mainCategories', 'email', 'fanpage', 'address', 'phone'] as const;
+    const update: Record<string, string> = {};
+    fields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(data, field) && typeof data[field] === 'string') {
+        update[field] = data[field].trim();
+      }
+    });
+    if (update.productionName) update.name = update.productionName;
+    return update;
+  }
+
+  async getNppProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
+    if (!user) return null;
+    return this.profileFromUser(user);
+  }
+
+  async updateNppProfile(userId: string, data: Record<string, unknown>) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new NotFoundException('Không tìm thấy User');
-    
+    const update = this.profileUpdate(data);
+
     if (!user.organizationId) {
       const org = await this.prisma.organization.create({
         data: {
           code: `ORG-${Date.now().toString(36).toUpperCase()}`,
-          name: data.productionName || user.displayName || 'Xưởng Thợ',
+          name: update.productionName || user.displayName || 'Xưởng Thợ',
           type: user.role === 'NPP' ? 'NPP' : 'FACTORY',
-          productionName: data.productionName,
-          logoUrl: data.logoUrl,
-          mainCategories: data.mainCategories,
-          email: data.email,
-          fanpage: data.fanpage,
-          address: data.address,
-          phone: data.phone,
+          ...update,
         }
       });
       await this.prisma.user.update({
         where: { id: userId },
         data: { organizationId: org.id }
       });
-      return org;
+      return this.getNppProfile(userId);
     }
 
-    return this.prisma.organization.update({
+    await this.prisma.organization.update({
       where: { id: user.organizationId },
-      data: {
-        productionName: data.productionName,
-        logoUrl: data.logoUrl,
-        mainCategories: data.mainCategories,
-        email: data.email,
-        fanpage: data.fanpage,
-        address: data.address,
-        phone: data.phone,
-        name: data.productionName || data.name
-      }
+      data: update,
     });
+    return this.getNppProfile(userId);
+  }
+
+  async updateOrganizationLogo(userId: string, logoUrl: string) {
+    return this.updateNppProfile(userId, { logoUrl });
   }
 
   constructor(

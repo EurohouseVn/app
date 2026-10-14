@@ -1,6 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const prisma = new PrismaClient();
+const catalogR19Snapshot = require('./catalog-r19-snapshot.json');
+const profilesDir = path.join(__dirname, '..', 'public', 'profiles');
 
 const r18Systems = [
   { code: 'EU-ECPLUS', name: 'Hệ Ecento Plus', description: 'Cửa đi & cửa sổ dòng Ecento Plus', sortOrder: 9 },
@@ -49,6 +53,58 @@ const r18Profiles = [
 ];
 
 async function main() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "WorkshopWorker" (
+      "id" TEXT PRIMARY KEY,
+      "organizationId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "phone" TEXT NOT NULL DEFAULT '',
+      "roleName" TEXT NOT NULL DEFAULT 'Thợ sản xuất',
+      "payType" TEXT NOT NULL DEFAULT 'DAILY',
+      "baseRate" INTEGER NOT NULL DEFAULT 0,
+      "overtimeRate" INTEGER NOT NULL DEFAULT 0,
+      "standardMonthlyDays" INTEGER NOT NULL DEFAULT 26,
+      "active" BOOLEAN NOT NULL DEFAULT true,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "WorkshopAttendance" (
+      "id" TEXT PRIMARY KEY,
+      "organizationId" TEXT NOT NULL,
+      "workerId" TEXT NOT NULL,
+      "workDate" TIMESTAMP(3) NOT NULL,
+      "checkInAt" TIMESTAMP(3),
+      "checkOutAt" TIMESTAMP(3),
+      "regularHours" DOUBLE PRECISION NOT NULL DEFAULT 0,
+      "overtimeHours" DOUBLE PRECISION NOT NULL DEFAULT 0,
+      "status" TEXT NOT NULL DEFAULT 'PRESENT',
+      "note" TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "WorkshopReminder" (
+      "id" TEXT PRIMARY KEY,
+      "organizationId" TEXT NOT NULL,
+      "createdById" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "dueAt" TIMESTAMP(3) NOT NULL,
+      "priority" TEXT NOT NULL DEFAULT 'NORMAL',
+      "note" TEXT NOT NULL DEFAULT '',
+      "completedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "WorkshopWorker_organizationId_active_idx" ON "WorkshopWorker"("organizationId", "active")');
+  await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "WorkshopAttendance_workerId_workDate_key" ON "WorkshopAttendance"("workerId", "workDate")');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "WorkshopAttendance_organizationId_workDate_idx" ON "WorkshopAttendance"("organizationId", "workDate")');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "WorkshopReminder_organizationId_dueAt_idx" ON "WorkshopReminder"("organizationId", "dueAt")');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "WorkshopReminder_createdById_idx" ON "WorkshopReminder"("createdById")');
+
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "NppProfileStock" (
       "id" TEXT PRIMARY KEY,
@@ -199,6 +255,36 @@ async function main() {
         barLengthMm: 6000,
         pricePerKg: 92000,
         imageUrl: `/static/profiles/${code}.png`,
+      },
+    });
+  }
+
+  const allSystems = await prisma.aluSystem.findMany({ select: { id: true, code: true } });
+  const allSystemIdByCode = new Map(allSystems.map((system) => [system.code, system.id]));
+  for (const profile of catalogR19Snapshot.profiles) {
+    const aluSystemId = allSystemIdByCode.get(profile.systemCode);
+    if (!aluSystemId) throw new Error(`Missing aluminium system for R19 profile: ${profile.systemCode}`);
+    const hasImage = fs.existsSync(path.join(profilesDir, `${profile.code}.png`));
+    await prisma.profile.upsert({
+      where: { aluSystemId_code: { aluSystemId, code: profile.code } },
+      update: {
+        name: profile.name,
+        thicknessMm: profile.thicknessMm,
+        kgPerMeter: profile.kgPerMeter,
+        barsPerBundle: profile.barsPerBundle,
+        barLengthMm: profile.barLengthMm,
+        imageUrl: hasImage ? `/static/profiles/${profile.code}.png` : null,
+      },
+      create: {
+        aluSystemId,
+        code: profile.code,
+        name: profile.name,
+        thicknessMm: profile.thicknessMm,
+        kgPerMeter: profile.kgPerMeter,
+        barsPerBundle: profile.barsPerBundle,
+        barLengthMm: profile.barLengthMm,
+        pricePerKg: 92000,
+        imageUrl: hasImage ? `/static/profiles/${profile.code}.png` : null,
       },
     });
   }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import type {
   AdjustProfileStockInput,
@@ -13,6 +13,14 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
+import { assertInventoryMutationAllowed, type InventoryOwnerType } from './inventory-mutation-policy';
+import type { InventoryCommandContext } from './inventory-command.service';
+
+function commandContext(user: JwtUser, idempotencyKey: string | undefined, ownerType: InventoryOwnerType, ownerId: string, command: string): InventoryCommandContext {
+  if (!idempotencyKey) throw new BadRequestException('Idempotency-Key header is required for inventory mutations.');
+  assertInventoryMutationAllowed({ actorId: user.sub, role: user.role, organizationId: user.organizationId }, ownerType, ownerId);
+  return { idempotencyKey, actorId: user.sub, organizationId: user.organizationId, ownerType, ownerId, command };
+}
 
 @Controller()
 export class InventoryController {
@@ -61,22 +69,22 @@ export class InventoryController {
   @Post('stock-movements')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
-  createStockMovement(@Body() body: CreateStockMovementInput, @CurrentUser() user: JwtUser) {
-    return this.service.createStockMovement(body, user.sub);
+  createStockMovement(@Body() body: CreateStockMovementInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.service.createStockMovement(body, commandContext(user, key, 'COMPANY_STOCK', 'GLOBAL', 'MATERIAL_STOCK_MOVEMENT'));
   }
 
   @Get('profiles/:id/movements')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'STAFF', 'NPP')
+  @Roles('ADMIN', 'STAFF')
   profileMovements(@Param('id') id: string) {
     return this.service.listProfileMovements(id);
   }
 
   @Post('profiles/:id/stock-adjust')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'STAFF', 'NPP')
-  adjustProfileStock(@Param('id') id: string, @Body() body: AdjustProfileStockInput, @CurrentUser() user: JwtUser) {
-    return this.service.adjustProfileStock(id, body, user.sub);
+  @Roles('ADMIN', 'STAFF')
+  adjustProfileStock(@Param('id') id: string, @Body() body: AdjustProfileStockInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.service.adjustProfileStock(id, body, commandContext(user, key, 'COMPANY_STOCK', 'GLOBAL', 'PROFILE_STOCK_ADJUST'));
   }
 
   @Get('npp/inventory/profiles')
@@ -96,8 +104,9 @@ export class InventoryController {
   @Post('npp/inventory/profiles/:id/stock-adjust')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  adjustNppProfileStock(@Param('id') id: string, @Body() body: AdjustProfileStockInput, @CurrentUser() user: JwtUser) {
-    return this.service.adjustNppProfileStock(user.organizationId!, id, body, user.sub);
+  adjustNppProfileStock(@Param('id') id: string, @Body() body: AdjustProfileStockInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    const ownerId = user.organizationId!;
+    return this.service.adjustNppProfileStock(ownerId, id, body, commandContext(user, key, 'NPP_STOCK', ownerId, 'NPP_PROFILE_STOCK_ADJUST'));
   }
 
   @Get('npp/inventory/inbound-shipments')
@@ -110,8 +119,9 @@ export class InventoryController {
   @Post('npp/inventory/inbound-shipments/:id/receive')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  receiveNppInboundShipment(@Param('id') id: string, @CurrentUser() user: JwtUser) {
-    return this.service.receiveNppInboundShipment(id, user.organizationId!, user.sub);
+  receiveNppInboundShipment(@Param('id') id: string, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    const ownerId = user.organizationId!;
+    return this.service.receiveNppInboundShipment(id, ownerId, commandContext(user, key, 'NPP_STOCK', ownerId, 'RECEIVE_NPP_INBOUND'));
   }
 
   @Get('npp/accessories')
@@ -172,20 +182,21 @@ export class InventoryController {
 
   @Post('inventory/sync-order')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'STAFF', 'FACTORY')
-  syncOrderStock(@Body('orderId') orderId: string, @CurrentUser() user: JwtUser) {
-    return this.service.syncOrderStock(orderId, user.sub);
+  @Roles('ADMIN', 'STAFF')
+  syncOrderStock(@Body('orderId') orderId: string, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.service.syncOrderStock(orderId, commandContext(user, key, 'COMPANY_STOCK', 'GLOBAL', 'SYNC_ORDER_STOCK'));
   }
 
   @Post('inventory/cut')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'STAFF', 'FACTORY')
+  @Roles('ADMIN', 'STAFF')
   cutProfile(
     @Body('profileId') profileId: string,
     @Body('cutLengths') cutLengths: number[],
     @Body('projectId') projectId: string | undefined,
-    @CurrentUser() user: JwtUser
+    @CurrentUser() user: JwtUser,
+    @Headers('idempotency-key') key?: string,
   ) {
-    return this.service.cutProfile(profileId, cutLengths, projectId, user.sub);
+    return this.service.cutProfile(profileId, cutLengths, projectId, commandContext(user, key, 'COMPANY_STOCK', 'GLOBAL', 'CUT_COMPANY_PROFILE'));
   }
 }

@@ -1,16 +1,16 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
-import * as fs from 'fs';
-import * as path from 'path';
-import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile } from '../../common/upload';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
+import { StorageService } from '../storage/storage.service';
 
 @Controller('content')
 export class ContentController {
-  constructor(private readonly service: ContentService) {}
+  constructor(private readonly service: ContentService, private readonly storage: StorageService) {}
 
   // --- Promotions ---
   @Get('promotions')
@@ -47,8 +47,9 @@ export class ContentController {
   }
 
   @Post('admin/promotions/:id/image')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
   @Roles('ADMIN', 'STAFF')
+  @Throttle({ default: { limit: 15, ttl: 600_000 } })
   @UseInterceptors(FilesInterceptor('images', 10, IMAGE_UPLOAD_OPTIONS))
   async uploadPromotionImage(
     @Param('id') id: string,
@@ -56,18 +57,16 @@ export class ContentController {
   ) {
     if (!files || files.length === 0) throw new BadRequestException('No images provided');
 
-    const imagesDir = path.join(process.cwd(), 'public', 'images', 'promotions');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
-
-    const imageUrls = files.map((file, index) => {
-      const fileExt = imageExtension(file);
-      const fileName = `${id}-${Date.now()}-${index}${fileExt}`;
-      const filePath = path.join(imagesDir, fileName);
-      persistUploadedFile(file, filePath);
-      return `/static/images/promotions/${fileName}`;
-    });
+    const storedImages = await Promise.all(files.map(async (file, index) => this.storage.putUpload({
+      buffer: await uploadedFileBuffer(file),
+      originalName: file.originalname,
+      mime: file.mimetype,
+      purpose: 'promotion-image',
+      extension: imageExtension(file),
+      metadata: { promotionId: id, galleryIndex: index },
+    })));
+    const imageUrls = storedImages.map((item) => item.publicUrl).filter((url): url is string => Boolean(url));
+    if (imageUrls.length !== files.length) throw new BadRequestException('Storage provider does not expose public URLs for promotion images.');
 
     const imageUrl = imageUrls[0];
     const gallery = JSON.stringify(imageUrls);

@@ -45,6 +45,16 @@ export function persistUploadedFile(file: UploadedFileLike, targetPath: string) 
   throw new BadRequestException('Không đọc được nội dung file tải lên.');
 }
 
+export async function uploadedFileBuffer(file: UploadedFileLike): Promise<Buffer> {
+  if (file.buffer) return file.buffer;
+  if (file.path && fs.existsSync(file.path)) {
+    const buffer = await fs.promises.readFile(file.path);
+    await fs.promises.rm(file.path, { force: true });
+    return buffer;
+  }
+  throw new BadRequestException('Không đọc được nội dung file tải lên.');
+}
+
 export async function persistValidatedXlsx(file: UploadedFileLike, targetPath: string) {
   assertXlsx(file);
   const temporaryPath = `${targetPath}.upload-${Date.now()}-${Math.random().toString(36).slice(2)}`;

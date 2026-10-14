@@ -19,9 +19,15 @@ import { SalesModule } from './modules/sales/sales.module';
 import { ProductionModule } from './modules/production/production.module';
 import { ContentModule } from './modules/content/content.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { WorkforceModule } from './modules/workforce/workforce.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { StorageModule } from './modules/storage/storage.module';
+import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
+import { WorkshopOperationsModule } from './modules/workshop-operations/workshop-operations.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       serveStaticOptions: {
@@ -29,6 +35,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       },
     }),
     PrismaModule,
+    StorageModule,
     AuthModule,
     AdminIamModule,
     CatalogModule,
@@ -44,6 +51,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ProductionModule,
     ContentModule,
     NotificationsModule,
+    WorkforceModule,
+    ManufacturingModule,
+    WorkshopOperationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

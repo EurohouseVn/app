@@ -41,13 +41,14 @@ export default function QuotationsScreen() {
     });
   };
 
-  async function exportPdf(q: QuotationRecord) {
-    setExportingId(q.id);
+  async function exportPdf(q: QuotationRecord, type: 'quotation' | 'estimate') {
+    setExportingId(`${q.id}:${type}`);
     try {
-      const target = `${FileSystem.cacheDirectory}bao-gia-${q.code}.pdf`;
-      const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${q.id}/pdf`, target, { headers: authHeaders() });
+      const label = type === 'estimate' ? 'du-toan' : 'bao-gia';
+      const target = `${FileSystem.cacheDirectory}${label}-${q.code}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(`${API_URL}/quotations/${q.id}/pdf?type=${type}`, target, { headers: authHeaders() });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Báo giá ${q.code}` });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${type === 'estimate' ? 'Dự toán' : 'Báo giá'} ${q.code}` });
       } else {
         Alert.alert('Đã tải', `Đã lưu file tại: ${uri}`);
       }
@@ -98,9 +99,13 @@ export default function QuotationsScreen() {
                   <Pressable style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} onPress={() => handleDelete(q.id)}>
                     <Icon name="trash-2" size={14} color={colors.danger} />
                   </Pressable>
-                  <Pressable style={[styles.pdfBtn, exportingId === q.id && { opacity: 0.6 }]} disabled={exportingId === q.id} onPress={() => exportPdf(q)}>
+                  <Pressable style={[styles.pdfBtn, exportingId === `${q.id}:quotation` && { opacity: 0.6 }]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'quotation')}>
                     <Icon name="download" size={14} color={colors.brandBlack.main} />
-                    <Text style={styles.pdfBtnText}>{exportingId === q.id ? '...' : 'PDF'}</Text>
+                    <Text style={styles.pdfBtnText}>{exportingId === `${q.id}:quotation` ? '...' : 'Báo giá'}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.pdfBtn, exportingId === `${q.id}:estimate` && { opacity: 0.6 }]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'estimate')}>
+                    <Icon name="file-text" size={14} color={colors.brandBlack.main} />
+                    <Text style={styles.pdfBtnText}>{exportingId === `${q.id}:estimate` ? '...' : 'Dự toán'}</Text>
                   </Pressable>
                 </View>
 
@@ -130,10 +135,10 @@ const styles = StyleSheet.create({
   code: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 15 },
   meta: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
   date: { color: colors.brandGrey[500], fontSize: 12 },
-  cardBody: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, borderTopWidth: 1, borderTopColor: '#EEF0F3', paddingTop: 12 },
+  cardBody: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, borderTopWidth: 1, borderTopColor: '#EEF0F3', paddingTop: 12 },
   bodyLabel: { color: colors.brandGrey[500], fontSize: 12 },
   total: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 18, marginTop: 2 },
-  pdfBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.orangeSoft, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 },
+  pdfBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.orangeSoft, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 10 },
   pdfBtnText: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 13 },
   actionBtn: { width: 34, height: 34, borderRadius: 999, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
 });

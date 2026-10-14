@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Body, Controller, Get, Param, Post, Put, Delete, UseGuards, Query, Res, NotFoundException , BadRequestException, UseInterceptors, UploadedFile, Request } from '@nestjs/common';
 import { QuotationsService } from './quotations.service';
@@ -8,10 +6,12 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
-import { QuotationPdfService } from './quotation-pdf.service';
+import { QuotationPdfService, type QuotationPdfKind } from './quotation-pdf.service';
 import { FormulaEvaluatorService } from './formula-evaluator.service';
 import { CuttingOptimizerService, CutRequest } from './cutting-optimizer.service';
-import { imageExtension, IMAGE_UPLOAD_OPTIONS, persistUploadedFile } from '../../common/upload';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
+import { StorageService } from '../storage/storage.service';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller()
 export class QuotationsController {
@@ -29,20 +29,17 @@ export class QuotationsController {
 
 
   @Post('npp/profile/logo')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 8, ttl: 600_000 } })
   @UseInterceptors(FileInterceptor('logo', IMAGE_UPLOAD_OPTIONS))
   async uploadNppLogo(@Request() req: any, @UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No logo provided');
-    const imagesDir = path.join(process.cwd(), 'public', 'images', 'logos');
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
     const ext = imageExtension(file);
-    const filename = `logo-${req.user.sub}-${Date.now()}${ext}`;
-    const targetPath = path.join(imagesDir, filename);
-    persistUploadedFile(file, targetPath);
-    const logoUrl = `/static/images/logos/${filename}`;
-    return { url: logoUrl };
+    const stored = await this.storage.putUpload({ buffer: await uploadedFileBuffer(file), originalName: file.originalname, mime: file.mimetype, purpose: 'npp-logo', ownerOrganizationId: req.user.organizationId, ownerUserId: req.user.sub, extension: ext });
+    if (!stored.publicUrl) throw new BadRequestException('Storage provider does not expose a public URL for logos.');
+    const logoUrl = stored.publicUrl;
+    await this.service.updateOrganizationLogo(req.user.sub, logoUrl);
+    return { url: logoUrl, profile: await this.service.getNppProfile(req.user.sub) };
   }
 
   constructor(
@@ -50,9 +47,12 @@ export class QuotationsController {
     private readonly pdfService: QuotationPdfService,
     private readonly formulaService: FormulaEvaluatorService,
     private readonly cuttingOptimizer: CuttingOptimizerService,
+    private readonly storage: StorageService,
   ) {}
 
   @Post('quotations/calc')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   calcQuotation(@Body() body: QuotationInput) {
     return this.service.calcQuotation(body);
   }
@@ -81,6 +81,8 @@ export class QuotationsController {
   }
 
   @Post('formulas/templates/:id/calc')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async calcTemplate(@Param('id') id: string, @Body() body: Record<string, any>) {
     return this.formulaService.evaluateTemplate(id, body);
   }
@@ -179,17 +181,21 @@ export class QuotationsController {
   @Get('quotations/:id/pdf')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY')
-  async getQuotationPdf(@Param('id') id: string, @Res() res: any, @CurrentUser() user: JwtUser) {
+  async getQuotationPdf(
+    @Param('id') id: string,
+    @Query('type') type: string | undefined,
+    @Res() res: any,
+    @CurrentUser() user: JwtUser,
+  ) {
     const record = await this.service.getQuotation(id, user);
     if (!record) throw new NotFoundException('Không tìm thấy báo giá.');
-    let profile = null;
-    if (record.createdById) {
-      profile = await this.service.getNppProfile(record.createdById);
-    }
-    const pdfBuffer = await this.pdfService.render(record, profile);
+    const profile = await this.service.getNppProfile(record.createdById || user.sub);
+    const kind: QuotationPdfKind = type === 'estimate' ? 'estimate' : 'quotation';
+    const pdfBuffer = await this.pdfService.render(record, profile, kind);
+    const filePrefix = kind === 'estimate' ? 'du-toan' : 'bao-gia';
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="bao-gia-${record.code}.pdf"`,
+      'Content-Disposition': `inline; filename="${filePrefix}-${record.code}.pdf"`,
       'Content-Length': pdfBuffer.length,
     });
     res.end(pdfBuffer);

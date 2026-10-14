@@ -52,9 +52,12 @@ export async function apiBlob(path: string): Promise<Blob> {
 }
 
 export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+  const idempotencyKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const response = await authenticatedFetch(`${apiUrl}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {

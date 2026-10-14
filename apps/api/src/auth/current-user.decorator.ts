@@ -8,6 +8,7 @@ export interface JwtUser {
   role: UserRole;
   organizationId?: string;
   organizationName?: string;
+  organizationProvince?: string;
   isCeo?: boolean;
   modules?: string[];
   departmentId?: string;

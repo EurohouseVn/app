@@ -14,6 +14,7 @@ import type {
 } from '@eurohouse/types';
 import type { JwtUser } from '../../auth/current-user.decorator';
 import { QuotationBomService } from '../quotations/quotation-bom.service';
+import { InventoryCommandService, type InventoryCommandContext } from '../inventory/inventory-command.service';
 
 const STD_BAR_M = 6;
 
@@ -57,22 +58,10 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly quotationBom: QuotationBomService,
+    private readonly inventoryCommands: InventoryCommandService,
   ) {}
 
   private readonly createOrderRequests = new Map<string, { expiresAt: number; promise: Promise<any> }>();
-  private nppColorSchemaReady = false;
-
-  private async ensureNppColorSchema() {
-    if (this.nppColorSchemaReady) return;
-    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppProfileStock" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
-    await this.prisma.$executeRawUnsafe('ALTER TABLE "NppStockMovement" ADD COLUMN IF NOT EXISTS "colorCode" TEXT NOT NULL DEFAULT \'\'');
-    await this.prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "NppProfileStock_nppOrgId_profileId_key"');
-    await this.prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "NppProfileStock_nppOrgId_profileId_colorCode_key" ON "NppProfileStock"("nppOrgId", "profileId", "colorCode")');
-    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppProfileStock_colorCode_idx" ON "NppProfileStock"("colorCode")');
-    await this.prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "NppStockMovement_colorCode_idx" ON "NppStockMovement"("colorCode")');
-    this.nppColorSchemaReady = true;
-  }
-
   private theoreticalKg(profile: any, quantity: number, inputKgPerMeter = 0) {
     const kgPerMeter = profile?.kgPerMeter ?? inputKgPerMeter ?? 0;
     const barLengthM = (profile?.barLengthMm ?? STD_BAR_M * 1000) / 1000;
@@ -729,7 +718,7 @@ export class OrdersService {
     return `GIAO-NPP-${ymd}-${String(count + 1).padStart(2, '0')}`;
   }
 
-  async createAdminToNppShipment(input: CreateAdminToNppShipmentInput, userId: string) {
+  async createAdminToNppShipment(input: CreateAdminToNppShipmentInput, userId: string, command: InventoryCommandContext) {
     if (!input.nppOrgId) throw new BadRequestException('Chọn NPP nhận hàng.');
     if (!input.items?.length) throw new BadRequestException('Phiếu giao cần ít nhất một dòng hàng.');
 
@@ -773,7 +762,7 @@ export class OrdersService {
     }
 
     const code = await this.nextAdminShipmentCode();
-    return this.prisma.$transaction(async (tx) => {
+    return this.inventoryCommands.execute(command, input, async (tx) => {
       const created = await tx.order.create({
         data: {
           code,
@@ -798,7 +787,8 @@ export class OrdersService {
       });
 
       for (const item of itemsData) {
-        await tx.profile.update({ where: { id: item.profileId }, data: { stockBars: { decrement: item.quantity } } });
+        const decremented = await tx.profile.updateMany({ where: { id: item.profileId, stockBars: { gte: item.quantity } }, data: { stockBars: { decrement: item.quantity } } });
+        if (decremented.count !== 1) throw new BadRequestException(`Tồn công ty của ${item.productCode} không đủ để giao NPP.`);
         await tx.profileStockMovement.create({
           data: {
             profileId: item.profileId,
@@ -816,8 +806,7 @@ export class OrdersService {
     });
   }
 
-  async createNppDelivery(id: string, user: JwtUser, input: { actualTotalKg?: number } = {}) {
-    await this.ensureNppColorSchema();
+  async createNppDelivery(id: string, user: JwtUser, input: { actualTotalKg?: number } = {}, command: InventoryCommandContext) {
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền tạo đơn giao.');
     if (order.status === 'SHIPPED') return order;
@@ -863,7 +852,7 @@ export class OrdersService {
     const actualTotalAmount = this.amountForActualWeight(actualTotalKg, theoreticalTotalKg, theoreticalAmount);
     const actor = await this.actorNameForUser(user, 'NPP');
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.inventoryCommands.execute(command, { orderId: id, ...input }, async (tx) => {
       for (const required of requiredStocks.values()) {
         const key = `${required.profileId}:${required.colorCode}`;
         const stock = stocksByKey.get(key);
@@ -897,6 +886,7 @@ export class OrdersService {
       await tx.orderStatusHistory.create({
         data: { orderId: order.id, status: 'SHIPPED', title: 'Tạo đơn giao', actor, note: `NPP tạo đơn giao, cân thực tế ${actualTotalKg.toFixed(2)} kg và trừ kho NPP.` },
       });
+      return { success: true, orderId: order.id, actualTotalKg };
     });
 
     return this.getOrder(id, user);

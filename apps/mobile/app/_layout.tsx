@@ -1,14 +1,24 @@
 import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator, AppState, Platform } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { tabBarIcon } from '../src/components/Icon';
 import { AuthProvider, useAuth } from '../src/lib/auth';
 import AuthScreen from './auth';
+import { syncOperationsQueue } from '../src/lib/localProjects';
 
 function Gate() {
   const { user, ready } = useAuth();
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const syncAll = () => syncOperationsQueue();
+    void syncAll();
+    const timer = setInterval(() => void syncAll(), 30_000);
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') void syncAll(); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, [user]);
 
   if (!ready) {
     return (
@@ -29,11 +39,9 @@ function Gate() {
         tabBarActiveTintColor: colors.brandOrange,
         tabBarInactiveTintColor: '#9AA0A6',
         tabBarStyle: {
-          position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 12,
           height: 78,
+          marginHorizontal: 16,
+          marginBottom: 12,
           borderRadius: 24,
           backgroundColor: colors.white,
           borderTopWidth: 0,
@@ -71,6 +79,14 @@ function Gate() {
       <Tabs.Screen name="knowledge" options={{ href: null }} />
       <Tabs.Screen name="order/[id]" options={{ href: null }} />
       <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />
+      <Tabs.Screen name="workforce" options={{ href: null }} />
+      <Tabs.Screen name="reminders" options={{ href: null }} />
+      <Tabs.Screen name="survey" options={{ href: null }} />
+      <Tabs.Screen name="shop-floor" options={{ href: null }} />
+      <Tabs.Screen name="qc" options={{ href: null }} />
+      <Tabs.Screen name="installations" options={{ href: null }} />
+      <Tabs.Screen name="service-warranty" options={{ href: null }} />
+      <Tabs.Screen name="media-sync" options={{ href: null }} />
     </Tabs>
   );
 }

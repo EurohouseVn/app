@@ -15,6 +15,17 @@ export function setAuthToken(token: string | null) {
 // Được AuthProvider gán để tự đăng xuất khi API trả 401.
 let onUnauthorized: (() => void) | null = null;
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+export function isNetworkError(error: unknown): boolean {
+  return !(error instanceof ApiError);
+}
+
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler;
 }
@@ -39,7 +50,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     if (!response.ok) {
       if (response.status === 401) onUnauthorized?.();
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.message ?? `API ${path} lỗi ${response.status}`);
+      throw new ApiError(payload?.message ?? `API ${path} lỗi ${response.status}`, response.status);
     }
     return (await response.json()) as T;
   } catch (error) {

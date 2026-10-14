@@ -6,6 +6,18 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 const PROFILES_DIR = path.join(__dirname, '..', 'public', 'profiles');
 const FORMULA_TEMPLATE_BACKUP = path.join(__dirname, '..', 'backups', 'formula-templates-before-prune-2026-08-10T08-33-10-712Z.json');
+type CatalogR19Profile = {
+  systemCode: string;
+  code: string;
+  name: string;
+  thicknessMm: string | null;
+  kgPerMeter: number;
+  barsPerBundle: number;
+  barLengthMm: number;
+};
+const catalogR19Snapshot = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'catalog-r19-snapshot.json'), 'utf8'),
+) as { profiles: CatalogR19Profile[] };
 
 // Mật khẩu chung cho tài khoản demo (băm bằng bcrypt khi seed)
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Eurohouse@2026';
@@ -368,6 +380,35 @@ async function main() {
         aluSystemId: sysId, code, name, kgPerMeter: kg,
         barLengthMm: 6000, barsPerBundle: bundle, pricePerKg: 92000,
         imageUrl: hasImage ? `/static/profiles/${code}.png` : null,
+      },
+    });
+  }
+
+  // R19 + workbook recovered are applied last so resets cannot restore older profile weights/package data.
+  for (const profile of catalogR19Snapshot.profiles) {
+    const sysId = systemIdByCode[profile.systemCode];
+    if (!sysId) throw new Error(`Missing aluminium system for R19 profile: ${profile.systemCode}`);
+    const hasImage = fs.existsSync(path.join(PROFILES_DIR, `${profile.code}.png`));
+    await prisma.profile.upsert({
+      where: { aluSystemId_code: { aluSystemId: sysId, code: profile.code } },
+      update: {
+        name: profile.name,
+        thicknessMm: profile.thicknessMm,
+        kgPerMeter: profile.kgPerMeter,
+        barLengthMm: profile.barLengthMm,
+        barsPerBundle: profile.barsPerBundle,
+        imageUrl: hasImage ? `/static/profiles/${profile.code}.png` : null,
+      },
+      create: {
+        aluSystemId: sysId,
+        code: profile.code,
+        name: profile.name,
+        thicknessMm: profile.thicknessMm,
+        kgPerMeter: profile.kgPerMeter,
+        barLengthMm: profile.barLengthMm,
+        barsPerBundle: profile.barsPerBundle,
+        pricePerKg: 92000,
+        imageUrl: hasImage ? `/static/profiles/${profile.code}.png` : null,
       },
     });
   }

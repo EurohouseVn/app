@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import type { RegisterFactoryInput } from '@eurohouse/types';
@@ -10,11 +11,15 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   login(@Body() body: LoginDto) {
     return this.authService.login(body.identifier, body.password);
   }
 
   @Post('register-factory')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 600_000 } })
   registerFactory(@Body() body: RegisterFactoryInput) {
     return this.authService.registerFactory(body);
   }
