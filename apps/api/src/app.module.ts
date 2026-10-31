@@ -24,6 +24,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { StorageModule } from './modules/storage/storage.module';
 import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
 import { WorkshopOperationsModule } from './modules/workshop-operations/workshop-operations.module';
+import { WebsiteContentModule } from './modules/website-content/website-content.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { WorkshopOperationsModule } from './modules/workshop-operations/workshop
     WorkforceModule,
     ManufacturingModule,
     WorkshopOperationsModule,
+    WebsiteContentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
