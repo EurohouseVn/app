@@ -1,0 +1,56 @@
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+import { Footer } from '@/components/Footer';
+import { Header } from '@/components/Header';
+import { RevealPageSections } from '@/components/Reveal';
+import { StructuredData } from '@/components/StructuredData';
+import { site } from '@/lib/site';
+
+export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
+  title: { default: 'Nhôm Eurohouse | Nhôm kiến trúc và công nghiệp', template: '%s | Eurohouse' },
+  description: site.description,
+  applicationName: 'Eurohouse',
+  keywords: ['nhôm Eurohouse', 'nhôm kiến trúc', 'nhôm định hình', 'Ecento 70', 'Ecento Plus', 'hệ 55 vát cạnh'],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'vi_VN',
+    url: site.url,
+    siteName: site.name,
+    title: 'Nhôm Eurohouse | Nhôm kiến trúc và công nghiệp',
+    description: site.description,
+    images: [{ url: '/images/v4/hero-project.jpg', width: 1600, height: 1600, alt: 'Công trình nhôm kiến trúc Eurohouse' }],
+  },
+  twitter: { card: 'summary_large_image', title: 'Nhôm Eurohouse', description: site.description, images: ['/images/v4/hero-project.jpg'] },
+  icons: { icon: '/brand/logo-mark.png', apple: '/brand/logo-mark.png' },
+};
+
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f47c20' };
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const organization = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Eurohouse',
+    legalName: site.legalName,
+    url: site.url,
+    logo: `${site.url}/brand/eurohouse-logo-landscape.png`,
+    email: site.email,
+    telephone: site.phone,
+    address: { '@type': 'PostalAddress', streetAddress: site.address, addressCountry: 'VN' },
+  };
+
+  return (
+    <html lang="vi">
+      <body>
+        <StructuredData data={organization} />
+        <a className="skip-link" href="#main-content">Bỏ qua điều hướng</a>
+        <Header />
+        <main id="main-content" tabIndex={-1}>{children}</main>
+        <RevealPageSections />
+        <Footer />
+      </body>
+    </html>
+  );
+}
