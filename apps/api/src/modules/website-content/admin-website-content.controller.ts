@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -20,6 +21,14 @@ import { UpdateWebsiteRevisionDto } from './dto/update-website-revision.dto';
 import { WebsiteContentQueryService } from './website-content.query.service';
 import { WebsiteContentService } from './website-content.service';
 import { WebsitePreviewTokenService } from './website-preview-token';
+import {
+  CreateWebsiteDocumentInput,
+  CreateWebsiteMediaInput,
+  UpdateWebsiteDocumentInput,
+  UpdateWebsiteMediaInput,
+  WebsiteAssetsService,
+} from './website-assets.service';
+import { WebsiteRedirectInput, WebsiteRedirectsService } from './website-redirects.service';
 
 @Controller('website/admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,6 +38,8 @@ export class AdminWebsiteContentController {
     private readonly commands: WebsiteContentService,
     private readonly query: WebsiteContentQueryService,
     private readonly previewTokens: WebsitePreviewTokenService,
+    private readonly assets: WebsiteAssetsService,
+    private readonly redirects: WebsiteRedirectsService,
   ) {}
 
   @Get('content')
@@ -101,5 +112,87 @@ export class AdminWebsiteContentController {
   async previewToken(@Param('revisionId') revisionId: string) {
     await this.query.assertRevisionExists(revisionId);
     return this.previewTokens.issue(revisionId);
+  }
+
+  @Post('media')
+  createMedia(@Body() input: CreateWebsiteMediaInput, @CurrentUser() actor: JwtUser) {
+    return this.assets.createMedia(input, actor);
+  }
+
+  @Patch('media/:id')
+  updateMedia(
+    @Param('id') id: string,
+    @Body() input: UpdateWebsiteMediaInput,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.assets.updateMedia(id, input, actor);
+  }
+
+  @Post('revisions/:revisionId/media/:mediaAssetId')
+  linkMedia(
+    @Param('revisionId') revisionId: string,
+    @Param('mediaAssetId') mediaAssetId: string,
+    @Body() input: { role?: string; sortOrder?: number },
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.assets.linkMedia(revisionId, mediaAssetId, input.role ?? 'CONTENT', input.sortOrder ?? 0, actor);
+  }
+
+  @Delete('media-links/:linkId')
+  unlinkMedia(@Param('linkId') linkId: string, @CurrentUser() actor: JwtUser) {
+    return this.assets.unlinkMedia(linkId, actor);
+  }
+
+  @Post('documents')
+  createDocument(@Body() input: CreateWebsiteDocumentInput, @CurrentUser() actor: JwtUser) {
+    return this.assets.createDocument(input, actor);
+  }
+
+  @Patch('documents/:id')
+  updateDocument(
+    @Param('id') id: string,
+    @Body() input: UpdateWebsiteDocumentInput,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.assets.updateDocument(id, input, actor);
+  }
+
+  @Post('revisions/:revisionId/documents/:documentId')
+  linkDocument(
+    @Param('revisionId') revisionId: string,
+    @Param('documentId') documentId: string,
+    @Body() input: { sortOrder?: number },
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.assets.linkDocument(revisionId, documentId, input.sortOrder ?? 0, actor);
+  }
+
+  @Delete('document-links/:linkId')
+  unlinkDocument(@Param('linkId') linkId: string, @CurrentUser() actor: JwtUser) {
+    return this.assets.unlinkDocument(linkId, actor);
+  }
+
+  @Get('redirects')
+  listRedirects() {
+    return this.redirects.list();
+  }
+
+  @Post('redirects')
+  createRedirect(@Body() input: WebsiteRedirectInput, @CurrentUser() actor: JwtUser) {
+    return this.redirects.create(input, actor);
+  }
+
+  @Patch('redirects/:id')
+  updateRedirect(
+    @Param('id') id: string,
+    @Body() input: WebsiteRedirectInput,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.redirects.update(id, input, actor);
+  }
+
+  @Delete('redirects/:id')
+  deactivateRedirect(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
+    return this.redirects.deactivate(id, actor);
   }
 }

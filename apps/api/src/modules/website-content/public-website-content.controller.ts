@@ -11,6 +11,7 @@ import type { Response } from 'express';
 import { WebsiteContentKind, WebsiteProductFamily } from '@prisma/client';
 import { WebsiteContentQueryService } from './website-content.query.service';
 import { WebsitePreviewTokenService } from './website-preview-token';
+import { WebsiteRedirectsService } from './website-redirects.service';
 
 const PUBLIC_CACHE = 'public, max-age=60, s-maxage=300, stale-while-revalidate=600';
 
@@ -40,6 +41,7 @@ export class PublicWebsiteContentController {
   constructor(
     private readonly query: WebsiteContentQueryService,
     private readonly previewTokens: WebsitePreviewTokenService,
+    private readonly redirects: WebsiteRedirectsService,
   ) {}
 
   @Get('content')
@@ -97,5 +99,12 @@ export class PublicWebsiteContentController {
       kind: kind(kindValue),
       page: page(pageValue),
     });
+  }
+
+  @Get('redirect')
+  @Header('Cache-Control', PUBLIC_CACHE)
+  resolveRedirect(@Query('path') path: string) {
+    if (!path) throw new BadRequestException('Redirect source path is required.');
+    return this.redirects.resolve(path);
   }
 }
