@@ -1161,3 +1161,73 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .conversion-panel h2 { font-size: 32px; }
   .conversion-actions > a { grid-template-columns: 25px 1fr auto; padding: 14px; }
 }
+
+/* Residential family and governed detail templates */
+.residential-group { background: white; }
+.residential-group.is-muted, .residential-documents { background: var(--surface-muted); }
+.residential-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.residential-card-grid > a { min-width: 0; overflow: hidden; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); transition: border-color var(--motion-fast) ease; }
+.residential-card-grid > a:hover { border-color: var(--brand); }
+.residential-card-media { position: relative; height: 245px; display: block; overflow: hidden; background: #edf1f2; }
+.residential-card-media img { object-fit: cover; transition: transform 360ms ease; }
+.residential-card-grid > a:hover img { transform: scale(1.025); }
+.residential-card-copy { padding: 22px; display: grid; }
+.residential-card-copy small { color: var(--brand-strong); font-size: 11px; font-weight: 800; }
+.residential-card-copy strong { margin-top: 6px; color: var(--text); font-size: 21px; }
+.residential-card-copy > span { min-height: 68px; margin-top: 8px; color: var(--text-muted); font-size: 14px; }
+.residential-card-copy b { margin-top: 17px; display: inline-flex; align-items: center; gap: 7px; color: var(--brand-strong); font-size: 13px; }
+.solution-link-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.solution-link-grid a { min-height: 142px; padding: 24px; display: grid; grid-template-columns: 1fr auto; gap: 8px 18px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.solution-link-grid strong { color: var(--text); font-size: 18px; }
+.solution-link-grid span { color: var(--text-muted); font-size: 13px; }
+.solution-link-grid svg { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--brand-strong); }
+.residential-secondary-links { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px; }
+.residential-secondary-links a { min-height: 42px; padding: 9px 16px; display: inline-flex; align-items: center; color: var(--brand-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); font-weight: 750; }
+.residential-cta { padding: 68px 0; color: white; background: #1b2b3a; }
+.residential-cta .container { display: flex; align-items: center; justify-content: space-between; gap: 42px; }
+.residential-cta .home-eyebrow { color: #ffc18c; }
+.residential-cta h2 { margin: 0; color: white; font-size: clamp(30px, 3vw, 46px); }
+.residential-cta p:not(.home-eyebrow) { max-width: 690px; margin: 12px 0 0; color: #b9c4ce; }
+.residential-detail-hero { padding: 145px 0 72px; background: var(--surface-warm); }
+.residential-detail-grid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); align-items: center; gap: clamp(40px, 7vw, 96px); }
+.residential-detail-grid h1 { margin: 0; color: var(--text); font-size: clamp(44px, 5vw, 72px); }
+.residential-detail-grid > div:first-child > p:last-child { max-width: 650px; margin-top: 20px; color: var(--text-muted); font-size: 18px; }
+.residential-detail-image { position: relative; min-height: 420px; overflow: hidden; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.residential-detail-image img { object-fit: cover; }
+.residential-body-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .7fr); gap: clamp(44px, 8vw, 110px); align-items: start; }
+.residential-body-grid article h2 { margin: 0 0 12px; font-size: 27px; }
+.residential-body-grid article h2:not(:first-child) { margin-top: 38px; }
+.residential-body-grid article p, .residential-body-grid article li { color: var(--text-muted); }
+.residential-body-grid article ul { padding-left: 20px; }
+.specification-table { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.specification-table dl { margin: 0; }
+.specification-table dl > div { padding: 16px 18px; display: grid; grid-template-columns: 130px 1fr; gap: 18px; border-bottom: 1px solid var(--border); }
+.specification-table dt { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+.specification-table dd { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; }
+.specification-table > p { margin: 0; padding: 15px 18px; color: var(--text-subtle); background: var(--surface-muted); font-size: 11px; }
+.document-list { display: grid; gap: 10px; }
+.document-list a { min-height: 72px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.document-list span { display: grid; }
+.document-list small { color: var(--text-muted); }
+.comparison-scroll { overflow-x: auto; }
+.comparison-table { width: 100%; min-width: 900px; border-collapse: collapse; text-align: left; }
+.comparison-table caption { margin-bottom: 15px; color: var(--text-muted); text-align: left; }
+.comparison-table th, .comparison-table td { padding: 16px; vertical-align: top; border: 1px solid var(--border); }
+.comparison-table thead th { color: var(--text); background: var(--surface-warm); }
+.comparison-table tbody th { width: 150px; color: var(--text); }
+.comparison-table td { color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .residential-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .residential-detail-grid, .residential-body-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .residential-card-grid, .solution-link-grid { grid-template-columns: 1fr; }
+  .residential-card-media { height: 230px; }
+  .residential-card-copy > span { min-height: 0; }
+  .residential-cta .container { align-items: stretch; flex-direction: column; }
+  .residential-detail-hero { padding: 122px 0 54px; }
+  .residential-detail-grid h1 { font-size: 40px; }
+  .residential-detail-image { min-height: 300px; }
+  .specification-table dl > div { grid-template-columns: 1fr; gap: 4px; }
+}
