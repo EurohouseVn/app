@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getPublishedContent,
+  listPublicDocuments,
   listPublishedContent,
   PublicApiError,
 } from './public-api';
@@ -36,6 +37,23 @@ test('published content client uses API_URL and Next cache tags', async (context
   );
   assert.equal(requestInit?.next?.revalidate, 300);
   assert.deepEqual(requestInit?.next?.tags, ['website-content']);
+});
+
+test('public documents use governed family and type query parameters', async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalApiUrl = process.env.API_URL;
+  let requestUrl = '';
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    restoreEnv('API_URL', originalApiUrl);
+  });
+  process.env.API_URL = 'https://server-api.example/api';
+  globalThis.fetch = async (input) => {
+    requestUrl = String(input);
+    return Response.json([]);
+  };
+  await listPublicDocuments({ family: 'INDUSTRIAL', type: 'TECHNICAL' });
+  assert.equal(requestUrl, 'https://server-api.example/api/public/website/documents?family=INDUSTRIAL&type=TECHNICAL');
 });
 
 test('detail returns null only for a 404 response', async (context) => {

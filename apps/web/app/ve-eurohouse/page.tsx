@@ -1,0 +1,9 @@
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { PageIntro } from '@/components/PageIntro';
+import { site } from '@/lib/site';
+
+export const metadata: Metadata = { title: 'Về EUROHOUSE', description: 'EUROHOUSE phát triển giải pháp nhôm dân dụng và nhôm công nghiệp trên một nền tảng dữ liệu thống nhất.', alternates: { canonical: '/ve-eurohouse' } };
+export default function AboutPage() { return <><PageIntro eyebrow="VỀ EUROHOUSE" title="Một thương hiệu, hai nhóm sản phẩm, một nền tảng dữ liệu." summary="EUROHOUSE tổ chức thông tin sản phẩm, tài liệu, dự án và yêu cầu khách hàng trên nền tảng chung; dữ liệu công khai được tách khỏi vận hành riêng của Admin và NPP." breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Về EUROHOUSE' }]} /><section className="home-section about-story"><div className="container"><div className="about-story-image"><Image src="/images/v5/ecosystem-staff.webp" alt="Đội ngũ EUROHOUSE trong không gian trưng bày sản phẩm" fill unoptimized sizes="(max-width: 800px) 100vw, 52vw" /></div><div><p className="home-eyebrow">Định hướng</p><h2>Phục vụ cả kiến trúc và nhu cầu profile kỹ thuật.</h2><p>Nhôm dân dụng giúp người dùng đi từ nhu cầu công trình đến hệ sản phẩm. Nhôm công nghiệp đi từ ứng dụng và bản vẽ đến bước đánh giá kỹ thuật.</p><div className="about-family-links"><Link href="/nhom-dan-dung">NHÔM DÂN DỤNG <ArrowRight size={16} /></Link><Link href="/nhom-cong-nghiep">NHÔM CÔNG NGHIỆP <ArrowRight size={16} /></Link></div></div></div></section><section className="about-contact"><div className="container"><p className="home-eyebrow">Thông tin chính thức</p><h2>{site.legalName}</h2><p>{site.address}</p><p><a href={site.phoneHref}>{site.phone}</a> · <a href={`mailto:${site.email}`}>{site.email}</a></p></div></section></>; }

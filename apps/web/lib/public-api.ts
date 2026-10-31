@@ -1,4 +1,5 @@
 import type {
+  PublicDocumentProjection,
   PublicWebsiteContentDetail,
   PublicWebsiteContentSummary,
   WebsiteContentKind,
@@ -26,6 +27,11 @@ export type PaginatedPublicContent = {
 };
 
 export type PublicSearchResult = PaginatedPublicContent;
+
+export type PublicDocumentQuery = {
+  family?: WebsiteProductFamily;
+  type?: string;
+};
 
 export class PublicApiError extends Error {
   readonly status: number | undefined;
@@ -68,6 +74,15 @@ export async function searchPublishedContent(
   return requestPublicJson<PublicSearchResult>(
     withQuery('/public/website/search', query),
     ['website-content', 'website-search'],
+  );
+}
+
+export async function listPublicDocuments(
+  query: PublicDocumentQuery = {},
+): Promise<PublicDocumentProjection[]> {
+  return requestPublicJson<PublicDocumentProjection[]>(
+    withQuery('/public/website/documents', query),
+    ['website-content', 'website-documents'],
   );
 }
 
