@@ -87,6 +87,14 @@ model User {
   inventoryItems        InventoryItem[]        @relation("UserInventory")
   profileCutoffs        ProfileCutoff[]
   workshopReminders     WorkshopReminder[]     @relation("WorkshopReminderCreator")
+  websiteContents       WebsiteContent[]       @relation("WebsiteContentCreatedBy")
+  websiteRevisions      WebsiteContentRevision[] @relation("WebsiteRevisionCreatedBy")
+  websiteReviews        WebsiteContentReview[] @relation("WebsiteReviewReviewer")
+  websiteSeoReviews     WebsiteSeoRecord[]     @relation("WebsiteSeoReviewer")
+  websiteMediaAssets    WebsiteMediaAsset[]    @relation("WebsiteMediaCreatedBy")
+  websiteDocuments      WebsiteTechnicalDocument[] @relation("WebsiteDocumentCreatedBy")
+  websiteRedirects      WebsiteRedirect[]      @relation("WebsiteRedirectCreatedBy")
+  websiteAudits         WebsitePublicationAudit[] @relation("WebsiteAuditActor")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
@@ -128,6 +136,8 @@ model AluSystem {
   profiles          Profile[]
   systemFormulas    SystemFormula[]
   knowledgeArticles KnowledgeArticle[]
+  websiteContents   WebsiteContent[]           @relation("WebsiteContentAluSystem")
+  websiteDocuments  WebsiteTechnicalDocument[] @relation("WebsiteDocumentAluSystem")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -301,6 +311,7 @@ model Project {
   operationsWorkOrders WorkshopWorkOrder[]
   installationJobs     WorkshopInstallationJob[]
   warrantyAssets       WorkshopWarrantyAsset[]
+  websiteContents      WebsiteContent[]          @relation("WebsiteContentOperationalProject")
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
 
@@ -686,6 +697,11 @@ model Lead {
   address         String   @default("")
   province        String   @default("") // Tỉnh
   phone           String   @default("")
+  leadType        String   @default("GENERAL")
+  sourceUrl       String?
+  referrer        String?
+  utm             Json?
+  consentAt       DateTime?
   imageUrl        String   @default("") // Ảnh chụp cơ sở
   currentBrand    String   @default("") // Hãng nhôm đang làm
   scale           String   @default("") // Quy mô
@@ -2022,6 +2038,9 @@ model StorageObject {
   purpose             String
   metadata            Json?
   publicUrl           String?
+  websiteMediaAssets  WebsiteMediaAsset[]       @relation("WebsiteMediaStorage")
+  websiteMediaPosters WebsiteMediaAsset[]       @relation("WebsiteMediaPoster")
+  websiteDocuments    WebsiteTechnicalDocument[] @relation("WebsiteDocumentStorage")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -3042,4 +3061,252 @@ model WorkshopTelemetryEvent {
 
   @@index([organizationId, eventType, occurredAt])
   @@index([organizationId, actorId, occurredAt])
+}
+
+// ---------- Website public presentation and publication governance ----------
+
+enum WebsiteProductFamily {
+  RESIDENTIAL
+  INDUSTRIAL
+}
+
+enum WebsiteChannel {
+  PUBLIC
+  NPP
+  ADMIN_ONLY
+}
+
+enum WebsiteContentKind {
+  PRODUCT
+  INDUSTRIAL_SERVICE
+  SOLUTION
+  CASE_STUDY
+  PAGE
+  ARTICLE
+  FAQ
+  VIDEO
+}
+
+enum WebsitePublicationStatus {
+  DRAFT
+  TECHNICAL_REVIEW
+  MARKETING_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WebsiteReviewStage {
+  TECHNICAL
+  MARKETING
+}
+
+enum WebsiteReviewDecision {
+  APPROVED
+  CHANGES_REQUESTED
+}
+
+enum WebsiteMediaIntakeStatus {
+  DISCOVERED
+  REVIEWED
+  APPROVED
+  OPTIMIZED
+  PUBLISHED
+  REJECTED
+}
+
+enum WebsiteRightsStatus {
+  UNKNOWN
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WebsiteMediaType {
+  IMAGE
+  VIDEO
+}
+
+model WebsiteContent {
+  id                   String                @id @default(cuid())
+  kind                 WebsiteContentKind
+  family               WebsiteProductFamily?
+  slug                 String
+  locale               String                @default("vi")
+  aluSystemId          String?
+  aluSystem            AluSystem?            @relation("WebsiteContentAluSystem", fields: [aluSystemId], references: [id], onDelete: SetNull)
+  operationalProjectId String?
+  operationalProject   Project?              @relation("WebsiteContentOperationalProject", fields: [operationalProjectId], references: [id], onDelete: SetNull)
+  createdById          String?
+  createdBy            User?                 @relation("WebsiteContentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  revisions            WebsiteContentRevision[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@unique([locale, slug])
+  @@index([kind, family])
+  @@index([aluSystemId])
+  @@index([operationalProjectId])
+}
+
+model WebsiteContentRevision {
+  id                 String                   @id @default(cuid())
+  websiteContentId   String
+  websiteContent     WebsiteContent           @relation(fields: [websiteContentId], references: [id], onDelete: Cascade)
+  revision           Int
+  status             WebsitePublicationStatus @default(DRAFT)
+  title              String
+  eyebrow            String?
+  summary            String                   @db.Text
+  body               Json
+  specifications     Json?
+  sourceRefs         Json?
+  hasHighRiskClaims  Boolean                  @default(false)
+  createdById        String?
+  createdBy          User?                    @relation("WebsiteRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  publishedAt        DateTime?
+  reviews            WebsiteContentReview[]
+  seo                WebsiteSeoRecord?
+  media              WebsiteContentMedia[]
+  documents          WebsiteContentDocument[]
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  @@unique([websiteContentId, revision])
+  @@index([status, updatedAt])
+}
+
+model WebsiteContentReview {
+  id         String                @id @default(cuid())
+  revisionId String
+  revision   WebsiteContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  stage      WebsiteReviewStage
+  decision   WebsiteReviewDecision
+  note       String?               @db.Text
+  reviewerId String
+  reviewer   User                  @relation("WebsiteReviewReviewer", fields: [reviewerId], references: [id])
+  createdAt  DateTime              @default(now())
+
+  @@index([revisionId, stage, createdAt])
+  @@index([reviewerId, createdAt])
+}
+
+model WebsiteSeoRecord {
+  id            String                 @id @default(cuid())
+  revisionId    String                 @unique
+  revision      WebsiteContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  title         String
+  description   String                 @db.Text
+  canonicalPath String
+  schemaType    String
+  reviewDate    DateTime?
+  reviewerId    String?
+  reviewer      User?                  @relation("WebsiteSeoReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([canonicalPath])
+  @@index([reviewDate])
+}
+
+model WebsiteMediaAsset {
+  id                    String                   @id @default(cuid())
+  storageObjectId       String                   @unique
+  storageObject         StorageObject            @relation("WebsiteMediaStorage", fields: [storageObjectId], references: [id])
+  mediaType             WebsiteMediaType
+  sourceReference       String                   @default("")
+  rightsStatus          WebsiteRightsStatus      @default(UNKNOWN)
+  altText               String                   @default("")
+  caption               String?                  @db.Text
+  posterStorageObjectId String?
+  posterStorageObject   StorageObject?           @relation("WebsiteMediaPoster", fields: [posterStorageObjectId], references: [id], onDelete: SetNull)
+  transcript            String?                  @db.Text
+  focalPointX           Float?
+  focalPointY           Float?
+  channels              WebsiteChannel[]         @default([ADMIN_ONLY])
+  intakeStatus          WebsiteMediaIntakeStatus @default(DISCOVERED)
+  createdById           String?
+  createdBy             User?                    @relation("WebsiteMediaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  contentLinks          WebsiteContentMedia[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([intakeStatus, rightsStatus])
+  @@index([posterStorageObjectId])
+}
+
+model WebsiteContentMedia {
+  id           String                 @id @default(cuid())
+  revisionId   String
+  revision     WebsiteContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  mediaAssetId String
+  mediaAsset   WebsiteMediaAsset      @relation(fields: [mediaAssetId], references: [id])
+  role         String                 @default("CONTENT")
+  sortOrder    Int                    @default(0)
+
+  @@unique([revisionId, mediaAssetId, role])
+  @@index([revisionId, sortOrder])
+}
+
+model WebsiteTechnicalDocument {
+  id              String                   @id @default(cuid())
+  storageObjectId String                   @unique
+  storageObject   StorageObject            @relation("WebsiteDocumentStorage", fields: [storageObjectId], references: [id])
+  title           String
+  documentType    String
+  revisionLabel   String
+  effectiveDate   DateTime
+  channels        WebsiteChannel[]         @default([ADMIN_ONLY])
+  aluSystemId     String?
+  aluSystem       AluSystem?               @relation("WebsiteDocumentAluSystem", fields: [aluSystemId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?                    @relation("WebsiteDocumentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  contentLinks    WebsiteContentDocument[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([documentType, effectiveDate])
+  @@index([aluSystemId])
+}
+
+model WebsiteContentDocument {
+  id         String                   @id @default(cuid())
+  revisionId String
+  revision   WebsiteContentRevision   @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  documentId String
+  document   WebsiteTechnicalDocument @relation(fields: [documentId], references: [id])
+  sortOrder  Int                      @default(0)
+
+  @@unique([revisionId, documentId])
+  @@index([revisionId, sortOrder])
+}
+
+model WebsiteRedirect {
+  id              String   @id @default(cuid())
+  sourcePath      String   @unique
+  destinationPath String
+  statusCode      Int      @default(301)
+  active          Boolean  @default(true)
+  createdById     String?
+  createdBy       User?    @relation("WebsiteRedirectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([active, sourcePath])
+}
+
+model WebsitePublicationAudit {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  fromState  String?
+  toState    String?
+  actorId    String
+  actor      User     @relation("WebsiteAuditActor", fields: [actorId], references: [id])
+  note       String?  @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
 }
