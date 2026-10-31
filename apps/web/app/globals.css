@@ -1231,3 +1231,108 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .residential-detail-image { min-height: 300px; }
   .specification-table dl > div { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* Industrial discovery and governed RFQ journey */
+.industrial-explorer { background: white; }
+.industrial-explorer-layout { display: grid; grid-template-columns: minmax(260px, 310px) minmax(0, 1fr); gap: clamp(36px, 6vw, 82px); align-items: start; }
+.industrial-explorer-layout > aside { position: sticky; top: 106px; }
+.industrial-filters { padding: 24px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.industrial-search { display: grid; gap: 8px; color: var(--text); font-size: 12px; font-weight: 750; }
+.industrial-search > span:last-child { min-height: 48px; padding: 0 14px; display: flex; align-items: center; gap: 9px; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+.industrial-search svg { flex: 0 0 auto; color: var(--text-muted); }
+.industrial-search input { width: 100%; min-width: 0; color: var(--text); background: transparent; border: 0; outline: 0; font: inherit; font-weight: 500; }
+.industrial-search > span:last-child:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226, 93, 18, .12); }
+.industrial-filters fieldset { margin: 23px 0 0; padding: 20px 0 0; display: grid; gap: 5px; border: 0; border-top: 1px solid var(--border); }
+.industrial-filters legend { padding: 0 8px 0 0; color: var(--text); font-size: 13px; font-weight: 800; }
+.industrial-filters fieldset label { min-height: 38px; display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+.industrial-filters input[type='checkbox'] { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--brand-strong); }
+.industrial-filter-actions { margin-top: 24px; display: grid; gap: 12px; text-align: center; }
+.industrial-filter-actions .home-button { width: 100%; }
+.industrial-filter-actions > a { color: var(--text-muted); font-size: 13px; font-weight: 700; }
+.industrial-filter-actions > a:hover { color: var(--brand-strong); }
+.industrial-results > header { padding-bottom: 25px; border-bottom: 1px solid var(--border); }
+.industrial-results > header h2 { margin: 3px 0 8px; color: var(--text); font-size: clamp(29px, 3vw, 42px); }
+.industrial-results > header > p:last-child { margin: 0; color: var(--text-muted); font-size: 14px; }
+.industrial-result-list { display: grid; }
+.industrial-result-card { padding: 30px 0; border-bottom: 1px solid var(--border); }
+.industrial-result-card > div:first-child { display: flex; align-items: center; gap: 9px; color: var(--brand-strong); }
+.industrial-result-card > div:first-child span { color: var(--text-muted); font-size: 12px; font-weight: 700; }
+.industrial-result-card h2 { margin: 15px 0 8px; color: var(--text); font-size: clamp(23px, 2.2vw, 31px); }
+.industrial-result-card > p { max-width: 760px; margin: 0; color: var(--text-muted); }
+.industrial-result-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+.industrial-result-actions a { min-height: 42px; padding: 9px 15px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--brand-strong); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); font-size: 13px; font-weight: 800; }
+.industrial-result-actions a:first-child { color: white; background: var(--brand-strong); border-color: var(--brand-strong); }
+.industrial-result-actions a:hover { border-color: var(--brand); }
+.industrial-evidence { padding: clamp(58px, 8vw, 105px) 0; color: white; background: #172a3a; }
+.industrial-evidence > .container { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr); gap: clamp(40px, 7vw, 96px); align-items: center; }
+.industrial-evidence-image { position: relative; min-height: 430px; overflow: hidden; background: #263a49; border-radius: var(--radius-md); }
+.industrial-evidence-image img { object-fit: cover; }
+.industrial-evidence .home-eyebrow { color: #ffc18c; }
+.industrial-evidence h2 { margin: 4px 0 18px; color: white; font-size: clamp(32px, 4vw, 54px); }
+.industrial-evidence p:not(.home-eyebrow) { margin: 0 0 24px; color: #bfccd6; }
+.industrial-evidence .home-text-link { color: white; }
+.industrial-process { background: var(--surface-warm); }
+.industrial-process ol { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; border-top: 1px solid var(--border-strong); border-left: 1px solid var(--border-strong); }
+.industrial-process li { min-height: 225px; padding: 25px; border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); }
+.industrial-process li > span { color: var(--brand-strong); font-size: 13px; font-weight: 850; }
+.industrial-process li > div { margin-top: 52px; }
+.industrial-process strong { color: var(--text); font-size: 18px; }
+.industrial-process li p { margin: 8px 0 0; color: var(--text-muted); font-size: 13px; }
+.industrial-mobile-rfq { display: none; }
+.industrial-detail-hero { padding: 144px 0 76px; background: var(--surface-warm); }
+.industrial-detail-hero > .container > h1 { max-width: 880px; margin: 8px 0 14px; color: var(--text); font-size: clamp(42px, 5.5vw, 76px); }
+.industrial-detail-hero > .container > p:last-child { max-width: 700px; color: var(--text-muted); font-size: 18px; }
+.industrial-detail-grid { margin-top: 28px; display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: clamp(40px, 7vw, 92px); align-items: center; }
+.industrial-detail-grid h1 { margin: 5px 0 16px; color: var(--text); font-size: clamp(42px, 5vw, 68px); }
+.industrial-detail-grid > div:first-child > p:not(.home-eyebrow) { margin: 0 0 26px; color: var(--text-muted); font-size: 17px; }
+.industrial-detail-image { position: relative; min-height: 420px; overflow: hidden; background: white; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.industrial-detail-image img { object-fit: cover; }
+.industrial-detail-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr); gap: clamp(42px, 8vw, 110px); align-items: start; }
+.industrial-detail-content article h2, .industrial-detail-content aside h2, .rfq-layout h2 { margin: 0 0 14px; color: var(--text); font-size: 27px; }
+.industrial-detail-content article h2:not(:first-child) { margin-top: 38px; }
+.industrial-detail-content article p, .industrial-detail-content article li { color: var(--text-muted); }
+.industrial-detail-content article ul { padding-left: 20px; }
+.industrial-detail-content aside { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.industrial-detail-content aside > h2 { padding: 20px; border-bottom: 1px solid var(--border); }
+.industrial-detail-content dl { margin: 0; }
+.industrial-detail-content dl > div { padding: 15px 20px; display: grid; gap: 5px; border-bottom: 1px solid var(--border); }
+.industrial-detail-content dl > div:last-child { border-bottom: 0; }
+.industrial-detail-content dt { color: var(--text-muted); font-size: 12px; font-weight: 750; }
+.industrial-detail-content dd { margin: 0; color: var(--text); font-size: 14px; font-weight: 700; }
+.industrial-detail-cta { padding: 64px 0; color: white; background: #172a3a; }
+.industrial-detail-cta .container { display: flex; align-items: center; justify-content: space-between; gap: 36px; }
+.industrial-detail-cta h2 { margin: 0; color: white; font-size: clamp(28px, 3.5vw, 45px); }
+.rfq-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(310px, .8fr); gap: clamp(42px, 8vw, 110px); align-items: start; }
+.rfq-layout ol { margin: 0; padding-left: 22px; color: var(--text-muted); }
+.rfq-layout li { padding: 8px 0 8px 7px; }
+.rfq-layout aside { padding: 28px; display: grid; gap: 12px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.rfq-layout aside p { margin: 0 0 6px; color: var(--text-muted); }
+.rfq-layout aside a { min-height: 44px; padding: 10px 14px; display: flex; align-items: center; gap: 9px; color: var(--brand-strong); background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .industrial-explorer-layout, .industrial-evidence > .container, .industrial-detail-grid, .industrial-detail-content, .rfq-layout { grid-template-columns: 1fr; }
+  .industrial-explorer-layout > aside { position: static; }
+  .industrial-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+  .industrial-search, .industrial-filter-actions { grid-column: 1 / -1; }
+  .industrial-process ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .industrial-evidence-image { min-height: 360px; }
+  .industrial-detail-cta .container { align-items: stretch; flex-direction: column; }
+}
+
+@media (max-width: 640px) {
+  .industrial-filters { padding: 20px; display: block; }
+  .industrial-filters fieldset label { min-height: 44px; }
+  .industrial-result-card { padding: 25px 0; }
+  .industrial-result-actions { align-items: stretch; flex-direction: column; }
+  .industrial-result-actions a { width: 100%; }
+  .industrial-evidence-image, .industrial-detail-image { min-height: 290px; }
+  .industrial-process ol { grid-template-columns: 1fr; }
+  .industrial-process li { min-height: 170px; }
+  .industrial-process li > div { margin-top: 30px; }
+  .industrial-mobile-rfq { position: fixed; z-index: 20; right: 16px; bottom: 12px; left: 16px; min-height: 50px; padding: 12px 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; background: var(--brand-strong); border-radius: var(--radius-pill); box-shadow: 0 9px 30px rgba(72, 35, 12, .24); font-size: 14px; font-weight: 850; }
+  .industrial-detail-hero { padding: 122px 0 55px; }
+  .industrial-detail-grid { margin-top: 20px; }
+  .industrial-detail-grid h1, .industrial-detail-hero > .container > h1 { font-size: 40px; }
+  .industrial-detail-cta .home-button { width: 100%; }
+  .rfq-layout aside { padding: 22px; }
+}
