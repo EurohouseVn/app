@@ -1313,3 +1313,127 @@ export function fixLegacyUtf8Mojibake(value: string): string {
 
 export { mediaRetryDelayMs, recoverInterruptedMediaUploads } from './mediaQueuePolicy.js';
 export type { RecoverableMediaUpload } from './mediaQueuePolicy.js';
+
+// ---------- Website công khai, quản trị nội dung và kênh phân phối ----------
+
+export const WEBSITE_PRODUCT_FAMILIES = ['RESIDENTIAL', 'INDUSTRIAL'] as const;
+export type WebsiteProductFamily = (typeof WEBSITE_PRODUCT_FAMILIES)[number];
+
+export const WEBSITE_CHANNELS = ['PUBLIC', 'NPP', 'ADMIN_ONLY'] as const;
+export type WebsiteChannel = (typeof WEBSITE_CHANNELS)[number];
+
+export const WEBSITE_CONTENT_KINDS = [
+  'PRODUCT',
+  'INDUSTRIAL_SERVICE',
+  'SOLUTION',
+  'CASE_STUDY',
+  'PAGE',
+  'ARTICLE',
+  'FAQ',
+  'VIDEO',
+] as const;
+export type WebsiteContentKind = (typeof WEBSITE_CONTENT_KINDS)[number];
+
+export const WEBSITE_PUBLICATION_STATUSES = [
+  'DRAFT',
+  'TECHNICAL_REVIEW',
+  'MARKETING_REVIEW',
+  'PUBLISHED',
+  'ARCHIVED',
+] as const;
+export type WebsitePublicationStatus = (typeof WEBSITE_PUBLICATION_STATUSES)[number];
+
+export const WEBSITE_REVIEW_STAGES = ['TECHNICAL', 'MARKETING'] as const;
+export type WebsiteReviewStage = (typeof WEBSITE_REVIEW_STAGES)[number];
+
+export const WEBSITE_REVIEW_DECISIONS = ['APPROVED', 'CHANGES_REQUESTED'] as const;
+export type WebsiteReviewDecision = (typeof WEBSITE_REVIEW_DECISIONS)[number];
+
+export const WEBSITE_MEDIA_INTAKE_STATUSES = [
+  'DISCOVERED',
+  'REVIEWED',
+  'APPROVED',
+  'OPTIMIZED',
+  'PUBLISHED',
+  'REJECTED',
+] as const;
+export type WebsiteMediaIntakeStatus = (typeof WEBSITE_MEDIA_INTAKE_STATUSES)[number];
+
+export interface PublicSeoProjection {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  schemaType: string;
+  reviewDate?: string;
+  reviewer?: string;
+}
+
+export interface PublicMediaProjection {
+  id: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  url: string;
+  altText: string;
+  caption?: string;
+  posterUrl?: string;
+  transcript?: string;
+  width?: number;
+  height?: number;
+  durationSeconds?: number;
+}
+
+export interface PublicDocumentProjection {
+  id: string;
+  title: string;
+  documentType: string;
+  revisionLabel: string;
+  effectiveDate: string;
+  downloadUrl: string;
+}
+
+export interface PublicWebsiteContentSummary {
+  id: string;
+  slug: string;
+  locale: string;
+  kind: WebsiteContentKind;
+  family?: WebsiteProductFamily;
+  title: string;
+  eyebrow?: string;
+  summary: string;
+  updatedAt: string;
+  linkedSystem?: { id: string; code: string; name: string };
+}
+
+export interface PublicWebsiteContentDetail extends PublicWebsiteContentSummary {
+  body: unknown;
+  specifications?: unknown;
+  seo: PublicSeoProjection;
+  media: PublicMediaProjection[];
+  documents: PublicDocumentProjection[];
+}
+
+export interface AdminWebsiteReview {
+  id: string;
+  stage: WebsiteReviewStage;
+  decision: WebsiteReviewDecision;
+  note?: string;
+  reviewerId: string;
+  reviewerName?: string;
+  createdAt: string;
+}
+
+export interface AdminWebsiteRevision {
+  id: string;
+  websiteContentId: string;
+  revision: number;
+  status: WebsitePublicationStatus;
+  title: string;
+  eyebrow?: string;
+  summary: string;
+  body: unknown;
+  specifications?: unknown;
+  sourceRefs?: unknown;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+  reviews: AdminWebsiteReview[];
+}
