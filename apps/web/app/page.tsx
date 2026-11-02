@@ -5,7 +5,6 @@ import { FeaturedSystems } from '@/components/home/FeaturedSystems';
 import { HomeHero } from '@/components/home/HomeHero';
 import { PrimaryVideo } from '@/components/home/PrimaryVideo';
 import { ProductFamilyChooser } from '@/components/home/ProductFamilyChooser';
-import { ResourceHighlights } from '@/components/home/ResourceHighlights';
 import { composeHomepageContent, type HomepageContent } from '@/lib/homepage-content';
 import { getPublishedContent, listPublishedContent } from '@/lib/public-api';
 
@@ -18,9 +17,8 @@ export default async function HomePage() {
       <ProductFamilyChooser />
       <FeaturedSystems content={content} />
       <CapabilityStrip />
-      <PrimaryVideo video={content.primaryVideo} />
       <FeaturedProjects content={content} />
-      <ResourceHighlights />
+      <PrimaryVideo video={content.primaryVideo} />
       <ConversionPanel />
     </>
   );

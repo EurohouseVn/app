@@ -6,6 +6,7 @@ import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { globalNavigationRoutes } from '@/lib/public-routes';
+import { brandAssets } from '@/lib/homepage-presentation';
 
 const primaryNavigation = globalNavigationRoutes.filter((route) =>
   ['residential', 'industrial', 'projects', 'capability', 'resources'].includes(route.id),
@@ -37,11 +38,7 @@ export function Header() {
     <header className="site-header">
       <div className="nav-shell">
         <Link className="brand" href="/" aria-label="EUROHOUSE — Trang chủ" onClick={() => setOpen(false)}>
-          <Image className="brand-symbol" src="/brand/logo-mark.png" alt="" width={46} height={46} priority />
-          <span className="brand-lockup" aria-hidden="true">
-            <strong><b>EURO</b><i>H</i>OUSE</strong>
-            <small>NHÔM CỦA SỰ THỊNH VƯỢNG</small>
-          </span>
+          <Image className="brand-landscape" src={brandAssets.logo} alt={brandAssets.logoAlt} width={220} height={83} priority />
         </Link>
 
         <button
@@ -71,7 +68,7 @@ export function Header() {
             ))}
           </div>
           <div className="main-nav-actions">
-            {portalRoute ? <a className="nav-portal" href={portalRoute.href}>Cổng NPP <ArrowUpRight size={14} aria-hidden="true" /></a> : null}
+            {portalRoute ? <a className="nav-portal" href={portalRoute.href} aria-label="Mở Cổng NPP"><span>Cổng NPP</span> <ArrowUpRight size={14} aria-hidden="true" /></a> : null}
             {contactRoute ? <Link className="nav-consult" href={contactRoute.href} onClick={() => setOpen(false)}>Nhận tư vấn</Link> : null}
           </div>
         </nav>

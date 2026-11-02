@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Mail, MapPin, Phone } from 'lucide-react';
 import { companyRoutes, familyRoutes, globalNavigationRoutes, stablePublicRoutes } from '@/lib/public-routes';
 import { site } from '@/lib/site';
+import { brandAssets } from '@/lib/homepage-presentation';
 
 const companyNavigation = [
   ...globalNavigationRoutes.filter((route) => ['projects', 'capability', 'resources', 'distributors', 'contact'].includes(route.id)),
@@ -16,11 +17,10 @@ export function Footer() {
       <div className="container footer-grid">
         <div className="footer-brand">
           <Link className="footer-brand-lockup" href="/" aria-label="EUROHOUSE — Trang chủ">
-            <Image src="/brand/logo-mark.png" alt="" width={52} height={52} />
-            <span aria-hidden="true"><strong><b>EURO</b><i>H</i>OUSE</strong><small>NHÔM CỦA SỰ THỊNH VƯỢNG</small></span>
+            <Image src={brandAssets.logo} alt={brandAssets.logoAlt} width={220} height={83} />
           </Link>
-          <h2>Giải pháp nhôm cho kiến trúc và công nghiệp Việt.</h2>
-          <p>Thông tin sản phẩm, tài liệu kỹ thuật và hệ sinh thái số chính thức tại nhomeurohouse.com.</p>
+          <h2>Nhôm hệ cao cấp cho kiến trúc. Giải pháp nhôm định hình đáng tin cậy cho công nghiệp.</h2>
+          <p>Sản phẩm, năng lực, tài liệu kỹ thuật và hệ sinh thái số chính thức tại nhomeurohouse.com.</p>
         </div>
 
         <div className="footer-column">
