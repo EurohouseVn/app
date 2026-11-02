@@ -1,48 +1,47 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Building2, Factory } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { homepageCopy } from '@/lib/homepage-presentation';
 
 const families = [
   {
     id: 'residential',
-    eyebrow: 'Công trình · Nhà ở · Dự án',
-    title: 'NHÔM DÂN DỤNG',
-    description: 'Khám phá hệ cửa, hệ chuyên dụng, giải pháp kiến trúc và tài liệu dành cho nhà ở, biệt thự và dự án.',
+    eyebrow: homepageCopy.residential.eyebrow,
+    title: homepageCopy.residential.title,
+    description: homepageCopy.residential.description,
     href: '/nhom-dan-dung',
-    action: 'Khám phá hệ nhôm',
+    action: homepageCopy.residential.action,
     image: '/images/v5/project-villa.webp',
     alt: 'Công trình sử dụng giải pháp nhôm dân dụng EUROHOUSE',
-    Icon: Building2,
   },
   {
     id: 'industrial',
-    eyebrow: 'Bản vẽ · Profile · Gia công',
-    title: 'NHÔM CÔNG NGHIỆP',
-    description: 'Tìm giải pháp định hình theo bản vẽ, chi tiết máy, nhôm năng lượng mặt trời, đùn thuê và gia công.',
+    eyebrow: homepageCopy.industrial.eyebrow,
+    title: homepageCopy.industrial.title,
+    description: homepageCopy.industrial.description,
     href: '/nhom-cong-nghiep',
-    action: 'Xem năng lực công nghiệp',
+    action: homepageCopy.industrial.action,
     image: '/images/v5/factory-coating.webp',
     alt: 'Dây chuyền phục vụ sản phẩm nhôm công nghiệp EUROHOUSE',
-    Icon: Factory,
   },
 ] as const;
 
 export function ProductFamilyChooser() {
   return (
-    <section className="home-section family-chooser" id="families" aria-labelledby="family-heading">
-      <div className="container">
-        <header className="home-section-heading home-section-heading-split">
-          <div><p className="home-eyebrow">Bắt đầu từ nhu cầu của bạn</p><h2 id="family-heading">Chọn đúng nhóm sản phẩm.</h2></div>
-          <p>Hai nhóm được tổ chức độc lập về nội dung kỹ thuật, tài liệu và hành trình tư vấn.</p>
+    <section className="home-section family-chooser" id="families" data-home-chapter="families" aria-labelledby="family-heading">
+      <div className="container family-chooser-layout" data-reveal-group>
+        <header className="family-manifesto" data-reveal-item>
+          <p className="home-eyebrow">{homepageCopy.manifesto.eyebrow}</p>
+          <h2 id="family-heading">{homepageCopy.manifesto.title}</h2>
+          <p>{homepageCopy.manifesto.support}</p>
         </header>
         <div className="family-grid">
-          {families.map(({ Icon, ...family }) => (
-            <Link className={`family-card family-card-${family.id}`} href={family.href} key={family.id}>
+          {families.map((family, index) => (
+            <Link className={`family-card family-card-${family.id}`} href={family.href} key={family.id} data-reveal-item>
               <Image src={family.image} alt={family.alt} fill unoptimized sizes="(max-width: 760px) 100vw, 50vw" />
               <span className="family-card-shade" />
               <span className="family-card-content">
-                <Icon size={25} aria-hidden="true" />
-                <small>{family.eyebrow}</small>
+                <small>{String(index + 1).padStart(2, '0')} · {family.eyebrow}</small>
                 <strong>{family.title}</strong>
                 <span>{family.description}</span>
                 <b>{family.action} <ArrowRight size={17} aria-hidden="true" /></b>

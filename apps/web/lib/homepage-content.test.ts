@@ -49,6 +49,26 @@ test('homepage selects one published primary video only with a poster and crawla
   assert.equal(result.primaryVideo?.transcript, 'Video giới thiệu quy trình sản xuất và kiểm soát chất lượng.');
 });
 
+test('homepage keeps complete empty fallbacks and rejects non-local card media', () => {
+  const empty = composeHomepageContent([]);
+  assert.deepEqual(empty, { residential: [], industrial: [], projects: [], resources: [], primaryVideo: undefined });
+
+  const remoteImage = candidate(detail({
+    slug: 'profile-remote-image',
+    kind: 'PRODUCT',
+    family: 'RESIDENTIAL',
+    media: [{
+      id: 'remote-image',
+      mediaType: 'IMAGE',
+      url: 'https://example.com/unverified.jpg',
+      altText: 'Ảnh chưa được đưa vào kho media công khai',
+    }],
+  }), 'PUBLISHED');
+
+  const result = composeHomepageContent([remoteImage]);
+  assert.equal(result.residential[0]?.image, undefined);
+});
+
 function candidate(content: PublicWebsiteContentDetail, publicationStatus: HomepageCandidate['publicationStatus']): HomepageCandidate {
   return { content, publicationStatus };
 }

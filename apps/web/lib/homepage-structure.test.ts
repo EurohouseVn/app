@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { homepageCopy } from './homepage-presentation';
 
 function source(relativePath: string) {
   return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
@@ -41,4 +42,18 @@ test('brand frame uses the approved logo and portal hierarchy', () => {
   assert.match(headerSource, /brandAssets\.logo/);
   assert.match(headerSource, /Cổng NPP/);
   assert.match(footerSource, /brandAssets\.logo/);
+});
+
+test('product, capability and project chapters expose the approved structure', () => {
+  const familySource = source('../components/home/ProductFamilyChooser.tsx');
+  const featuredSystemsSource = source('../components/home/FeaturedSystems.tsx');
+  const capabilitySource = source('../components/home/CapabilityStrip.tsx');
+  const projectsSource = source('../components/home/FeaturedProjects.tsx');
+  const homeSources = [familySource, featuredSystemsSource, capabilitySource, projectsSource].join('\n');
+
+  for (const chapter of ['families', 'systems', 'industry', 'proof', 'projects']) {
+    assert.match(homeSources, new RegExp(`data-home-chapter=["']${chapter}["']`));
+  }
+  assert.match(featuredSystemsSource, /homepageCopy\.industrial\.services\.map/);
+  assert.equal(homepageCopy.industrial.services.length, 5);
 });
