@@ -2,17 +2,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Cpu, Factory, PanelTop, Settings, Sun } from 'lucide-react';
 import type { HomepageContent } from '@/lib/homepage-content';
+import { mergeResidentialSystems } from '@/lib/homepage-card-selection';
 import { homepageCopy, residentialFallbackSystems } from '@/lib/homepage-presentation';
 
 const industrialIcons = [PanelTop, Cpu, Sun, Factory, Settings] as const;
 
 export function FeaturedSystems({ content }: { content: HomepageContent }) {
-  const residential = residentialFallbackSystems.map((fallback, index) => {
-    const item = content.residential[index];
-    return item
-      ? { title: item.title, summary: item.summary, image: item.image?.url ?? fallback.image, href: `/nhom-dan-dung/dong-san-pham/${item.slug}` }
-      : fallback;
-  });
+  const residential = mergeResidentialSystems(content.residential, residentialFallbackSystems);
 
   return (
     <>
@@ -25,7 +21,11 @@ export function FeaturedSystems({ content }: { content: HomepageContent }) {
           <div className="system-card-grid">
             {residential.map((item, index) => (
               <Link className={`system-card${index === 0 ? ' system-card-featured' : ''}`} href={item.href} key={item.title} data-reveal-item>
-                <span className="system-card-media"><Image src={item.image} alt={`${item.title} EUROHOUSE`} fill unoptimized sizes="(max-width: 760px) 100vw, 33vw" /></span>
+                <span className={`system-card-media${item.image ? '' : ' system-card-media-empty'}`}>
+                  {item.image
+                    ? <Image src={item.image} alt={`${item.title} EUROHOUSE`} fill unoptimized sizes="(max-width: 760px) 100vw, 33vw" />
+                    : <span className="home-media-placeholder" aria-hidden="true">EUROHOUSE</span>}
+                </span>
                 <span className="system-card-copy"><small>{String(index + 1).padStart(2, '0')} · HỆ NHÔM KIẾN TRÚC</small><strong>{item.title}</strong><span>{item.summary}</span><b>Tìm hiểu hệ nhôm <ArrowRight size={16} aria-hidden="true" /></b></span>
               </Link>
             ))}

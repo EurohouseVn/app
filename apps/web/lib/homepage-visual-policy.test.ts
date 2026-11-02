@@ -31,4 +31,7 @@ test('the homepage stays restrained, responsive, and motion-accessible', () => {
   assert.match(homepageCss, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(homepageCss, /@media\s*\(max-width:\s*600px\)/);
   assert.match(homepageCss, /translateY\(24px\)/);
+  assert.match(homepageCss, /--home-orange:\s*#bd4704/);
+  assert.match(homepageCss, /@media\s+print/);
+  assert.match(homepageCss, /@media\s*\(max-width:\s*600px\)[\s\S]*\.home-text-link\s*\{[^}]*min-height:\s*44px/);
 });

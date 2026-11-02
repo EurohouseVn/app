@@ -77,18 +77,21 @@ export const homepageCopy = {
 
 export const residentialFallbackSystems = [
   {
+    slug: 'ecento-70',
     title: 'ECENTO 70',
     summary: 'Dòng nhôm đa khoang cho cửa đi, cửa sổ cần độ kín khít và khả năng cách âm, cách nhiệt tốt hơn.',
     image: '/images/v4/ecento-70.jpg',
     href: '/nhom-dan-dung/dong-san-pham/ecento-70',
   },
   {
+    slug: 'ecento-plus',
     title: 'ECENTO PLUS',
     summary: 'Giải pháp cửa theo chuẩn rãnh K châu Âu, đường nét gọn và thuận tiện cho thợ khi lựa chọn phụ kiện đồng bộ.',
     image: '/images/v4/ecento-plus.jpg',
     href: '/nhom-dan-dung/dong-san-pham/ecento-plus',
   },
   {
+    slug: 'he-55-vat-canh',
     title: 'HỆ 55 VÁT CẠNH',
     summary: 'Thiết kế vát cạnh tạo điểm nhấn cho bộ cửa, phù hợp nhà ở và công trình cần hình thức rõ nét.',
     image: '/images/v4/he-55-vat-canh.jpg',

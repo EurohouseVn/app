@@ -990,7 +990,8 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
 :root {
   --home-navy: #09223f;
   --home-navy-soft: #123250;
-  --home-orange: #d5520a;
+  --home-orange: #bd4704;
+  --home-orange-accent: #d5520a;
   --home-orange-dark: #aa3c02;
   --home-ivory: #f3efe6;
   --home-paper: #fffdf8;
@@ -1213,6 +1214,8 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
 }
 .system-card:hover { transform: translateY(-4px); border-color: rgba(213, 82, 10, .48); box-shadow: 0 18px 38px rgba(9, 34, 63, .1); }
 .system-card-media { position: relative; height: 270px; display: block; overflow: hidden; background: #e8ecee; }
+.system-card-media-empty { display: grid; place-items: center; background: #dfe5e8; }
+.home-media-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: rgba(9, 34, 63, .34); font-size: clamp(18px, 3vw, 34px); font-weight: 900; letter-spacing: .12em; }
 .system-card-featured .system-card-media { height: 330px; }
 .system-card-media img { object-fit: cover; transition: transform 500ms ease; }
 .system-card:hover .system-card-media img { transform: scale(1.025); }
@@ -1438,6 +1441,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .home-hero-lead { margin-top: 19px; font-size: 16px; }
   .home-hero-actions { margin-top: 24px; align-items: stretch; flex-direction: column; }
   .home-button { width: 100%; }
+  .home-text-link { min-height: 44px; }
   .home-hero-proofs { grid-template-columns: 1fr; }
   .home-hero-proofs div { padding: 12px 15px; }
   .home-hero-signature { display: none; }
@@ -1473,6 +1477,15 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .conversion-panel { width: 100%; padding: 48px 22px; border-radius: 0; }
   .conversion-panel h2 { font-size: 34px; }
   .conversion-actions > a { grid-template-columns: 25px 1fr auto; padding: 14px; }
+}
+
+@media print {
+  .reveal,
+  .reveal[data-reveal-state='pending'] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
