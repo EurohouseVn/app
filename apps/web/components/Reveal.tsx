@@ -43,11 +43,16 @@ export function RevealPageSections() {
 
     const sections = Array.from(document.querySelectorAll<HTMLElement>('main > section, main > article, main > div'))
       .filter((element) => !element.matches('#top, .page-hero, .page-intro'));
+    const mobile = window.matchMedia('(max-width: 600px)').matches;
+    const delayStep = mobile ? 45 : 75;
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         const element = entry.target as HTMLElement;
         element.dataset.revealState = 'revealed';
+        for (const item of element.querySelectorAll<HTMLElement>('[data-reveal-item]')) {
+          item.dataset.revealState = 'revealed';
+        }
         observer.unobserve(element);
       }
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
@@ -55,6 +60,12 @@ export function RevealPageSections() {
     for (const section of sections) {
       section.classList.add('reveal');
       section.dataset.revealState = 'pending';
+      const items = Array.from(section.querySelectorAll<HTMLElement>('[data-reveal-item]'));
+      items.forEach((item, index) => {
+        item.classList.add('reveal');
+        item.dataset.revealState = 'pending';
+        item.style.setProperty('--reveal-delay', `${Math.min(index * delayStep, 360)}ms`);
+      });
       observer.observe(section);
     }
 

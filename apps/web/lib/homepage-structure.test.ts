@@ -57,3 +57,15 @@ test('product, capability and project chapters expose the approved structure', (
   assert.match(featuredSystemsSource, /homepageCopy\.industrial\.services\.map/);
   assert.equal(homepageCopy.industrial.services.length, 5);
 });
+
+test('video and conversion chapters preserve accessible actions', () => {
+  const videoSource = source('../components/home/PrimaryVideo.tsx');
+  const conversionSource = source('../components/home/ConversionPanel.tsx');
+
+  assert.match(videoSource, /data-home-chapter="video"/);
+  assert.match(videoSource, /video-transcript/);
+  assert.match(videoSource, /controls/);
+  assert.match(conversionSource, /data-home-chapter="conversion"/);
+  assert.match(conversionSource, /\/lien-he/);
+  assert.match(conversionSource, /\/yeu-cau-bao-gia-cong-nghiep/);
+});
