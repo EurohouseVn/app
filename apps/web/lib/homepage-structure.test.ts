@@ -56,6 +56,8 @@ test('product, capability and project chapters expose the approved structure', (
   }
   assert.match(featuredSystemsSource, /homepageCopy\.industrial\.services\.map/);
   assert.equal(homepageCopy.industrial.services.length, 5);
+  assert.match(projectsSource, /project-section-heading/);
+  assert.match(projectsSource, /project-heading-aside/);
 });
 
 test('video and conversion chapters preserve accessible actions', () => {

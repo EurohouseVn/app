@@ -17,9 +17,15 @@ export function FeaturedProjects({ content }: { content: HomepageContent }) {
   return (
     <section className="home-section projects-section" id="projects" data-home-chapter="projects" aria-labelledby="projects-heading">
       <div className="container" data-reveal-group>
-        <header className="home-section-heading home-section-heading-split">
-          <div data-reveal-item><p className="home-eyebrow">{homepageCopy.projects.eyebrow}</p><h2 id="projects-heading">{homepageCopy.projects.title}</h2><p>{homepageCopy.projects.support}</p></div>
-          <Link className="home-text-link" href="/du-an" data-reveal-item>{homepageCopy.projects.action} <ArrowRight size={16} aria-hidden="true" /></Link>
+        <header className="home-section-heading project-section-heading">
+          <div className="project-heading-title" data-reveal-item>
+            <p className="home-eyebrow">{homepageCopy.projects.eyebrow}</p>
+            <h2 id="projects-heading">{homepageCopy.projects.title}</h2>
+          </div>
+          <div className="project-heading-aside" data-reveal-item>
+            <p>{homepageCopy.projects.support}</p>
+            <Link className="home-text-link" href="/du-an">{homepageCopy.projects.action} <ArrowRight size={16} aria-hidden="true" /></Link>
+          </div>
         </header>
         <div className="project-card-grid">
           {projects.map((project, index) => <Link className={`project-card${index === 0 ? ' project-card-featured' : ''}`} href={project.href} key={project.slug} data-reveal-item><span>{project.image ? <Image src={project.image} alt={project.title} fill unoptimized sizes="(max-width: 760px) 100vw, 50vw" /> : <span className="home-media-placeholder" aria-hidden="true">EUROHOUSE</span>}</span><div><small>{homepageFamilyLabel(project.family)}</small><h3>{project.title}</h3><p>{project.summary}</p><b>Xem chi tiết <ArrowRight size={16} aria-hidden="true" /></b></div></Link>)}

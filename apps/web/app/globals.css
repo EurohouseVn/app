@@ -1020,7 +1020,6 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
 .home-hero-inner {
   position: relative;
   z-index: 2;
-  width: 100%;
   padding-top: 158px;
   padding-bottom: 132px;
   display: grid;
@@ -1028,7 +1027,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   gap: clamp(48px, 8vw, 112px);
   align-items: end;
 }
-.home-hero-copy { max-width: 870px; }
+.home-hero-copy { min-width: 0; max-width: 870px; }
 .home-eyebrow {
   margin: 0 0 14px;
   color: var(--home-orange);
@@ -1300,6 +1299,22 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
 }
 
 .projects-section { background: #e8edf0; }
+.project-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, .65fr);
+  align-items: end;
+  gap: clamp(36px, 5vw, 72px);
+}
+.project-heading-title,
+.project-heading-aside { min-width: 0; }
+.project-heading-title h2 { max-width: 100%; }
+.project-heading-aside {
+  padding-bottom: 4px;
+  display: grid;
+  justify-items: start;
+  gap: 22px;
+}
+.project-heading-aside p { margin: 0; max-width: 42ch; }
 .project-card-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 18px; }
 .project-card {
   position: relative;
@@ -1417,6 +1432,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .home-hero-proofs { max-width: 610px; grid-template-columns: repeat(3, 1fr); }
   .home-section { padding: 76px 0; }
   .home-section-heading-split,
+  .project-section-heading,
   .family-manifesto,
   .industrial-layout,
   .capability-proof-layout,
