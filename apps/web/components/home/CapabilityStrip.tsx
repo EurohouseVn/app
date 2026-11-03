@@ -15,7 +15,7 @@ export function CapabilityStrip() {
       <div className="container capability-proof-layout" data-reveal-group>
         <div className="capability-proof-copy" data-reveal-item>
           <p className="home-eyebrow">Bằng chứng tạo nên niềm tin</p>
-          <h2 id="capability-proof-heading">Không chỉ nói về chất lượng. Cho thấy cách chất lượng được tạo ra.</h2>
+          <h2 id="capability-proof-heading">Chất lượng hiện rõ trong từng công đoạn.</h2>
           <div className="capability-proof-grid">
             {capabilities.map(({ Icon, title, text }, index) => <article key={title} data-reveal-item><span><Icon size={21} aria-hidden="true" /></span><small>{String(index + 1).padStart(2, '0')}</small><h3>{title}</h3><p>{text}</p></article>)}
           </div>

@@ -31,14 +31,14 @@ export const homepageCopy = {
     title: 'NHÔM DÂN DỤNG',
     description: 'Chọn hệ cửa theo kiểu mở, không gian sử dụng và phong cách kiến trúc. Có catalog và mặt cắt để chủ nhà, kiến trúc sư và thợ cùng trao đổi.',
     action: 'Tìm hệ nhôm phù hợp',
-    sectionTitle: 'Chọn hệ nhôm đúng kiểu cửa, đúng không gian sử dụng.',
+    sectionTitle: 'Chọn đúng hệ nhôm cho từng không gian.',
   },
   industrial: {
     eyebrow: 'Bản vẽ · Khuôn · Gia công',
     title: 'NHÔM CÔNG NGHIỆP',
     description: 'Dành cho doanh nghiệp có bản vẽ profile, chi tiết máy, khung pin năng lượng mặt trời hoặc nhu cầu đùn thuê và gia công nhôm.',
     action: 'Trao đổi yêu cầu sản xuất',
-    sectionTitle: 'Từ bản vẽ profile đến sản phẩm sẵn sàng gia công.',
+    sectionTitle: 'Từ bản vẽ đến sản phẩm hoàn thiện.',
     support: 'Gửi bản vẽ hoặc mô tả ứng dụng. Đội ngũ EUROHOUSE sẽ cùng bạn làm rõ profile, bề mặt và công đoạn gia công cần thiết.',
     services: [
       { number: '01', title: 'Nhôm định hình theo bản vẽ', label: 'OEM / PROJECT', href: '/nhom-cong-nghiep/dinh-hinh-theo-ban-ve' },
