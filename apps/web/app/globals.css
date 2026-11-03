@@ -1040,7 +1040,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
 .home-hero h1 {
   margin: 0;
   max-width: 900px;
-  font-size: clamp(52px, 6.7vw, 96px);
+  font-size: clamp(52px, 6.7vw, 88px);
   line-height: .94;
   letter-spacing: -.048em;
   text-wrap: balance;
@@ -1175,7 +1175,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   align-items: end;
 }
 .family-manifesto .home-eyebrow { grid-column: 1 / -1; margin-bottom: -26px; }
-.family-manifesto h2 { font-size: clamp(36px, 4vw, 58px); }
+.family-manifesto h2 { font-size: clamp(36px, 4vw, 52px); }
 .family-manifesto > p:last-child { margin: 0; }
 .family-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .family-card {
@@ -1453,7 +1453,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .home-hero-image { object-position: 57% center; opacity: .58; }
   .home-hero-overlay { background: rgba(5, 24, 44, .7); }
   .home-hero-inner { padding-top: 118px; padding-bottom: 90px; gap: 28px; }
-  .home-hero h1 { font-size: clamp(43px, 13.4vw, 60px); }
+  .home-hero h1 { font-size: clamp(36px, calc(7.111vw + 9.333px), 52px); }
   .home-hero-lead { margin-top: 19px; font-size: 16px; }
   .home-hero-actions { margin-top: 24px; align-items: stretch; flex-direction: column; }
   .home-button { width: 100%; }
@@ -1468,6 +1468,7 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .industrial-intro h2,
   .capability-proof-copy > h2,
   .video-copy h2 { font-size: 35px; }
+  .family-manifesto h2 { font-size: clamp(27px, calc(3.556vw + 13.667px), 35px); }
   .family-chooser { margin-top: -30px; padding-bottom: 54px; }
   .family-chooser-layout { padding: 24px 16px 16px; border-radius: var(--home-radius-md); }
   .family-grid,
