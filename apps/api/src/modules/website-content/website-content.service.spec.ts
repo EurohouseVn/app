@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { JwtUser } from '../../auth/current-user.decorator';
@@ -307,4 +307,22 @@ test('a requested review change returns the revision to draft', async () => {
 
   assert.equal(state.revisions[0]?.status, 'DRAFT');
   assert.equal(state.audits.at(-1)?.toState, 'DRAFT');
+});
+
+test('Staff reviewers need the matching permission and rejection requires a reason', async () => {
+  const { prisma } = createPrismaStub();
+  const service = new WebsiteContentService(prisma as never);
+  const content = await service.createContent(validInput(), actor);
+  const revisionId = content.revisions[0]!.id;
+  await service.submit(revisionId, 'TECHNICAL', actor);
+  const staffReviewer: JwtUser = { sub: 'staff-1', email: 'staff@eurohouse.vn', role: 'STAFF', permissions: [] };
+  await assert.rejects(
+    () => service.review(revisionId, { stage: 'TECHNICAL', decision: 'APPROVED' }, staffReviewer),
+    ForbiddenException,
+  );
+  staffReviewer.permissions = ['website-review-technical'];
+  await assert.rejects(
+    () => service.review(revisionId, { stage: 'TECHNICAL', decision: 'CHANGES_REQUESTED' }, staffReviewer),
+    BadRequestException,
+  );
 });

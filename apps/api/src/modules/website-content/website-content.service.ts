@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -344,6 +345,13 @@ export class WebsiteContentService {
   }
 
   async review(revisionId: string, input: ReviewWebsiteRevisionDto, actor: JwtUser): Promise<void> {
+    const permission = input.stage === 'TECHNICAL' ? 'website-review-technical' : 'website-review-marketing';
+    if (actor.role !== 'ADMIN' && actor.isCeo !== true && !actor.permissions?.includes(permission)) {
+      throw new ForbiddenException('Bạn không có quyền phê duyệt nội dung ở bước này.');
+    }
+    if (input.decision === 'CHANGES_REQUESTED' && !input.note?.trim()) {
+      throw new BadRequestException('Cần nêu rõ lý do khi yêu cầu chỉnh sửa.');
+    }
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.websiteContentRevision.findUnique({ where: { id: revisionId } });
       if (!current) throw new NotFoundException('Website revision was not found.');
@@ -380,6 +388,9 @@ export class WebsiteContentService {
   }
 
   async publish(revisionId: string, actor: JwtUser): Promise<void> {
+    if (actor.role !== 'ADMIN' && actor.isCeo !== true && !actor.permissions?.includes('website-publish')) {
+      throw new ForbiddenException('Bạn không có quyền xuất bản website.');
+    }
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.websiteContentRevision.findUnique({
         where: { id: revisionId },

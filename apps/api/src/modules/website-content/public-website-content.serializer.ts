@@ -3,6 +3,7 @@ import type {
   PublicMediaProjection,
   PublicWebsiteContentDetail,
   PublicWebsiteContentSummary,
+  HomepageMediaRole,
   WebsiteContentKind,
   WebsiteProductFamily,
 } from '@eurohouse/types';
@@ -39,6 +40,7 @@ type PublicRevisionSource = {
     reviewer?: { displayName?: string | null } | null;
   } | null;
   media?: Array<{
+    role: string;
     sortOrder: number;
     mediaAsset: {
       id: string;
@@ -81,15 +83,16 @@ function latestPublished(revisions: PublicRevisionSource[]): PublicRevisionSourc
     .sort((left, right) => right.revision - left.revision)[0] ?? null;
 }
 
-function publicMedia(revision: PublicRevisionSource): PublicMediaProjection[] {
+function publicMedia(revision: PublicRevisionSource): Array<PublicMediaProjection & { role: HomepageMediaRole }> {
   return (revision.media ?? [])
     .filter((link) => link.mediaAsset.channels.includes('PUBLIC') && Boolean(link.mediaAsset.storageObject.publicUrl))
     .sort((left, right) => left.sortOrder - right.sortOrder)
     .map((link) => {
       const asset = link.mediaAsset;
       const metadata = asset.storageObject.metadata;
-      const item: PublicMediaProjection = {
+      const item: PublicMediaProjection & { role: HomepageMediaRole } = {
         id: asset.id,
+        role: link.role as HomepageMediaRole,
         mediaType: asset.mediaType === 'VIDEO' ? 'VIDEO' : 'IMAGE',
         url: asset.storageObject.publicUrl!,
         altText: asset.altText,

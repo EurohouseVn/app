@@ -7,6 +7,7 @@ import { WebsiteContentService } from './website-content.service';
 import { WebsitePreviewTokenService } from './website-preview-token';
 import { WebsiteAssetsService } from './website-assets.service';
 import { WebsiteRedirectsService } from './website-redirects.service';
+import { HomepagePublicationService } from './homepage-publication.service';
 
 @Module({
   imports: [PrismaModule],
@@ -17,6 +18,7 @@ import { WebsiteRedirectsService } from './website-redirects.service';
     WebsitePreviewTokenService,
     WebsiteAssetsService,
     WebsiteRedirectsService,
+    HomepagePublicationService,
   ],
   exports: [WebsiteContentService, WebsiteContentQueryService],
 })

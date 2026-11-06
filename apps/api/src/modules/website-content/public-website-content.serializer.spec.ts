@@ -160,6 +160,7 @@ test('public serializer excludes drafts, operational pricing, storage keys, revi
   const result = serializePublishedWebsiteContent(sourceFixture());
   assert.ok(result);
   assert.deepEqual(result.media.map((item) => item.id), ['media-public']);
+  assert.equal((result.media[0] as { role?: string }).role, 'HERO');
   assert.deepEqual(result.documents.map((item) => item.id), ['doc-public']);
 
   const serialized = JSON.stringify(result);

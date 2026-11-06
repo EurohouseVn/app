@@ -29,6 +29,8 @@ import {
   WebsiteAssetsService,
 } from './website-assets.service';
 import { WebsiteRedirectInput, WebsiteRedirectsService } from './website-redirects.service';
+import { SaveHomepageDto } from './dto/homepage.dto';
+import { HomepagePublicationService } from './homepage-publication.service';
 
 @Controller('website/admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,7 +42,32 @@ export class AdminWebsiteContentController {
     private readonly previewTokens: WebsitePreviewTokenService,
     private readonly assets: WebsiteAssetsService,
     private readonly redirects: WebsiteRedirectsService,
+    private readonly homepage: HomepagePublicationService,
   ) {}
+
+  @Get('homepage')
+  getHomepage(@CurrentUser() actor: JwtUser) {
+    return this.homepage.getOrCreateHomepage(actor);
+  }
+
+  @Patch('homepage/revisions/:revisionId')
+  saveHomepage(
+    @Param('revisionId') revisionId: string,
+    @Body() input: SaveHomepageDto,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.homepage.saveHomepageDraft(revisionId, input, actor);
+  }
+
+  @Get('homepage/revisions/:revisionId/readiness')
+  homepageReadiness(@Param('revisionId') revisionId: string) {
+    return this.homepage.getHomepageReadiness(revisionId);
+  }
+
+  @Post('homepage/revisions/:revisionId/publish')
+  publishHomepage(@Param('revisionId') revisionId: string, @CurrentUser() actor: JwtUser) {
+    return this.homepage.publishHomepage(revisionId, actor);
+  }
 
   @Get('content')
   listContent() {

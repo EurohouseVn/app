@@ -6,6 +6,7 @@ import {
   serializePublishedWebsiteSummary,
   serializeWebsiteRevisionPreview,
 } from './public-website-content.serializer';
+import { parseHomepagePayload } from './homepage-payload';
 
 const publicRevisionInclude = Prisma.validator<Prisma.WebsiteContentRevisionInclude>()({
   seo: { include: { reviewer: { select: { displayName: true } } } },
@@ -107,7 +108,9 @@ export class WebsiteContentQueryService {
     });
     const serialized = row ? serializePublishedWebsiteContent(row) : null;
     if (!serialized) throw new NotFoundException('Published website content was not found.');
-    return serialized;
+    return slug.toLowerCase() === 'trang-chu'
+      ? this.attachHomepageReferences(serialized)
+      : serialized;
   }
 
   async getPreview(slug: string, locale: string, revisionId: string) {
@@ -128,7 +131,9 @@ export class WebsiteContentQueryService {
     });
     const serialized = row ? serializeWebsiteRevisionPreview(row, revisionId) : null;
     if (!serialized) throw new NotFoundException('Preview revision was not found for this content path.');
-    return serialized;
+    return slug.toLowerCase() === 'trang-chu'
+      ? this.attachHomepageReferences(serialized)
+      : serialized;
   }
 
   async listPublicDocuments(family?: WebsiteProductFamily, documentType?: string) {
@@ -170,7 +175,16 @@ export class WebsiteContentQueryService {
         aluSystem: { select: { id: true, code: true, name: true } },
         revisions: {
           orderBy: { revision: 'desc' },
-          select: { id: true, revision: true, status: true, title: true, updatedAt: true, publishedAt: true },
+          select: {
+            id: true,
+            revision: true,
+            status: true,
+            title: true,
+            updatedAt: true,
+            publishedAt: true,
+            createdBy: { select: { id: true, displayName: true } },
+            seo: { select: { title: true, description: true, canonicalPath: true, schemaType: true } },
+          },
         },
         createdAt: true,
         updatedAt: true,
@@ -213,5 +227,27 @@ export class WebsiteContentQueryService {
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
+  }
+
+  private async attachHomepageReferences<T extends { body: unknown }>(detail: T) {
+    let ids: string[] = [];
+    try {
+      const payload = parseHomepagePayload(detail.body);
+      ids = [...new Set([
+        payload.residential.dominant.contentId,
+        ...payload.residential.supporting.map((item) => item.contentId),
+        ...payload.industrial.services.map((item) => item.contentId),
+        ...payload.projects.featured.map((item) => item.contentId),
+      ])];
+    } catch {
+      return { ...detail, resolvedReferences: [] };
+    }
+    const rows = await this.prisma.websiteContent.findMany({
+      where: { id: { in: ids }, revisions: { some: { status: 'PUBLISHED' } } },
+      include: publishedContentInclude,
+    });
+    const summaries = rows.map(serializePublishedWebsiteSummary).filter((item) => item !== null);
+    const byId = new Map(summaries.map((item) => [item.id, item]));
+    return { ...detail, resolvedReferences: ids.flatMap((id) => byId.get(id) ? [byId.get(id)!] : []) };
   }
 }
