@@ -676,6 +676,7 @@ export const ADMIN_MODULES: AdminModule[] = [
   { key: 'promotions', label: 'Khuyến mãi', href: '/promotions' },
   { key: 'loyalty', label: 'Loyalty', href: '/loyalty' },
   { key: 'library', label: 'Thư viện', href: '/library' },
+  { key: 'website', label: 'Quản trị Website', href: '/website' },
   { key: 'roles', label: 'Chức danh', href: '/roles' },
   { key: 'sales-leads', label: 'Xưởng tiềm năng', href: '/sales/leads' },
   { key: 'sales-reports', label: 'Báo cáo sale', href: '/sales/reports' },
@@ -1437,3 +1438,5 @@ export interface AdminWebsiteRevision {
   publishedAt?: string;
   reviews: AdminWebsiteReview[];
 }
+
+export * from './website-homepage.js';
