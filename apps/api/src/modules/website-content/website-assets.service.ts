@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   WebsiteChannel,
@@ -48,7 +48,11 @@ function nonEmpty(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function assertMediaPublishable(media: {
+export function isPreviewEligibleMedia(media: { archivedAt?: Date | null }): boolean {
+  return !media.archivedAt;
+}
+
+export function assertPublishEligibleMedia(media: {
   mediaType: WebsiteMediaType | string;
   intakeStatus: WebsiteMediaIntakeStatus | string;
   rightsStatus: WebsiteRightsStatus | string;
@@ -57,6 +61,7 @@ function assertMediaPublishable(media: {
   caption?: string | null;
   channels: readonly (WebsiteChannel | string)[];
 }) {
+  if ('archivedAt' in media && media.archivedAt) throw new BadRequestException('Archived media cannot be published.');
   if (media.channels.includes('PUBLIC') && media.rightsStatus !== 'APPROVED') {
     throw new BadRequestException('Public website media requires approved usage rights.');
   }
@@ -89,6 +94,7 @@ export class WebsiteAssetsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createMedia(input: CreateWebsiteMediaInput, actor: JwtUser) {
+    this.assertGovernanceAuthority(input, actor);
     const data = {
       storageObjectId: input.storageObjectId,
       mediaType: input.mediaType,
@@ -103,7 +109,7 @@ export class WebsiteAssetsService {
       channels: input.channels ?? [WebsiteChannel.ADMIN_ONLY],
       intakeStatus: input.intakeStatus ?? WebsiteMediaIntakeStatus.DISCOVERED,
     };
-    assertMediaPublishable(data);
+    assertPublishEligibleMedia(data);
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.websiteMediaAsset.create({
         data: { ...data, createdById: actor.sub },
@@ -122,11 +128,13 @@ export class WebsiteAssetsService {
   }
 
   async updateMedia(id: string, input: UpdateWebsiteMediaInput, actor: JwtUser) {
+    this.assertGovernanceAuthority(input, actor);
+    this.assertMetadata(input);
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.websiteMediaAsset.findUnique({ where: { id } });
       if (!current) throw new NotFoundException('Website media asset was not found.');
       const next = { ...current, ...input };
-      assertMediaPublishable(next);
+      assertPublishEligibleMedia(next);
       const data: Prisma.WebsiteMediaAssetUncheckedUpdateInput = {
         ...(input.sourceReference !== undefined ? { sourceReference: input.sourceReference } : {}),
         ...(input.rightsStatus !== undefined ? { rightsStatus: input.rightsStatus } : {}),
@@ -274,6 +282,110 @@ export class WebsiteAssetsService {
       await this.auditLink(tx, 'DOCUMENT_UNLINKED', linkId, deleted.revisionId, actor.sub);
       return deleted;
     });
+  }
+
+  async listMedia(filters: { mediaType?: WebsiteMediaType; intakeStatus?: WebsiteMediaIntakeStatus; rightsStatus?: WebsiteRightsStatus; q?: string } = {}) {
+    const q = filters.q?.trim();
+    const rows = await this.prisma.websiteMediaAsset.findMany({
+      where: {
+        archivedAt: null,
+        ...(filters.mediaType ? { mediaType: filters.mediaType } : {}),
+        ...(filters.intakeStatus ? { intakeStatus: filters.intakeStatus } : {}),
+        ...(filters.rightsStatus ? { rightsStatus: filters.rightsStatus } : {}),
+        ...(q ? { OR: [{ altText: { contains: q, mode: 'insensitive' } }, { caption: { contains: q, mode: 'insensitive' } }] } : {}),
+      },
+      include: {
+        storageObject: { select: { publicUrl: true, sizeBytes: true, metadata: true } },
+        posterStorageObject: { select: { publicUrl: true } },
+        contentLinks: {
+          include: { revision: { select: { id: true, revision: true, status: true, websiteContent: { select: { id: true, slug: true } } } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => this.toLibraryItem(row));
+  }
+
+  async getUsage(id: string) {
+    const row = await this.prisma.websiteMediaAsset.findUnique({
+      where: { id },
+      include: { contentLinks: { include: { revision: { include: { websiteContent: true } } } } },
+    });
+    if (!row) throw new NotFoundException('Website media asset was not found.');
+    return row.contentLinks.map((link) => ({
+      contentId: link.revision.websiteContent.id,
+      contentTitle: link.revision.title,
+      revisionId: link.revision.id,
+      revision: link.revision.revision,
+      status: link.revision.status,
+      role: link.role,
+    }));
+  }
+
+  async archiveMedia(id: string, actor: JwtUser) {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.websiteMediaAsset.findUnique({
+        where: { id },
+        include: { contentLinks: { include: { revision: { select: { status: true } } } } },
+      });
+      if (!row) throw new NotFoundException('Website media asset was not found.');
+      if (row.contentLinks.some((link) => link.revision.status === 'PUBLISHED')) {
+        throw new ConflictException('Không thể lưu trữ tệp đang được dùng trong nội dung đã xuất bản.');
+      }
+      const updated = await tx.websiteMediaAsset.update({ where: { id }, data: { archivedAt: new Date() } });
+      await tx.websitePublicationAudit.create({
+        data: { entityType: 'WEBSITE_MEDIA_ASSET', entityId: id, action: 'MEDIA_ARCHIVED', actorId: actor.sub },
+      });
+      return updated;
+    });
+  }
+
+  private assertGovernanceAuthority(input: Pick<UpdateWebsiteMediaInput, 'rightsStatus' | 'channels'>, actor: JwtUser) {
+    const governed = input.rightsStatus === 'APPROVED' || input.channels?.includes('PUBLIC');
+    if (governed && actor.role !== 'ADMIN' && actor.isCeo !== true && !actor.permissions?.includes('website-media-approve')) {
+      throw new ForbiddenException('Bạn không có quyền duyệt bản quyền hoặc công khai tệp website.');
+    }
+  }
+
+  private assertMetadata(input: UpdateWebsiteMediaInput) {
+    if (input.altText !== undefined && !input.altText.trim()) throw new BadRequestException('Alt text cannot be empty.');
+    for (const point of [input.focalPointX, input.focalPointY]) {
+      if (point !== undefined && point !== null && (point < 0 || point > 1)) throw new BadRequestException('Focal points must be between 0 and 1.');
+    }
+  }
+
+  private toLibraryItem(row: any) {
+    const metadata = row.storageObject.metadata && typeof row.storageObject.metadata === 'object' ? row.storageObject.metadata : {};
+    return {
+      id: row.id,
+      mediaType: row.mediaType,
+      originalFilename: metadata.originalFilename ?? metadata.originalName ?? '',
+      ...(row.storageObject.publicUrl ? { previewUrl: row.storageObject.publicUrl } : {}),
+      ...(row.channels.includes('PUBLIC') && row.storageObject.publicUrl ? { publicUrl: row.storageObject.publicUrl } : {}),
+      altText: row.altText,
+      ...(row.caption ? { caption: row.caption } : {}),
+      ...(row.transcript ? { transcript: row.transcript } : {}),
+      ...(row.posterStorageObject?.publicUrl ? { posterUrl: row.posterStorageObject.publicUrl } : {}),
+      ...(row.focalPointX !== null ? { focalPointX: row.focalPointX } : {}),
+      ...(row.focalPointY !== null ? { focalPointY: row.focalPointY } : {}),
+      ...(typeof metadata.width === 'number' ? { width: metadata.width } : {}),
+      ...(typeof metadata.height === 'number' ? { height: metadata.height } : {}),
+      ...(typeof metadata.durationSeconds === 'number' ? { durationSeconds: metadata.durationSeconds } : {}),
+      sizeBytes: row.storageObject.sizeBytes,
+      rightsStatus: row.rightsStatus,
+      intakeStatus: row.intakeStatus,
+      channels: row.channels,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      usages: row.contentLinks.map((link: any) => ({
+        contentId: link.revision.websiteContent.id,
+        contentTitle: link.revision.websiteContent.slug,
+        revisionId: link.revision.id,
+        revision: link.revision.revision,
+        status: link.revision.status,
+        role: link.role,
+      })),
+    };
   }
 
   private async assertDraft(tx: Prisma.TransactionClient, revisionId: string) {

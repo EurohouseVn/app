@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type { JwtUser } from '../../auth/current-user.decorator';
 import { WebsiteAssetsService, selectPublicChannelAssets } from './website-assets.service';
 
@@ -20,6 +20,8 @@ function prismaStub() {
       transcript: null,
       channels: ['ADMIN_ONLY'],
       intakeStatus: 'OPTIMIZED',
+      archivedAt: null,
+      contentLinks: [] as any[],
     }],
     documents: [] as Array<Record<string, unknown>>,
     mediaLinks: [] as Array<Record<string, unknown>>,
@@ -41,6 +43,7 @@ function prismaStub() {
         Object.assign(row, data);
         return row;
       },
+      findMany: async () => state.media,
     },
     websiteTechnicalDocument: {
       create: async ({ data }: any) => {
@@ -157,4 +160,25 @@ test('link and unlink operations are draft-only and audited', async () => {
 
   assert.equal(state.mediaLinks.length, 0);
   assert.deepEqual(state.audits.slice(-2).map((item) => item.action), ['MEDIA_LINKED', 'MEDIA_UNLINKED']);
+});
+
+test('only an authorized reviewer may approve rights or expose media publicly', async () => {
+  const { prisma } = prismaStub();
+  const service = new WebsiteAssetsService(prisma as never);
+  const staff: JwtUser = { sub: 'staff-1', email: 'staff@eurohouse.vn', role: 'STAFF', permissions: [] };
+  await assert.rejects(
+    () => service.updateMedia('media-video', { rightsStatus: 'APPROVED', channels: ['PUBLIC'] }, staff),
+    ForbiddenException,
+  );
+});
+
+test('archival is blocked for published usage and allowed when unused', async () => {
+  const { prisma, state } = prismaStub();
+  const service = new WebsiteAssetsService(prisma as never);
+  state.media[0]!.contentLinks = [{ revision: { status: 'PUBLISHED' } }];
+  await assert.rejects(() => service.archiveMedia('media-video', actor), ConflictException);
+  state.media[0]!.contentLinks = [];
+  await service.archiveMedia('media-video', actor);
+  assert.ok((state.media[0]!.archivedAt as unknown) instanceof Date);
+  assert.equal(state.audits.at(-1)?.action, 'MEDIA_ARCHIVED');
 });

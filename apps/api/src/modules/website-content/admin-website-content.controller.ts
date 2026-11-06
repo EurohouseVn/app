@@ -9,7 +9,10 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { WebsiteReviewStage } from '@eurohouse/types';
 import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -31,6 +34,8 @@ import {
 import { WebsiteRedirectInput, WebsiteRedirectsService } from './website-redirects.service';
 import { SaveHomepageDto } from './dto/homepage.dto';
 import { HomepagePublicationService } from './homepage-publication.service';
+import { WebsiteMediaUploadService } from './website-media-upload.service';
+import { WEBSITE_MEDIA_UPLOAD_OPTIONS, type UploadedFileLike } from '../../common/upload';
 
 @Controller('website/admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -43,6 +48,7 @@ export class AdminWebsiteContentController {
     private readonly assets: WebsiteAssetsService,
     private readonly redirects: WebsiteRedirectsService,
     private readonly homepage: HomepagePublicationService,
+    private readonly mediaUploads: WebsiteMediaUploadService,
   ) {}
 
   @Get('homepage')
@@ -144,6 +150,46 @@ export class AdminWebsiteContentController {
   @Post('media')
   createMedia(@Body() input: CreateWebsiteMediaInput, @CurrentUser() actor: JwtUser) {
     return this.assets.createMedia(input, actor);
+  }
+
+  @Get('media')
+  listMedia(
+    @Query('mediaType') mediaType?: 'IMAGE' | 'VIDEO',
+    @Query('intakeStatus') intakeStatus?: any,
+    @Query('rightsStatus') rightsStatus?: any,
+    @Query('q') q?: string,
+  ) {
+    return this.assets.listMedia({ mediaType, intakeStatus, rightsStatus, q });
+  }
+
+  @Post('media/upload')
+  @UseInterceptors(FileInterceptor('file', WEBSITE_MEDIA_UPLOAD_OPTIONS))
+  uploadMedia(
+    @UploadedFile() file: UploadedFileLike,
+    @Body() metadata: { altText: string; sourceReference: string; caption?: string; transcript?: string },
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.mediaUploads.upload(file, metadata, actor);
+  }
+
+  @Post('media/:id/poster')
+  @UseInterceptors(FileInterceptor('file', WEBSITE_MEDIA_UPLOAD_OPTIONS))
+  uploadMediaPoster(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedFileLike,
+    @CurrentUser() actor: JwtUser,
+  ) {
+    return this.mediaUploads.uploadPoster(id, file, actor);
+  }
+
+  @Get('media/:id/usages')
+  mediaUsages(@Param('id') id: string) {
+    return this.assets.getUsage(id);
+  }
+
+  @Post('media/:id/archive')
+  archiveMedia(@Param('id') id: string, @CurrentUser() actor: JwtUser) {
+    return this.assets.archiveMedia(id, actor);
   }
 
   @Patch('media/:id')

@@ -49,6 +49,7 @@ type PublicRevisionSource = {
       altText: string;
       caption?: string | null;
       transcript?: string | null;
+      archivedAt?: DateValue | null;
       storageObject: { publicUrl?: string | null; metadata?: unknown };
       posterStorageObject?: { publicUrl?: string | null } | null;
     };
@@ -85,7 +86,7 @@ function latestPublished(revisions: PublicRevisionSource[]): PublicRevisionSourc
 
 function publicMedia(revision: PublicRevisionSource): Array<PublicMediaProjection & { role: HomepageMediaRole }> {
   return (revision.media ?? [])
-    .filter((link) => link.mediaAsset.channels.includes('PUBLIC') && Boolean(link.mediaAsset.storageObject.publicUrl))
+    .filter((link) => !link.mediaAsset.archivedAt && link.mediaAsset.channels.includes('PUBLIC') && Boolean(link.mediaAsset.storageObject.publicUrl))
     .sort((left, right) => left.sortOrder - right.sortOrder)
     .map((link) => {
       const asset = link.mediaAsset;

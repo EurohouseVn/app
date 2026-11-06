@@ -50,6 +50,13 @@ export class StorageService {
     return { object, body: await this.provider.get(object.objectKey) };
   }
 
+  async delete(id: string) {
+    const object = await this.prisma.storageObject.findUnique({ where: { id } });
+    if (!object) return;
+    await this.provider.delete(object.objectKey);
+    await this.prisma.storageObject.delete({ where: { id } });
+  }
+
   private segment(value: string) { return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || 'object'; }
   private extension(value: string) { const ext = value.toLowerCase(); return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : ''; }
 }
