@@ -3161,6 +3161,8 @@ model WebsiteContentRevision {
   specifications     Json?
   sourceRefs         Json?
   hasHighRiskClaims  Boolean                  @default(false)
+  technicalRiskHash  String?                  @db.VarChar(64)
+  technicalApprovalSourceRevisionId String?
   createdById        String?
   createdBy          User?                    @relation("WebsiteRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   publishedAt        DateTime?
@@ -3224,6 +3226,7 @@ model WebsiteMediaAsset {
   focalPointY           Float?
   channels              WebsiteChannel[]         @default([ADMIN_ONLY])
   intakeStatus          WebsiteMediaIntakeStatus @default(DISCOVERED)
+  archivedAt            DateTime?
   createdById           String?
   createdBy             User?                    @relation("WebsiteMediaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   contentLinks          WebsiteContentMedia[]
@@ -3231,6 +3234,7 @@ model WebsiteMediaAsset {
   updatedAt             DateTime                 @updatedAt
 
   @@index([intakeStatus, rightsStatus])
+  @@index([archivedAt])
   @@index([posterStorageObjectId])
 }
 

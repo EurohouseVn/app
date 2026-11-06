@@ -4,6 +4,7 @@ import {
   WebsitePublicationPolicyError,
   allowedWebsiteTransition,
   assertRevisionPublishable,
+  resolveTechnicalApprovalCarryForward,
 } from './publication-policy';
 
 test('publication state machine allows only the approved forward lifecycle', () => {
@@ -94,4 +95,50 @@ test('publish assertion rejects a revision outside marketing review', () => {
     }),
     (error: unknown) => error instanceof WebsitePublicationPolicyError && error.code === 'INVALID_PUBLISH_STATUS',
   );
+});
+
+test('technical approval carries only from the immediately preceding approved revision with the same hash', () => {
+  const approvedPrevious = {
+    id: 'revision-4',
+    technicalRiskHash: 'same-hash',
+    isImmediatelyPreceding: true,
+    reviews: [{ stage: 'TECHNICAL' as const, decision: 'APPROVED' as const }],
+  };
+  assert.deepEqual(resolveTechnicalApprovalCarryForward({
+    currentTechnicalRiskHash: 'same-hash',
+    previousRevision: approvedPrevious,
+  }), { allowed: true, sourceRevisionId: 'revision-4' });
+
+  assert.equal(resolveTechnicalApprovalCarryForward({
+    currentTechnicalRiskHash: 'changed-hash',
+    previousRevision: approvedPrevious,
+  }).allowed, false);
+  assert.equal(resolveTechnicalApprovalCarryForward({
+    currentTechnicalRiskHash: 'same-hash',
+    previousRevision: { ...approvedPrevious, isImmediatelyPreceding: false },
+  }).allowed, false);
+  assert.equal(resolveTechnicalApprovalCarryForward({
+    currentTechnicalRiskHash: 'same-hash',
+    previousRevision: {
+      ...approvedPrevious,
+      reviews: [{ stage: 'TECHNICAL', decision: 'CHANGES_REQUESTED' as const }],
+    },
+  }).allowed, false);
+});
+
+test('marketing approval never carries to a new revision', () => {
+  const result = resolveTechnicalApprovalCarryForward({
+    currentTechnicalRiskHash: 'same-hash',
+    previousRevision: {
+      id: 'revision-4',
+      technicalRiskHash: 'same-hash',
+      isImmediatelyPreceding: true,
+      reviews: [
+        { stage: 'TECHNICAL', decision: 'APPROVED' },
+        { stage: 'MARKETING', decision: 'APPROVED' },
+      ],
+    },
+  });
+  assert.deepEqual(result, { allowed: true, sourceRevisionId: 'revision-4' });
+  assert.equal('marketingApprovalCarried' in result, false);
 });

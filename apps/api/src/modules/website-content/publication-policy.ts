@@ -61,6 +61,29 @@ function latestDecision(reviews: readonly ReviewDecision[], stage: WebsiteReview
   return latest;
 }
 
+export function resolveTechnicalApprovalCarryForward(input: {
+  currentTechnicalRiskHash: string;
+  previousRevision?: {
+    id: string;
+    technicalRiskHash: string | null;
+    isImmediatelyPreceding: boolean;
+    reviews: readonly ReviewDecision[];
+  } | null;
+}): { allowed: false } | { allowed: true; sourceRevisionId: string } {
+  const previous = input.previousRevision;
+  if (
+    !previous
+    || !previous.isImmediatelyPreceding
+    || !previous.technicalRiskHash
+    || previous.technicalRiskHash !== input.currentTechnicalRiskHash
+    || latestDecision(previous.reviews, 'TECHNICAL') !== 'APPROVED'
+  ) {
+    return { allowed: false };
+  }
+
+  return { allowed: true, sourceRevisionId: previous.id };
+}
+
 function hasSourceReferences(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'string') return value.trim().length > 0;
