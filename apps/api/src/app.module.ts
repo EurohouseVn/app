@@ -25,6 +25,8 @@ import { StorageModule } from './modules/storage/storage.module';
 import { ManufacturingModule } from './modules/manufacturing/manufacturing.module';
 import { WorkshopOperationsModule } from './modules/workshop-operations/workshop-operations.module';
 import { WebsiteContentModule } from './modules/website-content/website-content.module';
+import { FormulaAccessModule } from './modules/formula-access/formula-access.module';
+import { EurohouseAccessModule } from './modules/eurohouse-access/eurohouse-access.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { WebsiteContentModule } from './modules/website-content/website-content.
       },
     }),
     PrismaModule,
+    EurohouseAccessModule,
+    FormulaAccessModule,
     StorageModule,
     AuthModule,
     AdminIamModule,
