@@ -6,6 +6,7 @@ export * from './eurohouseAccess.js';
 export * from './formulaAccess.js';
 import { INTERNAL_MODULES } from './accessScopes.js';
 import type { FormulaCapability } from './formulaAccess.js';
+import type { EurohouseAccessView } from './eurohouseAccess.js';
 
 export type UserStatus = 'active' | 'locked';
 
@@ -77,6 +78,7 @@ export interface AuthUser {
   rbacRoleId?: string;
   capabilities: {
     formulas: FormulaCapability;
+    eurohouse: EurohouseAccessView;
   };
 }
 

@@ -3,7 +3,7 @@ import type { UserRole } from '@eurohouse/types';
 
 export interface JwtUser {
   sub: string;
-  email: string;
+  email?: string;
   displayName?: string;
   role: UserRole;
   organizationId?: string;

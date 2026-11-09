@@ -5,6 +5,8 @@ import { LoginDto } from './dto/login.dto';
 import type { RegisterFactoryInput } from '@eurohouse/types';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser, type JwtUser } from './current-user.decorator';
+import { RegisterWorkshopDto } from './dto/register-workshop.dto';
+import { VerificationConfirmDto, VerificationResendDto } from './dto/verification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +24,27 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 600_000 } })
   registerFactory(@Body() body: RegisterFactoryInput) {
     return this.authService.registerFactory(body);
+  }
+
+  @Post('register-workshop')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 600_000 } })
+  registerWorkshop(@Body() body: RegisterWorkshopDto) {
+    return this.authService.registerWorkshop(body);
+  }
+
+  @Post('verification/confirm')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  confirmVerification(@Body() body: VerificationConfirmDto) {
+    return this.authService.confirmWorkshopVerification(body);
+  }
+
+  @Post('verification/resend')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 3, ttl: 600_000 } })
+  resendVerification(@Body() body: VerificationResendDto) {
+    return this.authService.resendWorkshopVerification(body.pendingVerificationId);
   }
 
   @Get('me')

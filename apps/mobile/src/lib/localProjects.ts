@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelMedia, listMediaQueue, remapMediaEntity, syncMediaQueue, type MediaQueueItem } from './mediaQueue';
 import { fixLegacyUtf8Mojibake } from '@eurohouse/types';
-import { api } from './api';
+import { api, isNetworkError } from './api';
+import { localProjectStorageKey } from './localProjectStorageState';
+import { getInstallationIdentity } from './installationIdentity';
 
 export type CategoryDetail = { id: string; name: string; items: unknown[] };
 
@@ -23,7 +25,16 @@ export type LocalProject = {
   finalAmount: number;
   expectedProfit: number;
   images: string[];
+  quotationId?: string;
   quotationCode?: string;
+  costAluminum: number;
+  costAccessory: number;
+  costGlass: number;
+  costLabor: number;
+  costTransport: number;
+  costInstallation: number;
+  costOther: number;
+  extraRevenue: number;
   createdAt: number;
   updatedAt: number;
   syncState?: 'SYNCED' | 'PENDING' | 'CONFLICT';
@@ -52,9 +63,13 @@ type ServerProject = {
   costSilicone?: number;
   costScrew?: number;
   costLabor?: number;
+  costTransport?: number;
+  costInstallation?: number;
   costOther?: number;
+  extraRevenue?: number;
   images?: string[];
   quotationId?: string;
+  quotationCode?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -72,11 +87,42 @@ type PendingMutation = {
 const STORAGE_KEY = '@eurohouse_project_replica_v2';
 const LEGACY_STORAGE_KEY = '@eurohouse_local_projects';
 const QUEUE_KEY = '@eurohouse_operations_mutation_queue';
-const DEVICE_KEY = '@eurohouse_operations_device_id';
+const STORAGE_MIGRATION_KEY = '@eurohouse_project_storage_scope_migrated';
+let storageScope: string | null = null;
+
+function scopedKey(baseKey: string) {
+  return localProjectStorageKey(baseKey, storageScope);
+}
+
+export async function configureLocalProjectsStorage(scope: string | null) {
+  storageScope = scope;
+  if (!scope) return;
+
+  const migratedScope = await AsyncStorage.getItem(STORAGE_MIGRATION_KEY);
+  if (migratedScope) return;
+
+  const [currentReplica, legacyReplica, pendingQueue] = await Promise.all([
+    AsyncStorage.getItem(STORAGE_KEY),
+    AsyncStorage.getItem(LEGACY_STORAGE_KEY),
+    AsyncStorage.getItem(QUEUE_KEY),
+  ]);
+  const replica = currentReplica || legacyReplica;
+  const writes: Promise<void>[] = [];
+  if (replica) writes.push(AsyncStorage.setItem(scopedKey(STORAGE_KEY), replica));
+  if (pendingQueue) writes.push(AsyncStorage.setItem(scopedKey(QUEUE_KEY), pendingQueue));
+  writes.push(AsyncStorage.setItem(STORAGE_MIGRATION_KEY, scope));
+  await Promise.all(writes);
+  await Promise.all([
+    AsyncStorage.removeItem(STORAGE_KEY),
+    AsyncStorage.removeItem(LEGACY_STORAGE_KEY),
+    AsyncStorage.removeItem(QUEUE_KEY),
+  ]);
+}
 
 function projectCosts(project: ServerProject): number {
   return [project.costAluminum, project.costAccessory, project.costLockHinge, project.costGlass,
-    project.costGasket, project.costSilicone, project.costScrew, project.costLabor, project.costOther]
+    project.costGasket, project.costSilicone, project.costScrew, project.costLabor,
+    project.costTransport, project.costInstallation, project.costOther]
     .reduce<number>((sum, value) => sum + Number(value || 0), 0);
 }
 
@@ -98,9 +144,18 @@ function fromServer(project: ServerProject): LocalProject {
     additionalCosts: Number(project.incurredValue || 0),
     incurredType: project.incurredType || 'INCREASE',
     finalAmount: Number(project.settledValue || 0),
-    expectedProfit: revenue - projectCosts(project),
+    expectedProfit: revenue + Number(project.extraRevenue || 0) - projectCosts(project),
     images: project.images || [],
-    quotationCode: project.quotationId || '',
+    quotationId: project.quotationId || '',
+    quotationCode: project.quotationCode || project.quotationId || '',
+    costAluminum: Number(project.costAluminum || 0),
+    costAccessory: Number(project.costAccessory || 0),
+    costGlass: Number(project.costGlass || 0),
+    costLabor: Number(project.costLabor || 0),
+    costTransport: Number(project.costTransport || 0),
+    costInstallation: Number(project.costInstallation || 0),
+    costOther: Number(project.costOther || 0),
+    extraRevenue: Number(project.extraRevenue || 0),
     createdAt: new Date(project.createdAt).getTime(),
     updatedAt: new Date(project.updatedAt).getTime(),
     syncState: 'SYNCED',
@@ -110,6 +165,15 @@ function fromServer(project: ServerProject): LocalProject {
 function normalizeProject(project: LocalProject): LocalProject {
   return {
     ...project,
+    categoryDetails: project.categoryDetails || {},
+    costAluminum: Number(project.costAluminum || 0),
+    costAccessory: Number(project.costAccessory || 0),
+    costGlass: Number(project.costGlass || 0),
+    costLabor: Number(project.costLabor || 0),
+    costTransport: Number(project.costTransport || 0),
+    costInstallation: Number(project.costInstallation || 0),
+    costOther: Number(project.costOther || 0),
+    extraRevenue: Number(project.extraRevenue || 0),
     name: fixLegacyUtf8Mojibake(project.name),
     customerName: fixLegacyUtf8Mojibake(project.customerName),
     customerPhone: fixLegacyUtf8Mojibake(project.customerPhone),
@@ -131,45 +195,48 @@ function toServerPayload(project: Partial<LocalProject>): Record<string, unknown
     incurredValue: project.additionalCosts,
     incurredType: project.incurredType,
     settledValue: project.finalAmount,
-    quotationId: project.quotationCode || null,
+    quotationId: project.quotationId || null,
     images: project.images,
     scale: project.projectType,
     productsUsed: project.categories?.join(', '),
+    costAluminum: project.costAluminum,
+    costAccessory: project.costAccessory,
+    costGlass: project.costGlass,
+    costLabor: project.costLabor,
+    costTransport: project.costTransport,
+    costInstallation: project.costInstallation,
+    costOther: project.costOther,
+    extraRevenue: project.extraRevenue,
   };
 }
 
 async function readReplica(): Promise<LocalProject[]> {
   try {
-    const current = await AsyncStorage.getItem(STORAGE_KEY);
-    const legacy = current ? null : await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
-    return (JSON.parse(current || legacy || '[]') as LocalProject[]).map(normalizeProject);
+    const current = await AsyncStorage.getItem(scopedKey(STORAGE_KEY));
+    return (JSON.parse(current || '[]') as LocalProject[]).map(normalizeProject);
   } catch {
     return [];
   }
 }
 
 async function writeReplica(projects: LocalProject[]) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  await AsyncStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(projects));
 }
 
 async function deviceId(): Promise<string> {
-  const existing = await AsyncStorage.getItem(DEVICE_KEY);
-  if (existing) return existing;
-  const generated = `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  await AsyncStorage.setItem(DEVICE_KEY, generated);
-  return generated;
+  return getInstallationIdentity(AsyncStorage);
 }
 
 async function readMutationQueue(): Promise<PendingMutation[]> {
   try {
-    return JSON.parse((await AsyncStorage.getItem(QUEUE_KEY)) || '[]') as PendingMutation[];
+    return JSON.parse((await AsyncStorage.getItem(scopedKey(QUEUE_KEY))) || '[]') as PendingMutation[];
   } catch {
     return [];
   }
 }
 
 async function writeMutationQueue(queue: PendingMutation[]) {
-  await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  await AsyncStorage.setItem(scopedKey(QUEUE_KEY), JSON.stringify(queue));
 }
 
 async function updatePendingProjectCreate(entityId: string, payload: Record<string, unknown>) {
@@ -294,7 +361,10 @@ export const LocalProjectsApi = {
         projectType: data.projectType || '', status: data.status || 'OPEN', isContractSigned: data.isContractSigned || false,
         categories: data.categories || [], categoryDetails: data.categoryDetails || {}, estimatedAmount: data.estimatedAmount || 0,
         additionalCosts: data.additionalCosts || 0, incurredType: data.incurredType || 'INCREASE', finalAmount: data.finalAmount || 0,
-        expectedProfit: data.expectedProfit || 0, images: data.images || [], quotationCode: data.quotationCode || '',
+        expectedProfit: data.expectedProfit || 0, images: data.images || [], quotationId: data.quotationId || '', quotationCode: data.quotationCode || '',
+        costAluminum: data.costAluminum || 0, costAccessory: data.costAccessory || 0, costGlass: data.costGlass || 0,
+        costLabor: data.costLabor || 0, costTransport: data.costTransport || 0, costInstallation: data.costInstallation || 0,
+        costOther: data.costOther || 0, extraRevenue: data.extraRevenue || 0,
         createdAt: now, updatedAt: now, syncState: 'PENDING',
       });
       await writeReplica([project, ...(await readReplica())]);
@@ -328,14 +398,17 @@ export const LocalProjectsApi = {
 
   async delete(id: string): Promise<void> {
     const replica = await readReplica();
-    await writeReplica(replica.filter((project) => project.id !== id && project.code !== id));
     if (id.startsWith('local-')) {
+      await writeReplica(replica.filter((project) => project.id !== id && project.code !== id));
       await removePendingEntityMutations('PROJECT', id);
       return;
     }
     try {
       await api.delete(`/workshop/v2/projects/${id}`);
-    } catch {
+      await writeReplica(replica.filter((project) => project.id !== id && project.code !== id));
+    } catch (error) {
+      if (!isNetworkError(error)) throw error;
+      await writeReplica(replica.filter((project) => project.id !== id && project.code !== id));
       await enqueueOperationsMutation({ entityType: 'PROJECT', entityId: id, operation: 'DELETE', payload: {} });
     }
   },

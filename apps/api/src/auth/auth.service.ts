@@ -1,9 +1,25 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import type { AuthUser, DemoAdminUser, LoginResponse, RegisterFactoryInput, UserRole } from '@eurohouse/types';
+import { randomBytes } from 'node:crypto';
+import {
+  formulaCapabilityFromStatus,
+  featureCapability,
+  PUBLIC_WORKSHOP_DEFAULT_MODULE_KEYS,
+  type AuthUser,
+  type DemoAdminUser,
+  type LoginResponse,
+  type RegisterFactoryInput,
+  type RegisterWorkshopInput,
+  type UserRole,
+  type VerificationConfirmInput,
+} from '@eurohouse/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from './current-user.decorator';
+import { normalizeIdentity, normalizeOptionalIdentities } from './identity-normalization';
+import { VerificationService } from './verification.service';
+import { FormulaAccessService } from '../modules/formula-access/formula-access.service';
+import { EurohouseAccessService } from '../modules/eurohouse-access/eurohouse-access.service';
 
 function parseModules(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -20,26 +36,41 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly verificationService: VerificationService,
+    @Optional() private readonly formulaAccessService?: FormulaAccessService,
+    @Optional() private readonly eurohouseAccessService?: EurohouseAccessService,
   ) {}
 
   async login(identifier: string, password: string): Promise<LoginResponse> {
-    const value = identifier.trim().toLowerCase();
+    let identity;
+    try {
+      identity = normalizeIdentity(identifier);
+    } catch {
+      throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
+    }
     const user = await this.prisma.user.findFirst({
-      where: { OR: [{ email: value }, { phone: identifier.trim() }] },
+      where: identity.kind === 'EMAIL'
+        ? { OR: [{ emailNormalized: identity.normalized }, { email: identity.normalized }] }
+        : { OR: [{ phoneNormalized: identity.normalized }, { phone: identifier.trim() }] },
       include: { department: true, rbacRole: true, organization: true },
     });
     if (!user) {
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
     }
+    if (!user.verifiedAt) throw new UnauthorizedException('VERIFICATION_REQUIRED');
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
     }
+    return this.issueLogin(user);
+  }
+
+  private async issueLogin(user: any): Promise<LoginResponse> {
     const modules = parseModules(user.moduleAccess);
     const permissions = parseModules(user.rbacRole?.permissions);
     const payload: JwtUser = {
       sub: user.id,
-      email: user.email,
+      email: user.email ?? undefined,
       displayName: user.displayName,
       role: user.role as UserRole,
       organizationId: user.organizationId ?? undefined,
@@ -55,7 +86,7 @@ export class AuthService {
     const result: DemoAdminUser = {
       id: user.id,
       displayName: user.displayName,
-      email: user.email,
+      email: user.email ?? '',
       role: user.role as UserRole,
       token,
       isCeo: user.isCeo,
@@ -67,6 +98,93 @@ export class AuthService {
       rbacRoleId: user.rbacRoleId ?? undefined,
     };
     return { user: result, message: `Đăng nhập thành công với vai trò ${user.role}.` };
+  }
+
+  async registerWorkshop(input: RegisterWorkshopInput): Promise<{ pendingVerificationId: string; maskedTarget: string }> {
+    const displayName = input.displayName.trim();
+    const organizationName = input.organizationName.trim();
+    const password = input.password.trim();
+    if (!displayName || !organizationName) throw new BadRequestException('WORKSHOP_NAME_REQUIRED');
+    if (password.length < 6) throw new BadRequestException('PASSWORD_TOO_SHORT');
+
+    let identities;
+    try {
+      identities = normalizeOptionalIdentities(input.email, input.phone);
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
+    const requestedChannel = input.verificationChannel;
+    if (requestedChannel === 'EMAIL' && !identities.emailNormalized) throw new BadRequestException('EMAIL_REQUIRED_FOR_VERIFICATION');
+    if (requestedChannel === 'PHONE' && !identities.phoneNormalized) throw new BadRequestException('PHONE_REQUIRED_FOR_VERIFICATION');
+    const duplicate = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(identities.emailNormalized ? [{ emailNormalized: identities.emailNormalized }] : []),
+          ...(identities.phoneNormalized ? [{ phoneNormalized: identities.phoneNormalized }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+    if (duplicate) throw new BadRequestException('IDENTIFIER_ALREADY_USED');
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = `CSSX-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const user = await this.prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          code,
+          name: organizationName,
+          type: 'FACTORY',
+          province: input.province?.trim() || null,
+          email: identities.emailNormalized ?? null,
+          phone: input.phone?.trim() || null,
+        },
+      });
+      return tx.user.create({
+        data: {
+          email: identities.emailNormalized ?? null,
+          emailNormalized: identities.emailNormalized ?? null,
+          phone: input.phone?.trim() || null,
+          phoneNormalized: identities.phoneNormalized ?? null,
+          displayName,
+          passwordHash,
+          role: 'FACTORY',
+          organizationId: organization.id,
+          moduleAccess: JSON.stringify(PUBLIC_WORKSHOP_DEFAULT_MODULE_KEYS),
+          verifiedAt: null,
+        },
+      });
+    });
+    const channel = requestedChannel ?? (identities.emailNormalized ? 'EMAIL' : 'PHONE');
+    const target = channel === 'EMAIL' ? identities.emailNormalized! : identities.phoneNormalized!;
+    try {
+      await this.verificationService.create(user.id, channel, target);
+    } catch (deliveryError) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.user.delete({ where: { id: user.id } });
+        await tx.organization.delete({ where: { id: user.organizationId! } });
+      }).catch(() => undefined);
+      throw deliveryError;
+    }
+    return { pendingVerificationId: user.id, maskedTarget: maskIdentity(target) };
+  }
+
+  async confirmWorkshopVerification(input: VerificationConfirmInput): Promise<LoginResponse> {
+    const verified = await this.verificationService.confirm(input.pendingVerificationId, input.code);
+    await this.prisma.user.update({
+      where: { id: verified.userId },
+      data: { verifiedAt: verified.consumedAt, verificationChannel: verified.channel },
+    });
+    const user = await this.prisma.user.findUnique({
+      where: { id: verified.userId },
+      include: { department: true, rbacRole: true, organization: true },
+    });
+    if (!user) throw new UnauthorizedException('Tài khoản không tồn tại.');
+    return this.issueLogin(user);
+  }
+
+  resendWorkshopVerification(pendingVerificationId: string) {
+    return this.verificationService.resend(pendingVerificationId);
   }
 
   async registerFactory(input: RegisterFactoryInput): Promise<LoginResponse> {
@@ -106,11 +224,15 @@ export class AuthService {
     await this.prisma.user.create({
       data: {
         email,
+        emailNormalized: email,
         displayName,
         phone: input.phone?.trim() || null,
+        phoneNormalized: input.phone?.trim() ? normalizeIdentity(input.phone).normalized : null,
         passwordHash,
         role: 'FACTORY',
         organizationId: factory.id,
+        verifiedAt: new Date(),
+        verificationChannel: 'EMAIL',
       },
     });
 
@@ -125,10 +247,22 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại.');
     }
+    const legacyFormula = this.formulaAccessService
+      ? await this.formulaAccessService.getCapability(user.organizationId ?? undefined)
+      : formulaCapabilityFromStatus('LOCKED');
+    const eurohouse = this.eurohouseAccessService
+      ? await this.eurohouseAccessService.getAccessView(user.organizationId ?? undefined)
+      : {
+          organizationId: user.organizationId ?? '',
+          features: {
+            FORMULA_CUTTING: featureCapability(legacyFormula.status, 'FORMULA_CUTTING'),
+            EUROHOUSE_ORDERING: featureCapability('LOCKED', 'EUROHOUSE_ORDERING'),
+          },
+        };
     return {
       id: user.id,
       displayName: user.displayName,
-      email: user.email,
+      email: user.email ?? undefined,
       phone: user.phone ?? '',
       role: user.role as UserRole,
       organizationId: user.organizationId ?? undefined,
@@ -142,6 +276,16 @@ export class AuthService {
       jobTitle: user.jobTitle,
       permissions: parseModules(user.rbacRole?.permissions),
       rbacRoleId: user.rbacRoleId ?? undefined,
+      capabilities: {
+        formulas: legacyFormula,
+        eurohouse,
+      },
     };
   }
+}
+
+function maskIdentity(value: string): string {
+  const at = value.indexOf('@');
+  if (at > 1) return `${value.slice(0, 2)}***${value.slice(at)}`;
+  return `${value.slice(0, 4)}***${value.slice(-3)}`;
 }
