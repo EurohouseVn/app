@@ -14,6 +14,7 @@ import {
   type EurohouseInviteView,
 } from '@eurohouse/types';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizeIdentity } from '../../auth/identity-normalization';
 
 export type EurohouseAccessActor = {
   userId: string;
@@ -336,6 +337,153 @@ export class EurohouseAccessService {
       });
     });
     return this.getAccessView(targetOrganizationId);
+  }
+
+  async searchAccounts(actor: EurohouseAccessActor, search: string) {
+    const nppOrganizationId = this.nppScope(actor);
+    let identity;
+    try {
+      identity = normalizeIdentity(search);
+    } catch {
+      throw new BadRequestException('INVALID_IDENTIFIER');
+    }
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: 'FACTORY',
+        verifiedAt: { not: null },
+        ...(identity.kind === 'EMAIL'
+          ? { emailNormalized: identity.normalized }
+          : { phoneNormalized: identity.normalized }),
+      },
+      include: { organization: { include: { eurohouseFeatureGrants: true } } },
+      take: 10,
+    });
+    return users
+      .filter((user) => user.organization)
+      .map((user) => ({
+        organizationId: user.organization!.id,
+        organizationName: user.organization!.name,
+        province: user.organization!.province ?? undefined,
+        email: user.email,
+        phone: user.phoneNormalized ?? user.phone,
+        relationship:
+          user.organization!.managedByNppId === nppOrganizationId
+            ? 'MANAGED'
+            : user.organization!.managedByNppId
+              ? 'OTHER_NPP'
+              : 'UNASSIGNED',
+        features: Object.fromEntries(
+          EUROHOUSE_FEATURE_KEYS.map((featureKey) => {
+            const grant = user.organization!.eurohouseFeatureGrants.find(
+              (row) => row.featureKey === featureKey,
+            );
+            const status =
+              grant?.status === 'ACTIVE'
+                ? 'ACTIVE'
+                : grant?.status === 'REVOKED'
+                  ? 'REVOKED'
+                  : 'LOCKED';
+            return [featureKey, featureCapability(status, featureKey)];
+          }),
+        ),
+      }));
+  }
+
+  async listInvites(actor: EurohouseAccessActor) {
+    const nppOrganizationId = this.nppScope(actor);
+    const rows = await this.prisma.eurohouseInvite.findMany({
+      where: { nppOrganizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((row) => this.inviteView(row));
+  }
+
+  async revokeInvite(actor: EurohouseAccessActor, inviteId: string, reason: string) {
+    if (!reason.trim()) throw new BadRequestException('REVOKE_REASON_REQUIRED');
+    const nppOrganizationId = this.nppScope(actor);
+    return this.prisma.$transaction(async (tx) => {
+      const invite = await tx.eurohouseInvite.findFirst({
+        where: { id: inviteId, nppOrganizationId },
+      });
+      if (!invite) throw new BadRequestException('INVITE_NOT_FOUND');
+      const changed = await tx.eurohouseInvite.updateMany({
+        where: { id: inviteId, nppOrganizationId, status: 'ACTIVE' },
+        data: { status: 'REVOKED', revokedAt: this.now() },
+      });
+      if (changed.count !== 1) throw new BadRequestException('INVITE_NOT_ACTIVE');
+      await tx.eurohouseAccessAudit.create({
+        data: {
+          organizationId: invite.targetOrganizationId,
+          actorUserId: actor.userId,
+          actorRole: actor.role,
+          action: 'REVOKED',
+          toNppOrganizationId: nppOrganizationId,
+          eurohouseInviteId: invite.id,
+          metadata: { reason: reason.trim(), scope: 'INVITE' },
+        },
+      });
+      return { id: invite.id, status: 'REVOKED' as const };
+    });
+  }
+
+  async adminList(filters: {
+    featureKey?: string;
+    status?: string;
+    nppOrganizationId?: string;
+    province?: string;
+  }) {
+    const selectedFeatures = filters.featureKey
+      ? this.validateFeatureKeys([filters.featureKey as EurohouseFeatureKey])
+      : [...EUROHOUSE_FEATURE_KEYS];
+    const organizations = await this.prisma.organization.findMany({
+      where: {
+        type: 'FACTORY',
+        ...(filters.nppOrganizationId ? { managedByNppId: filters.nppOrganizationId } : {}),
+        ...(filters.province ? { province: filters.province } : {}),
+      },
+      include: { managedByNpp: true, eurohouseFeatureGrants: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return organizations
+      .map((organization) => {
+        const features = Object.fromEntries(
+          selectedFeatures.map((featureKey) => {
+            const grant = organization.eurohouseFeatureGrants.find(
+              (row) => row.featureKey === featureKey,
+            );
+            const status =
+              grant?.status === 'ACTIVE'
+                ? 'ACTIVE'
+                : grant?.status === 'REVOKED'
+                  ? 'REVOKED'
+                  : 'LOCKED';
+            return [featureKey, featureCapability(status, featureKey)];
+          }),
+        );
+        return {
+          organizationId: organization.id,
+          organizationName: organization.name,
+          province: organization.province ?? undefined,
+          nppOrganizationId: organization.managedByNppId ?? undefined,
+          nppOrganizationName: organization.managedByNpp?.name ?? undefined,
+          features,
+          updatedAt: organization.updatedAt.toISOString(),
+        };
+      })
+      .filter(
+        (row) =>
+          !filters.status ||
+          Object.values(row.features).some((capability) => capability.status === filters.status),
+      );
+  }
+
+  audit(organizationId: string) {
+    return this.prisma.eurohouseAccessAudit.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
   }
 
   private validateFeatureKeys(featureKeys: readonly EurohouseFeatureKey[]) {
