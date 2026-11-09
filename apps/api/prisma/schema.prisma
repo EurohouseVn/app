@@ -41,7 +41,22 @@ model Organization {
   salesTargets        SalesTarget[]        @relation("NppSalesTarget")
   workshopWorkers     WorkshopWorker[]     @relation("WorkshopWorkerOrg")
   workshopAttendances WorkshopAttendance[] @relation("WorkshopAttendanceOrg")
+  workshopWorkdays    WorkshopWorkdaySetting[] @relation("WorkshopWorkdayOrg")
   workshopReminders   WorkshopReminder[]   @relation("WorkshopReminderOrg")
+  formulaAccessGrant  FormulaAccessGrant?   @relation("FormulaGrantOrganization")
+  formulaGrantsAsNpp  FormulaAccessGrant[]  @relation("FormulaGrantNpp")
+  formulaInvitesAsNpp FormulaInvite[]       @relation("FormulaInviteNpp")
+  formulaInvitesTarget FormulaInvite[]      @relation("FormulaInviteTarget")
+  formulaAccessAudits FormulaAccessAudit[]  @relation("FormulaAuditOrganization")
+  formulaAuditsFromNpp FormulaAccessAudit[] @relation("FormulaAuditFromNpp")
+  formulaAuditsToNpp FormulaAccessAudit[]   @relation("FormulaAuditToNpp")
+  eurohouseFeatureGrants EurohouseFeatureGrant[] @relation("EurohouseGrantOrganization")
+  eurohouseGrantsAsNpp EurohouseFeatureGrant[] @relation("EurohouseGrantNpp")
+  eurohouseInvitesAsNpp EurohouseInvite[] @relation("EurohouseInviteNpp")
+  eurohouseInvitesTarget EurohouseInvite[] @relation("EurohouseInviteTarget")
+  eurohouseAccessAudits EurohouseAccessAudit[] @relation("EurohouseAuditOrganization")
+  eurohouseAuditsFromNpp EurohouseAccessAudit[] @relation("EurohouseAuditFromNpp")
+  eurohouseAuditsToNpp EurohouseAccessAudit[] @relation("EurohouseAuditToNpp")
   tier                String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
   targetRevenue       Float                @default(0) // Mục tiêu doanh số
   purchasingPower     String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
@@ -51,9 +66,13 @@ model Organization {
 
 model User {
   id                    String                 @id @default(cuid())
-  email                 String                 @unique
+  email                 String?                @unique
+  emailNormalized       String?                @unique
   displayName           String
   phone                 String?
+  phoneNormalized       String?                @unique
+  verifiedAt            DateTime?
+  verificationChannel   VerificationChannel?
   passwordHash          String
   role                  String // ADMIN | STAFF | NPP | DAILY | FACTORY
   organizationId        String?
@@ -95,10 +114,240 @@ model User {
   websiteDocuments      WebsiteTechnicalDocument[] @relation("WebsiteDocumentCreatedBy")
   websiteRedirects      WebsiteRedirect[]      @relation("WebsiteRedirectCreatedBy")
   websiteAudits         WebsitePublicationAudit[] @relation("WebsiteAuditActor")
+  verificationChallenges VerificationChallenge[]
+  formulaGrantsActivated FormulaAccessGrant[] @relation("FormulaGrantActivatedBy")
+  formulaGrantsRevoked FormulaAccessGrant[] @relation("FormulaGrantRevokedBy")
+  formulaInvitesCreated FormulaInvite[] @relation("FormulaInviteCreatedBy")
+  formulaInvitesUsed FormulaInvite[] @relation("FormulaInviteUsedBy")
+  formulaAccessAudits FormulaAccessAudit[] @relation("FormulaAuditActor")
+  eurohouseGrantsActivated EurohouseFeatureGrant[] @relation("EurohouseGrantActivatedBy")
+  eurohouseGrantsRevoked EurohouseFeatureGrant[] @relation("EurohouseGrantRevokedBy")
+  eurohouseInvitesCreated EurohouseInvite[] @relation("EurohouseInviteCreatedBy")
+  eurohouseInvitesUsed EurohouseInvite[] @relation("EurohouseInviteUsedBy")
+  eurohouseAccessAudits EurohouseAccessAudit[] @relation("EurohouseAuditActor")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
   @@index([departmentId])
+}
+
+enum VerificationChannel {
+  EMAIL
+  PHONE
+}
+
+enum FormulaAccessStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum FormulaAccessSource {
+  NPP_INVITE
+  NPP_DIRECT
+  ADMIN_DIRECT
+  MIGRATED
+}
+
+enum FormulaInviteStatus {
+  ACTIVE
+  USED
+  REVOKED
+  EXPIRED
+}
+
+enum FormulaAccessAction {
+  INVITE_CREATED
+  INVITE_REDEEMED
+  DIRECT_ACTIVATED
+  REVOKED
+  NPP_TRANSFERRED
+}
+
+enum EurohouseFeatureKey {
+  FORMULA_CUTTING
+  EUROHOUSE_ORDERING
+}
+
+enum EurohouseAccessStatus {
+  LOCKED
+  ACTIVE
+  REVOKED
+}
+
+enum EurohouseAccessSource {
+  NPP_INVITE
+  NPP_DIRECT
+  ADMIN_DIRECT
+  MIGRATED
+}
+
+enum EurohouseInviteStatus {
+  ACTIVE
+  USED
+  REVOKED
+  EXPIRED
+}
+
+enum EurohouseAccessAction {
+  INVITE_CREATED
+  INVITE_REDEEMED
+  DIRECT_ACTIVATED
+  REVOKED
+  NPP_TRANSFERRED
+}
+
+model VerificationChallenge {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel          VerificationChannel
+  targetNormalized String
+  codeHash         String
+  expiresAt        DateTime
+  attemptCount     Int                 @default(0)
+  consumedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  lastSentAt       DateTime            @default(now())
+
+  @@index([userId, createdAt])
+  @@index([targetNormalized])
+}
+
+model FormulaAccessGrant {
+  id                  String              @id @default(cuid())
+  organizationId      String              @unique
+  organization        Organization        @relation("FormulaGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  status              FormulaAccessStatus
+  nppOrganizationId   String?
+  nppOrganization     Organization?       @relation("FormulaGrantNpp", fields: [nppOrganizationId], references: [id])
+  source              FormulaAccessSource
+  activatedByUserId   String
+  activatedBy         User                @relation("FormulaGrantActivatedBy", fields: [activatedByUserId], references: [id])
+  activatedAt         DateTime            @default(now())
+  revokedByUserId     String?
+  revokedBy           User?               @relation("FormulaGrantRevokedBy", fields: [revokedByUserId], references: [id])
+  revokedAt           DateTime?
+  revokeReason        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([nppOrganizationId, status])
+}
+
+model FormulaInvite {
+  id                   String              @id @default(cuid())
+  codeHash             String              @unique
+  codePrefix           String
+  codeLast4            String
+  nppOrganizationId    String
+  nppOrganization      Organization        @relation("FormulaInviteNpp", fields: [nppOrganizationId], references: [id])
+  targetOrganizationId String
+  targetOrganization   Organization        @relation("FormulaInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
+  createdByUserId      String
+  createdBy            User                @relation("FormulaInviteCreatedBy", fields: [createdByUserId], references: [id])
+  status               FormulaInviteStatus @default(ACTIVE)
+  expiresAt            DateTime
+  usedAt               DateTime?
+  usedByUserId         String?
+  usedBy               User?               @relation("FormulaInviteUsedBy", fields: [usedByUserId], references: [id])
+  createdAt            DateTime            @default(now())
+  revokedAt            DateTime?
+  audits               FormulaAccessAudit[]
+
+  @@index([nppOrganizationId, status])
+  @@index([targetOrganizationId, status])
+}
+
+model FormulaAccessAudit {
+  id                    String              @id @default(cuid())
+  organizationId        String
+  organization          Organization        @relation("FormulaAuditOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUserId            String
+  actor                  User                @relation("FormulaAuditActor", fields: [actorUserId], references: [id])
+  actorRole              String
+  action                 FormulaAccessAction
+  fromNppOrganizationId  String?
+  fromNppOrganization    Organization?       @relation("FormulaAuditFromNpp", fields: [fromNppOrganizationId], references: [id])
+  toNppOrganizationId    String?
+  toNppOrganization      Organization?       @relation("FormulaAuditToNpp", fields: [toNppOrganizationId], references: [id])
+  formulaInviteId        String?
+  formulaInvite          FormulaInvite?      @relation(fields: [formulaInviteId], references: [id])
+  metadata               Json?
+  createdAt              DateTime            @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model EurohouseFeatureGrant {
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  organization        Organization            @relation("EurohouseGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  featureKey          EurohouseFeatureKey
+  status              EurohouseAccessStatus
+  nppOrganizationId   String?
+  nppOrganization     Organization?           @relation("EurohouseGrantNpp", fields: [nppOrganizationId], references: [id], onDelete: SetNull)
+  source              EurohouseAccessSource
+  activatedByUserId   String
+  activatedBy         User                    @relation("EurohouseGrantActivatedBy", fields: [activatedByUserId], references: [id])
+  activatedAt         DateTime                @default(now())
+  revokedByUserId     String?
+  revokedBy           User?                   @relation("EurohouseGrantRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  revokedAt           DateTime?
+  revokeReason        String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@unique([organizationId, featureKey])
+  @@index([nppOrganizationId, featureKey, status])
+}
+
+model EurohouseInvite {
+  id                   String                  @id @default(cuid())
+  codeHash             String                  @unique
+  codePrefix           String
+  codeLast4            String
+  featureKeys          EurohouseFeatureKey[]
+  nppOrganizationId    String
+  nppOrganization      Organization            @relation("EurohouseInviteNpp", fields: [nppOrganizationId], references: [id])
+  targetOrganizationId String
+  targetOrganization   Organization            @relation("EurohouseInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
+  createdByUserId      String
+  createdBy            User                    @relation("EurohouseInviteCreatedBy", fields: [createdByUserId], references: [id])
+  status               EurohouseInviteStatus   @default(ACTIVE)
+  expiresAt            DateTime
+  usedAt               DateTime?
+  usedByUserId         String?
+  usedBy               User?                   @relation("EurohouseInviteUsedBy", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                @default(now())
+  revokedAt            DateTime?
+  audits               EurohouseAccessAudit[]
+
+  @@index([nppOrganizationId, status])
+  @@index([targetOrganizationId, status])
+}
+
+model EurohouseAccessAudit {
+  id                    String                  @id @default(cuid())
+  organizationId        String
+  organization          Organization            @relation("EurohouseAuditOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  featureKey            EurohouseFeatureKey?
+  actorUserId           String
+  actor                 User                    @relation("EurohouseAuditActor", fields: [actorUserId], references: [id])
+  actorRole             String
+  action                EurohouseAccessAction
+  fromNppOrganizationId String?
+  fromNppOrganization   Organization?           @relation("EurohouseAuditFromNpp", fields: [fromNppOrganizationId], references: [id], onDelete: SetNull)
+  toNppOrganizationId   String?
+  toNppOrganization     Organization?           @relation("EurohouseAuditToNpp", fields: [toNppOrganizationId], references: [id], onDelete: SetNull)
+  eurohouseInviteId     String?
+  eurohouseInvite       EurohouseInvite?        @relation(fields: [eurohouseInviteId], references: [id], onDelete: SetNull)
+  metadata              Json?
+  createdAt             DateTime                @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([featureKey, createdAt])
 }
 
 model Department {
@@ -201,7 +450,16 @@ model Order {
   note                  String                 @default("")
   accessoriesNote       String                 @default("")
   totalKg               Float                  @default(0)
+  theoreticalTotalKg    Float                  @default(0)
+  actualTotalKg         Float?
   totalAmount           Int                    @default(0)
+  pricingStatus         String                 @default("PENDING_NPP") // PENDING_NPP | FINALIZED | ESTIMATED_COMPANY
+  finalUnitPricePerKg   Int?
+  pricingDiscountAmount Int                   @default(0)
+  pricingSurchargeAmount Int                  @default(0)
+  pricingNote           String                 @default("")
+  priceConfirmedAt      DateTime?
+  priceConfirmedById    String?
   dueNote               String                 @default("")
   customerCode          String                 @default("") // Mã khách hàng (admin nhập khi xuất kho)
   invoiceNo             String                 @default("") // Số hóa đơn
@@ -301,6 +559,7 @@ model Project {
   debtCustomer  Int @default(0) // Khách nợ mình
 
   note                 String                    @default("")
+  archivedAt           DateTime?
   costs                ProjectCost[]
   debts                Debt[]
   cashTransactions     CashTransaction[]
@@ -315,7 +574,7 @@ model Project {
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
 
-  @@index([organizationId, updatedAt])
+  @@index([organizationId, archivedAt, updatedAt])
   @@index([customerV2Id])
 }
 
@@ -697,6 +956,9 @@ model Lead {
   address         String   @default("")
   province        String   @default("") // Tỉnh
   phone           String   @default("")
+  email           String   @default("")
+  message         String   @default("")
+  source          String   @default("ADMIN") // ADMIN | WEBSITE | MOBILE_SUPPORT
   leadType        String   @default("GENERAL")
   sourceUrl       String?
   referrer        String?
@@ -714,6 +976,7 @@ model Lead {
 
   @@index([managedById])
   @@index([province])
+  @@index([source])
 }
 
 model SaleReport {
@@ -774,12 +1037,30 @@ model WorkshopWorker {
   baseRate            Int                  @default(0)
   overtimeRate        Int                  @default(0)
   standardMonthlyDays Int                  @default(26)
+  sundayPayEnabled    Boolean              @default(false)
+  sundayPayPercent    Int                  @default(200)
+  holidayPayEnabled   Boolean              @default(false)
+  holidayPayPercent   Int                  @default(300)
   active              Boolean              @default(true)
   attendances         WorkshopAttendance[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
   @@index([organizationId, active])
+}
+
+model WorkshopWorkdaySetting {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation("WorkshopWorkdayOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  workDate       DateTime
+  isHoliday      Boolean      @default(false)
+  label          String       @default("Lễ/Tết")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, workDate])
+  @@index([organizationId, workDate])
 }
 
 model WorkshopAttendance {
@@ -904,17 +1185,21 @@ model DoorModel {
   type           String // WINDOW_SLIDING, DOOR_OPEN...
   imageUrl       String           @default("") // Ảnh minh hoạ kiểu dáng cửa
   description    String           @default("")
+  source         String           @default("LEGACY_REFERENCE") // LEGACY_REFERENCE | EUROHOUSE_ADMIN
+  active         Boolean          @default(true)
   formulas       CuttingFormula[]
   systemFormulas SystemFormula[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+
+  @@index([source, active])
 }
 
 model CuttingFormula {
   id            String    @id @default(cuid())
   doorModelId   String
   doorModel     DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
-  aluSystem     String // VD: EUROQUEEN Hệ 55
+  aluSystem     String // VD: Hệ 55 Vát Cạnh
   profileName   String // VD: Khung bao đứng, Cánh, Nẹp kính
   lengthFormula String // VD: "H - 50" (chiều cao trừ 50mm)
   widthFormula  String    @default("") // Tuỳ chọn, nếu cắt theo chiều rộng "W/2 - 10"
@@ -980,16 +1265,27 @@ model FormulaTemplate {
 }
 
 model SystemFormula {
-  id            String    @id @default(cuid())
-  aluSystemId   String
-  aluSystem     AluSystem @relation(fields: [aluSystemId], references: [id], onDelete: Cascade)
-  doorModelId   String
-  doorModel     DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
-  excelFilePath String    @default("") // Đường dẫn tới file Excel chứa công thức
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  stableKey          String?   @unique
+  aluSystemId        String
+  aluSystem          AluSystem @relation(fields: [aluSystemId], references: [id], onDelete: Cascade)
+  doorModelId        String
+  doorModel          DoorModel @relation(fields: [doorModelId], references: [id], onDelete: Cascade)
+  excelFilePath      String    @default("") // Đường dẫn tới file Excel chứa công thức
+  inputSchema        Json?
+  cutRules           Json?
+  glassRules         Json?
+  sourceRef          String    @default("")
+  verificationStatus String    @default("CANDIDATE") // CANDIDATE | SOURCE_VERIFIED | FIELD_VERIFIED
+  status             String    @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  revision           Int       @default(1)
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@unique([aluSystemId, doorModelId])
+  @@index([status])
+  @@index([verificationStatus])
 }
 
 // ---------- Truyền thông & Khuyến mại ----------
@@ -1024,11 +1320,13 @@ enum LibraryCategory {
   PROJECT_IMAGE
   DOOR_SAMPLE
   SHORT_VIDEO
+  PRODUCT_CATALOG
 }
 
 enum MediaType {
   IMAGE
   VIDEO
+  DOCUMENT
 }
 
 model LibraryItem {
