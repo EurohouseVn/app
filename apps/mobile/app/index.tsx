@@ -8,6 +8,7 @@ import { Icon, type IconName } from '../src/components/Icon';
 import { api, assetUrl } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth';
 import { formulaUiState } from '../src/lib/formulaAccess';
+import { featureUiState } from '../src/lib/eurohouseFeatureAccess';
 import { statusText, statusTone } from '../src/lib/orderStatus';
 import { fetchWeatherForecast, loadWeatherLocation, resolveOrganizationLocation, weatherIcon, weatherText } from '../src/lib/weather';
 import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
@@ -261,7 +262,8 @@ function AuthenticatedHomeScreen() {
   }, [workspace?.role]);
   const primaryActions = useMemo(() => primaryActionLabels.flatMap((label) => quickActions.filter((action) => action.label === label)), []);
   const visibleActions = showAllActions ? workspaceActions : primaryActions;
-  const formulaState = formulaUiState(user?.capabilities.formulas);
+  const formulaState = formulaUiState(user?.capabilities.eurohouse.features.FORMULA_CUTTING ?? user?.capabilities.formulas);
+  const orderingState = featureUiState(user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING);
 
   function changeModalImage(delta: number) {
     if (modalImages.length === 0) return;
@@ -444,6 +446,7 @@ function AuthenticatedHomeScreen() {
               <Link key={action.label} href={action.href} asChild>
                 <Pressable style={styles.actionItem}>
                   {action.label === 'Công thức' && formulaState.showLockedScreen ? <View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{formulaState.statusLabel}</Text></View> : null}
+                  {action.label === 'Đặt nhôm' && !orderingState.active ? <View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{orderingState.statusLabel}</Text></View> : null}
                   <View style={[styles.actionIcon, { backgroundColor: action.bg }]}>
                     <Icon name={action.icon} size={21} color={action.color} />
                   </View>
