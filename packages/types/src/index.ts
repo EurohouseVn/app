@@ -1,5 +1,12 @@
 export type UserRole = 'ADMIN' | 'STAFF' | 'NPP' | 'DAILY' | 'FACTORY';
 
+export * from './formulaSystemVisibility.js';
+export * from './accessScopes.js';
+export * from './eurohouseAccess.js';
+export * from './formulaAccess.js';
+import { INTERNAL_MODULES } from './accessScopes.js';
+import type { FormulaCapability } from './formulaAccess.js';
+
 export type UserStatus = 'active' | 'locked';
 
 export interface UserSummary {
@@ -53,7 +60,7 @@ export interface RegisterFactoryInput {
 export interface AuthUser {
   id: string;
   displayName: string;
-  email: string;
+  email?: string;
   phone: string;
   role: UserRole;
   organizationId?: string;
@@ -68,6 +75,9 @@ export interface AuthUser {
   jobTitle?: string;
   permissions?: string[];
   rbacRoleId?: string;
+  capabilities: {
+    formulas: FormulaCapability;
+  };
 }
 
 export type DashboardTone = 'brandOrange' | 'success' | 'warning' | 'danger' | 'brandBlack';
@@ -324,12 +334,19 @@ export interface CreateOrderInput {
 }
 
 export interface CreateAdminToNppShipmentInput {
-  nppOrgId: string;
-  invoiceNo?: string;
-  poNo?: string;
+  sourceOrderId: string;
   note?: string;
   actualTotalKg?: number;
-  items: CreateOrderItemInput[];
+}
+
+export type OrderPricingStatus = 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
+
+export interface CreateNppDeliveryInput {
+  actualTotalKg: number;
+  finalUnitPricePerKg: number;
+  discountAmount?: number;
+  surchargeAmount?: number;
+  pricingNote?: string;
 }
 
 export interface OrderStockWarning {
@@ -346,7 +363,11 @@ export interface CreateOrderResult {
   nppOrgId?: string;
   nppName: string;
   totalKg: number;
+  theoreticalTotalKg: number;
+  actualTotalKg?: number;
   totalAmount: number;
+  pricingStatus: OrderPricingStatus;
+  finalUnitPricePerKg?: number;
   stockWarnings: OrderStockWarning[];
   nppWarning?: string;
 }
@@ -660,37 +681,7 @@ export interface AdminModule {
 
 /** Danh mục module khớp với navItems của AdminShell. */
 export const ADMIN_MODULES: AdminModule[] = [
-  { key: 'dashboard', label: 'Tổng quan', href: '/' },
-  { key: 'orders', label: 'Đơn hàng', href: '/orders' },
-  { key: 'inventory', label: 'Kho NVL', href: '/inventory' },
-  { key: 'debts', label: 'Công nợ', href: '/debts' },
-  { key: 'cashflow', label: 'Thu chi', href: '/cashflow' },
-  { key: 'reports', label: 'Báo cáo tài chính', href: '/reports' },
-  { key: 'users', label: 'Người dùng', href: '/users' },
-  { key: 'catalog', label: 'Hệ nhôm', href: '/catalog' },
-  { key: 'accounting-pricing', label: 'Bảng giá & Báo giá', href: '/accounting/pricing' },
-  { key: 'sales-projects', label: 'Mảng dự án', href: '/sales/projects' },
-  { key: 'sales-npp', label: 'Nhà phân phối', href: '/sales/distributors' },
-  { key: 'sales-factories', label: 'Xưởng sản xuất', href: '/sales/factories' },
-  { key: 'warranties', label: 'Bảo hành', href: '/warranties' },
-  { key: 'promotions', label: 'Khuyến mãi', href: '/promotions' },
-  { key: 'loyalty', label: 'Loyalty', href: '/loyalty' },
-  { key: 'library', label: 'Thư viện', href: '/library' },
-  { key: 'website', label: 'Quản trị Website', href: '/website' },
-  { key: 'roles', label: 'Chức danh', href: '/roles' },
-  { key: 'sales-leads', label: 'Xưởng tiềm năng', href: '/sales/leads' },
-  { key: 'sales-reports', label: 'Báo cáo sale', href: '/sales/reports' },
-  { key: 'sales-targets', label: 'Theo dõi doanh số', href: '/sales/targets' },
-  { key: 'payroll', label: 'Bảng lương', href: '/payroll' },
-  { key: 'prod-dashboard', label: 'Dashboard Sản Xuất', href: '/production/dashboard' },
-  { key: 'prod-work-orders', label: 'Lệnh Sản Xuất', href: '/production/work-orders' },
-  { key: 'prod-shop-floor', label: 'Xưởng (Kiosk)', href: '/production/shop-floor' },
-  { key: 'workshop-operations', label: 'Điều hành xưởng', href: '/workshop/operations' },
-  { key: 'prod-dies', label: 'Khuôn Đùn', href: '/production/dies' },
-  { key: 'formulas', label: 'Mẫu Cửa', href: '/formulas' },
-  { key: 'manufacturing-datasets', label: 'Dataset kỹ thuật', href: '/manufacturing/datasets' },
-  { key: 'manufacturing-verification', label: 'Xác minh sản xuất', href: '/manufacturing/verification' },
-  { key: 'manufacturing-traces', label: 'Trace tính toán', href: '/manufacturing/traces' },
+  ...INTERNAL_MODULES.map(({ key, label, href }) => ({ key, label, href })),
 ];
 
 export const ADMIN_MODULE_KEYS: string[] = ADMIN_MODULES.map((m) => m.key);
@@ -1147,6 +1138,10 @@ export interface WorkshopWorker {
   baseRate: number;
   overtimeRate: number;
   standardMonthlyDays: number;
+  sundayPayEnabled: boolean;
+  sundayPayPercent: number;
+  holidayPayEnabled: boolean;
+  holidayPayPercent: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1184,11 +1179,21 @@ export interface WorkshopReminder {
 export interface WorkshopPayrollRow {
   worker: WorkshopWorker;
   daysWorked: number;
+  sundayDays: number;
+  holidayDays: number;
   regularHours: number;
   overtimeHours: number;
   basePay: number;
+  sundayPay: number;
+  holidayPay: number;
   overtimePay: number;
   estimatedPay: number;
+}
+
+export interface WorkshopWorkdaySetting {
+  date: string;
+  isHoliday: boolean;
+  label: string;
 }
 
 export interface WorkforceDashboard {
@@ -1211,6 +1216,10 @@ export interface CreateWorkshopWorkerInput {
   baseRate: number;
   overtimeRate?: number;
   standardMonthlyDays?: number;
+  sundayPayEnabled?: boolean;
+  sundayPayPercent?: number;
+  holidayPayEnabled?: boolean;
+  holidayPayPercent?: number;
 }
 
 export interface CreateWorkshopReminderInput {
@@ -1225,8 +1234,16 @@ export interface CutResult {
   materialName?: string;
   pieces: number[];
   usedDeXeIds: string[];
+  usedDeXe: Array<{ id: string; quantity: number }>;
   newBarsNeeded: number;
   newDeXeGenerated: number[];
+  kgPerMeter: number;
+  barLengthMm: number;
+  inputKg: number;
+  newStockKg: number;
+  usedDeXeKg: number;
+  finishedKg: number;
+  reusableRemnantKg: number;
   scrapGeneratedKg: number;
   barLayouts?: BarCuttingLayout[];
 }
