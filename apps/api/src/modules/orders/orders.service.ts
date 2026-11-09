@@ -1,9 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { InventoryType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   ConvertQuoteToOrderInput,
   CreateNppFactoryInput,
   CreateAdminToNppShipmentInput,
+  CreateNppDeliveryInput,
   CreateOrderInput,
   NppDashboardData,
   NppFactoryItem,
@@ -15,6 +17,8 @@ import type {
 import type { JwtUser } from '../../auth/current-user.decorator';
 import { QuotationBomService } from '../quotations/quotation-bom.service';
 import { InventoryCommandService, type InventoryCommandContext } from '../inventory/inventory-command.service';
+import { businessDateUtcRange, formatNppInvoiceNumber, formatNppPoNumber } from './order-identifiers';
+import { EurohouseAccessService } from '../eurohouse-access/eurohouse-access.service';
 
 const STD_BAR_M = 6;
 
@@ -43,6 +47,45 @@ function requireSingleColorCode(colorCode?: string) {
 const ORDER_KG_PER_BLOCK = 100;
 const ORDER_POINTS_PER_KG_BLOCK = 10;
 
+export function calculateNppDeliveryPricing(input: CreateNppDeliveryInput) {
+  const actualTotalKg = Number(input.actualTotalKg);
+  const finalUnitPricePerKg = Number(input.finalUnitPricePerKg);
+  const discountAmount = Number(input.discountAmount ?? 0);
+  const surchargeAmount = Number(input.surchargeAmount ?? 0);
+
+  if (!Number.isFinite(actualTotalKg) || actualTotalKg <= 0) {
+    throw new BadRequestException('Nhập tổng kg thực tế cân của toàn đơn giao.');
+  }
+  if (!Number.isFinite(finalUnitPricePerKg) || finalUnitPricePerKg <= 0) {
+    throw new BadRequestException('Nhập đơn giá NPP áp dụng cho đơn giao.');
+  }
+  if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+    throw new BadRequestException('Giảm giá không hợp lệ.');
+  }
+  if (!Number.isFinite(surchargeAmount) || surchargeAmount < 0) {
+    throw new BadRequestException('Phụ phí không hợp lệ.');
+  }
+
+  const normalizedKg = Number(actualTotalKg.toFixed(2));
+  const normalizedUnitPrice = Math.round(finalUnitPricePerKg);
+  const normalizedDiscount = Math.round(discountAmount);
+  const normalizedSurcharge = Math.round(surchargeAmount);
+  const subtotalAmount = Math.round(normalizedKg * normalizedUnitPrice);
+  const finalTotalAmount = subtotalAmount - normalizedDiscount + normalizedSurcharge;
+  if (finalTotalAmount <= 0) {
+    throw new BadRequestException('Thành tiền sau giảm giá và phụ phí phải lớn hơn 0.');
+  }
+
+  return {
+    actualTotalKg: normalizedKg,
+    finalUnitPricePerKg: normalizedUnitPrice,
+    discountAmount: normalizedDiscount,
+    surchargeAmount: normalizedSurcharge,
+    subtotalAmount,
+    finalTotalAmount,
+  };
+}
+
 function normalizeCodePart(value: string): string {
   const noMarks = value
     .trim()
@@ -59,7 +102,20 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly quotationBom: QuotationBomService,
     private readonly inventoryCommands: InventoryCommandService,
+    @Optional() private readonly eurohouseAccess?: EurohouseAccessService,
   ) {}
+
+  private async assertOrderingMutationAllowed(user?: JwtUser) {
+    if (!user || (user.role !== 'FACTORY' && user.role !== 'DAILY') || !this.eurohouseAccess) return;
+    const capability = await this.eurohouseAccess.getCapability(user.organizationId, 'EUROHOUSE_ORDERING');
+    if (capability.status !== 'ACTIVE') {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'EUROHOUSE_ORDERING_REQUIRED',
+        message: 'Tính năng đặt hàng chỉ áp dụng cho cơ sở đang sản xuất Nhôm Eurohouse.',
+      });
+    }
+  }
 
   private readonly createOrderRequests = new Map<string, { expiresAt: number; promise: Promise<any> }>();
   private theoreticalKg(profile: any, quantity: number, inputKgPerMeter = 0) {
@@ -164,7 +220,20 @@ export class OrdersService {
     return `${prefix}-${ymd}-${String(count + 1).padStart(2, '0')}`;
   }
 
-  async createOrder(input: CreateOrderInput, userId?: string) {
+  private async nextNppPurchaseCode(organization: { id: string; code: string }, now = new Date()): Promise<string> {
+    const { start, end } = businessDateUtcRange(now);
+    const count = await this.prisma.order.count({
+      where: {
+        sourceType: 'NPP_TO_ADMIN',
+        nppOrgId: organization.id,
+        createdAt: { gte: start, lt: end },
+      },
+    });
+    return formatNppPoNumber(organization.code, now, count + 1);
+  }
+
+  async createOrder(input: CreateOrderInput, userId?: string, user?: JwtUser) {
+    await this.assertOrderingMutationAllowed(user);
     const requestId = input.clientRequestId?.trim();
     const requestKey = userId && requestId ? `${userId}:${requestId}` : '';
     const now = Date.now();
@@ -211,11 +280,21 @@ export class OrdersService {
     const missingProfileId = profileIds.find((profileId) => !profileById.has(profileId));
     if (missingProfileId) throw new BadRequestException('Có mã thanh không còn tồn tại trong catalog. Vui lòng tải lại danh mục.');
 
+    const creator = userId ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } }) : null;
+    const canSeeNppStockWarnings = creator?.role === 'NPP';
+    const nppOrganization = creator?.organization?.type === 'NPP' ? creator.organization : null;
+    const createdByNpp = Boolean(nppOrganization);
+    const nppPurchase = createdByNpp && input.sourceType === 'NPP_TO_ADMIN';
+    if (input.sourceType === 'NPP_TO_ADMIN' && !nppOrganization) {
+      throw new BadRequestException('Chỉ tài khoản thuộc NPP mới được tạo đơn đặt hàng công ty.');
+    }
+    const useCompanyCatalogPricing = nppPurchase;
+
     let totalKg = 0;
     let totalAmount = 0;
     const itemsData = input.items.map((item) => {
       const profile = profileById.get(item.profileId);
-      const pricePerKg = profile?.pricePerKg ?? 0;
+      const pricePerKg = useCompanyCatalogPricing ? profile?.pricePerKg ?? 0 : 0;
       const itemKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
@@ -229,11 +308,6 @@ export class OrdersService {
       };
     });
 
-    const creator = userId ? await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } }) : null;
-    const canSeeNppStockWarnings = creator?.role === 'NPP';
-    const nppOrganization = creator?.organization?.type === 'NPP' ? creator.organization : null;
-    const createdByNpp = Boolean(nppOrganization);
-    const nppPurchase = createdByNpp && input.sourceType === 'NPP_TO_ADMIN';
     let factoryOrg = creator?.organization?.type === 'FACTORY' ? creator.organization : null;
     if (createdByNpp && !nppPurchase) {
       if (!input.factoryOrgId) throw new BadRequestException('Chọn cơ sở sản xuất nhận đơn hàng.');
@@ -242,7 +316,9 @@ export class OrdersService {
       });
       if (!factoryOrg) throw new BadRequestException('Cơ sở sản xuất không thuộc phạm vi quản lý của NPP.');
     }
-    const code = await this.nextOrderCode(nppPurchase ? nppOrganization : factoryOrg);
+    const code = nppPurchase
+      ? await this.nextNppPurchaseCode({ id: nppOrganization!.id, code: nppOrganization!.code })
+      : await this.nextOrderCode(factoryOrg);
 
     let nppOrgId: string | null = null;
     let nppName = '';
@@ -285,8 +361,14 @@ export class OrdersService {
         customerPhone: input.customerPhone ?? (nppPurchase ? nppOrganization?.phone : undefined) ?? factoryOrg?.phone ?? creator?.phone ?? '',
         deliveryAddress: input.deliveryAddress ?? (nppPurchase ? nppOrganization?.address : undefined) ?? factoryOrg?.address ?? '',
         colorCode: input.colorCode ?? '', note: input.note ?? '',
+        poNo: nppPurchase ? code : '',
         accessoriesNote: input.accessoriesNote ?? '', status: initialStatus, totalKg,
-        totalAmount, dueNote: nppPurchase ? 'Chờ công ty tiếp nhận' : (createdByNpp ? 'NPP chuẩn bị đơn giao' : (shouldSubmit ? 'Chờ NPP tiếp nhận' : 'Bản nháp')), items: { create: itemsData },
+        theoreticalTotalKg: totalKg,
+        actualTotalKg: null,
+        totalAmount,
+        pricingStatus: nppPurchase ? 'ESTIMATED_COMPANY' : 'PENDING_NPP',
+        dueNote: nppPurchase ? 'Chờ công ty tiếp nhận' : (createdByNpp ? 'Chờ NPP cân và xác nhận giá' : (shouldSubmit ? 'Chờ NPP tiếp nhận' : 'Bản nháp')),
+        items: { create: itemsData },
         histories: { create: [{ status: initialStatus, title: initialTitle, actor: initialActor, note: initialNote }] },
       },
       include: { items: true, histories: { orderBy: { createdAt: 'desc' } } },
@@ -367,6 +449,7 @@ export class OrdersService {
   }
 
   async deleteOrder(id: string, user?: JwtUser) {
+    await this.assertOrderingMutationAllowed(user);
     const existing = await this.prisma.order.findFirst({
       where: { OR: [{ id }, { code: id }] },
     });
@@ -473,6 +556,7 @@ export class OrdersService {
     if (status === 'COMPLETED') {
       await this.createNppDebtForOrder(updated.id);
       await this.awardOrderPoints(updated.id);
+      await this.recordFactoryFullBarInventory(updated.id);
     }
     return this.maskNppStockForWorker(updated, user);
   }
@@ -527,7 +611,72 @@ export class OrdersService {
     });
   }
 
-  async updateOrder(id: string, input: UpdateOrderInput, userId: string) {
+  private async recordFactoryFullBarInventory(orderId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: { include: { profile: { select: { barLengthMm: true } } } },
+        createdBy: { include: { organization: true } },
+      },
+    });
+    if (!order) return;
+    const factoryOrgId = order.factoryOrgId
+      ?? (order.createdBy?.organization?.type === 'FACTORY' ? order.createdBy.organization.id : null);
+    if (!factoryOrgId) return;
+    const inventoryUserId = order.createdById && order.createdBy?.organizationId === factoryOrgId
+      ? order.createdById
+      : (await this.prisma.user.findFirst({
+          where: { organizationId: factoryOrgId, role: { in: ['FACTORY', 'DAILY'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true },
+        }))?.id;
+    if (!inventoryUserId) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `factory-inventory:${order.id}`);
+      const recorded = await tx.orderStatusHistory.findFirst({
+        where: { orderId: order.id, title: 'Kho xưởng nhận cây nguyên' },
+        select: { id: true },
+      });
+      if (recorded) return;
+
+      const grouped = new Map<string, { materialCode: string; lengthMm: number; quantity: number }>();
+      for (const item of order.items) {
+        if (item.quantity <= 0) continue;
+        const materialCode = item.productCode.trim().toUpperCase();
+        if (!materialCode) continue;
+        const lengthMm = item.profile?.barLengthMm || STD_BAR_M * 1000;
+        const key = `${materialCode}:${lengthMm}`;
+        const current = grouped.get(key);
+        if (current) current.quantity += item.quantity;
+        else grouped.set(key, { materialCode, lengthMm, quantity: item.quantity });
+      }
+
+      for (const item of grouped.values()) {
+        const existing = await tx.inventoryItem.findFirst({
+          where: { userId: inventoryUserId, materialCode: item.materialCode, lengthMm: item.lengthMm, type: InventoryType.FULL_BAR },
+          select: { id: true },
+        });
+        if (existing) {
+          await tx.inventoryItem.update({ where: { id: existing.id }, data: { quantity: { increment: item.quantity } } });
+        } else {
+          await tx.inventoryItem.create({ data: { userId: inventoryUserId, materialCode: item.materialCode, lengthMm: item.lengthMm, quantity: item.quantity, type: InventoryType.FULL_BAR } });
+        }
+      }
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          status: 'COMPLETED',
+          title: 'Kho xưởng nhận cây nguyên',
+          actor: 'Hệ thống',
+          note: `Đã ghi nhận ${Array.from(grouped.values()).reduce((sum, item) => sum + item.quantity, 0)} cây nguyên vào kho xưởng.`,
+        },
+      });
+    });
+  }
+
+  async updateOrder(id: string, input: UpdateOrderInput, userId: string, user?: JwtUser) {
+    await this.assertOrderingMutationAllowed(user);
     const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
     if (order.status !== 'DRAFT') throw new BadRequestException('Chỉ có thể sửa đơn khi còn ở trạng thái nháp.');
@@ -536,6 +685,7 @@ export class OrdersService {
     const profileIds = (input.items ?? []).map((i) => i.profileId).filter(Boolean);
     const profiles = profileIds.length ? await this.prisma.profile.findMany({ where: { id: { in: profileIds } } }) : [];
     const profileById = new Map(profiles.map((p) => [p.id, p]));
+    const useCompanyCatalogPricing = order.sourceType === 'NPP_TO_ADMIN';
 
     let totalKg = 0;
     let totalAmount = 0;
@@ -544,7 +694,7 @@ export class OrdersService {
       colorCode: i.colorCode, quantity: i.quantity,
     }))).map((item) => {
       const profile = profileById.get(item.profileId);
-      const pricePerKg = profile?.pricePerKg ?? 0;
+      const pricePerKg = useCompanyCatalogPricing ? profile?.pricePerKg ?? 0 : 0;
       const itemKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, (item as any).kgPerMeter);
       const itemPrice = Math.round(itemKg * pricePerKg);
@@ -573,7 +723,16 @@ export class OrdersService {
       if (input.accessoriesNote !== undefined) updateData.accessoriesNote = input.accessoriesNote;
       if (input.items) {
         updateData.totalKg = totalKg;
+        updateData.theoreticalTotalKg = totalKg;
+        updateData.actualTotalKg = null;
         updateData.totalAmount = totalAmount;
+        updateData.pricingStatus = useCompanyCatalogPricing ? 'ESTIMATED_COMPANY' : 'PENDING_NPP';
+        updateData.finalUnitPricePerKg = null;
+        updateData.pricingDiscountAmount = 0;
+        updateData.pricingSurchargeAmount = 0;
+        updateData.pricingNote = '';
+        updateData.priceConfirmedAt = null;
+        updateData.priceConfirmedById = null;
       }
 
       await tx.order.update({ where: { id }, data: updateData });
@@ -583,6 +742,7 @@ export class OrdersService {
   }
 
   async submitOrderToNpp(id: string, user: JwtUser) {
+    await this.assertOrderingMutationAllowed(user);
     const order = await this.getOrder(id, user);
     if (order.createdById !== user.sub) throw new ForbiddenException('Không có quyền gửi đơn này.');
     if (order.status === 'NEW') return order;
@@ -707,81 +867,80 @@ export class OrdersService {
     return this.toNppFactoryItem(created);
   }
 
-  private async nextAdminShipmentCode(): Promise<string> {
-    const now = new Date();
-    const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const count = await this.prisma.order.count({
-      where: { sourceType: 'ADMIN_TO_NPP', createdAt: { gte: startOfDay, lt: endOfDay } },
-    });
-    return `GIAO-NPP-${ymd}-${String(count + 1).padStart(2, '0')}`;
-  }
-
   async createAdminToNppShipment(input: CreateAdminToNppShipmentInput, userId: string, command: InventoryCommandContext) {
-    if (!input.nppOrgId) throw new BadRequestException('Chọn NPP nhận hàng.');
-    if (!input.items?.length) throw new BadRequestException('Phiếu giao cần ít nhất một dòng hàng.');
-
-    const npp = await this.prisma.organization.findFirst({ where: { id: input.nppOrgId, type: 'NPP' } });
-    if (!npp) throw new NotFoundException('Không tìm thấy NPP.');
-
-    const profileIds = input.items.map((item) => item.profileId).filter(Boolean);
-    const profiles = await this.prisma.profile.findMany({ where: { id: { in: profileIds } } });
-    const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
-
-    let totalKg = 0;
-    let totalAmount = 0;
-    const itemsData = input.items.map((item) => {
-      const profile = profileById.get(item.profileId);
-      if (!profile) throw new BadRequestException(`Không tìm thấy mã thanh ${item.productCode || item.profileId}.`);
-      const itemKg = this.theoreticalKg(profile, item.quantity, item.kgPerMeter);
-      const theoreticalTotalKg = this.theoreticalKg(profile, item.quantity, item.kgPerMeter);
-      const itemPrice = Math.round(itemKg * profile.pricePerKg);
-      totalKg += itemKg;
-      totalAmount += itemPrice;
-      return {
-        profileId: profile.id,
-        productCode: item.productCode || profile.code,
-        productName: item.productName || profile.name,
-        colorCode: item.colorCode ?? '',
-        quantity: item.quantity,
-        unit: 'cây',
-        totalKg: itemKg,
-        theoreticalTotalKg,
-        unitPrice: profile.pricePerKg,
-        totalPrice: itemPrice,
-      };
-    });
-
-    const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
-    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
-
-    for (const item of itemsData) {
-      const profile = profileById.get(item.profileId);
-      if (profile && profile.stockBars < item.quantity) throw new BadRequestException(`Tồn công ty của ${profile.code} không đủ để giao NPP.`);
-    }
-
-    const code = await this.nextAdminShipmentCode();
     return this.inventoryCommands.execute(command, input, async (tx) => {
+      if (!input.sourceOrderId?.trim()) throw new BadRequestException('Chọn đơn đặt hàng của NPP cần giao.');
+      const sourceOrder = await tx.order.findUnique({
+        where: { id: input.sourceOrderId },
+        include: { nppOrg: true, items: { include: { profile: true } } },
+      });
+      if (!sourceOrder) throw new NotFoundException('Không tìm thấy đơn đặt hàng NPP.');
+      if (sourceOrder.sourceType !== 'NPP_TO_ADMIN') throw new BadRequestException('Chỉ có thể tạo phiếu giao từ đơn NPP đặt công ty.');
+      if (!sourceOrder.nppOrg || sourceOrder.nppOrg.type !== 'NPP') throw new BadRequestException('Đơn đặt hàng chưa liên kết với NPP hợp lệ.');
+      if (!['NEW', 'CONFIRMED', 'PROCESSING'].includes(sourceOrder.status)) {
+        throw new BadRequestException('Đơn đặt hàng này không còn ở trạng thái có thể tạo phiếu giao.');
+      }
+      const poNo = sourceOrder.poNo || sourceOrder.code;
+      const existingShipment = await tx.order.findFirst({ where: { sourceType: 'ADMIN_TO_NPP', poNo } });
+      if (existingShipment) throw new BadRequestException(`Đơn ${poNo} đã có phiếu giao.`);
+
+      let totalKg = 0;
+      let totalAmount = 0;
+      const itemsData = sourceOrder.items.map((item) => {
+        const profile = item.profile;
+        if (!profile) throw new BadRequestException(`Mã thanh ${item.productCode} không còn trong catalog.`);
+        if (profile.stockBars < item.quantity) throw new BadRequestException(`Tồn công ty của ${profile.code} không đủ để giao NPP.`);
+        const itemKg = this.theoreticalKg(profile, item.quantity);
+        const itemPrice = Math.round(itemKg * profile.pricePerKg);
+        totalKg += itemKg;
+        totalAmount += itemPrice;
+        return {
+          profileId: profile.id,
+          productCode: item.productCode || profile.code,
+          productName: item.productName || profile.name,
+          colorCode: item.colorCode ?? '',
+          quantity: item.quantity,
+          unit: 'cây',
+          totalKg: itemKg,
+          theoreticalTotalKg: itemKg,
+          unitPrice: profile.pricePerKg,
+          totalPrice: itemPrice,
+        };
+      });
+      if (!itemsData.length) throw new BadRequestException('Đơn NPP không có dòng hàng để giao.');
+      const actualTotalKg = this.resolveActualTotalKg(input.actualTotalKg, totalKg);
+      const actualTotalAmount = this.amountForActualWeight(actualTotalKg, totalKg, totalAmount);
+      const now = new Date();
+      const { start, end } = businessDateUtcRange(now);
+      const existingToday = await tx.order.count({
+        where: { sourceType: 'ADMIN_TO_NPP', nppOrgId: sourceOrder.nppOrg.id, createdAt: { gte: start, lt: end } },
+      });
+      const invoiceNo = formatNppInvoiceNumber(sourceOrder.nppOrg.code, now, existingToday + 1);
       const created = await tx.order.create({
         data: {
-          code,
+          code: invoiceNo,
           sourceType: 'ADMIN_TO_NPP',
           createdById: userId,
-          nppOrgId: npp.id,
-          nppName: npp.name,
-          customerName: npp.name,
-          customerPhone: npp.phone ?? '',
-          deliveryAddress: npp.address ?? '',
+          nppOrgId: sourceOrder.nppOrg.id,
+          nppName: sourceOrder.nppOrg.name,
+          customerName: sourceOrder.nppOrg.name,
+          customerPhone: sourceOrder.nppOrg.phone ?? '',
+          deliveryAddress: sourceOrder.nppOrg.address ?? '',
           note: input.note ?? '',
-          invoiceNo: input.invoiceNo ?? '',
-          poNo: input.poNo ?? '',
+          invoiceNo,
+          poNo,
           status: 'ADMIN_SENT_NPP',
           dueNote: 'Chờ NPP xác nhận nhận đủ hàng',
           totalKg: actualTotalKg,
+          theoreticalTotalKg: totalKg,
+          actualTotalKg,
           totalAmount: actualTotalAmount,
+          pricingStatus: 'FINALIZED',
+          finalUnitPricePerKg: actualTotalKg > 0 ? Math.round(actualTotalAmount / actualTotalKg) : null,
+          priceConfirmedAt: new Date(),
+          priceConfirmedById: userId,
           items: { create: itemsData },
-          histories: { create: [{ status: 'ADMIN_SENT_NPP', title: 'Công ty giao NPP', actor: 'WebAdmin', note: 'Phiếu giao hàng về NPP được tạo.' }] },
+          histories: { create: [{ status: 'ADMIN_SENT_NPP', title: 'Công ty giao NPP', actor: 'WebAdmin', note: `Tạo từ PO ${poNo}.` }] },
         },
         include: { items: { include: { profile: true } }, histories: { orderBy: { createdAt: 'desc' } } },
       });
@@ -802,11 +961,20 @@ export class OrdersService {
         });
       }
 
+      await tx.order.update({
+        where: { id: sourceOrder.id },
+        data: {
+          status: 'SHIPPED',
+          dueNote: `Đã tạo phiếu giao ${invoiceNo}`,
+          histories: { create: { status: 'SHIPPED', title: 'Đã tạo phiếu giao', actor: 'WebAdmin', note: `Số hóa đơn ${invoiceNo}.` } },
+        },
+      });
+
       return created;
     });
   }
 
-  async createNppDelivery(id: string, user: JwtUser, input: { actualTotalKg?: number } = {}, command: InventoryCommandContext) {
+  async createNppDelivery(id: string, user: JwtUser, input: CreateNppDeliveryInput, command: InventoryCommandContext) {
     const order = await this.getOrder(id, user);
     if (!order.nppOrgId || !user.organizationId || order.nppOrgId !== user.organizationId) throw new ForbiddenException('Không có quyền tạo đơn giao.');
     if (order.status === 'SHIPPED') return order;
@@ -839,17 +1007,13 @@ export class OrdersService {
       stocksByKey.set(key, { id: stock.id, stockBars: stock.stockBars });
     }
 
-    const theoreticalTotalKg = order.items.reduce((sum: number, item: any) => sum + (item.totalKg || 0), 0) || order.totalKg;
-    const theoreticalAmount = order.items.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0) || order.totalAmount;
-    const submittedActualKg = Number(input.actualTotalKg);
-    if (!Number.isFinite(submittedActualKg) || submittedActualKg <= 0) {
-      throw new BadRequestException('Nhập tổng kg thực tế cân của toàn đơn giao.');
-    }
-    if (submittedActualKg + 0.01 < theoreticalTotalKg) {
+    const theoreticalTotalKg = order.theoreticalTotalKg
+      || order.items.reduce((sum: number, item: { theoreticalTotalKg: number; totalKg: number }) => sum + (item.theoreticalTotalKg || item.totalKg || 0), 0)
+      || order.totalKg;
+    const pricing = calculateNppDeliveryPricing(input);
+    if (pricing.actualTotalKg + 0.01 < theoreticalTotalKg) {
       throw new BadRequestException(`Kg thực tế không được thấp hơn kg theo tỷ trọng (${theoreticalTotalKg.toFixed(2)} kg).`);
     }
-    const actualTotalKg = Number(submittedActualKg.toFixed(2));
-    const actualTotalAmount = this.amountForActualWeight(actualTotalKg, theoreticalTotalKg, theoreticalAmount);
     const actor = await this.actorNameForUser(user, 'NPP');
 
     await this.inventoryCommands.execute(command, { orderId: id, ...input }, async (tx) => {
@@ -880,13 +1044,33 @@ export class OrdersService {
       }
       const transitioned = await tx.order.updateMany({
         where: { id: order.id, status: order.status },
-        data: { status: 'SHIPPED', dueNote: 'Đã tạo đơn giao từ NPP', totalKg: actualTotalKg, totalAmount: actualTotalAmount },
+        data: {
+          status: 'SHIPPED',
+          dueNote: 'NPP đã cân hàng và chốt giá trị giao',
+          totalKg: pricing.actualTotalKg,
+          theoreticalTotalKg,
+          actualTotalKg: pricing.actualTotalKg,
+          totalAmount: pricing.finalTotalAmount,
+          pricingStatus: 'FINALIZED',
+          finalUnitPricePerKg: pricing.finalUnitPricePerKg,
+          pricingDiscountAmount: pricing.discountAmount,
+          pricingSurchargeAmount: pricing.surchargeAmount,
+          pricingNote: input.pricingNote?.trim() || '',
+          priceConfirmedAt: new Date(),
+          priceConfirmedById: user.sub,
+        },
       });
       if (transitioned.count === 0) throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại trước khi tạo đơn giao.');
       await tx.orderStatusHistory.create({
-        data: { orderId: order.id, status: 'SHIPPED', title: 'Tạo đơn giao', actor, note: `NPP tạo đơn giao, cân thực tế ${actualTotalKg.toFixed(2)} kg và trừ kho NPP.` },
+        data: {
+          orderId: order.id,
+          status: 'SHIPPED',
+          title: 'Cân hàng và chốt giá',
+          actor,
+          note: `NPP xác nhận ${pricing.actualTotalKg.toFixed(2)} kg thực tế, đơn giá ${pricing.finalUnitPricePerKg.toLocaleString('vi-VN')} đ/kg, thành tiền ${pricing.finalTotalAmount.toLocaleString('vi-VN')} đ.`,
+        },
       });
-      return { success: true, orderId: order.id, actualTotalKg };
+      return { success: true, orderId: order.id, ...pricing };
     });
 
     return this.getOrder(id, user);
@@ -898,6 +1082,7 @@ export class OrdersService {
     if (order.status === 'COMPLETED') {
       await this.createNppDebtForOrder(order.id);
       await this.awardOrderPoints(order.id);
+      await this.recordFactoryFullBarInventory(order.id);
       return order;
     }
     if (!['SHIPPED', 'DELIVERED'].includes(order.status)) throw new BadRequestException('Chỉ hoàn thành đơn sau khi đã tạo đơn giao.');
@@ -922,6 +1107,7 @@ export class OrdersService {
 
     await this.createNppDebtForOrder(order.id);
     await this.awardOrderPoints(order.id);
+    await this.recordFactoryFullBarInventory(order.id);
 
     return this.getOrder(id, user);
   }
@@ -1003,6 +1189,7 @@ export class OrdersService {
   }
 
   async convertQuotationToOrder(input: ConvertQuoteToOrderInput, user: JwtUser) {
+    await this.assertOrderingMutationAllowed(user);
     const quotation = await this.prisma.quotation.findUnique({
       where: { id: input.quotationId },
       include: { items: true },
@@ -1030,6 +1217,6 @@ export class OrdersService {
       items: orderItemsInput,
     };
 
-    return this.createOrder(orderInput, user.sub);
+    return this.createOrder(orderInput, user.sub, user);
   }
 }

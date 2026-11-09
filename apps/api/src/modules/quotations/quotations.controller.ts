@@ -12,6 +12,9 @@ import { CuttingOptimizerService, CutRequest } from './cutting-optimizer.service
 import { imageExtension, IMAGE_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
 import { StorageService } from '../storage/storage.service';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { QuotationContractPdfService, type ContractTermsInput } from './quotation-contract-pdf.service';
+import { RequireFormulaAccess } from '../formula-access/formula-access.decorator';
+import { RequiresEurohouseFeature } from '../eurohouse-access/eurohouse-feature.decorator';
 
 @Controller()
 export class QuotationsController {
@@ -45,6 +48,7 @@ export class QuotationsController {
   constructor(
     private readonly service: QuotationsService,
     private readonly pdfService: QuotationPdfService,
+    private readonly contractPdf: QuotationContractPdfService,
     private readonly formulaService: FormulaEvaluatorService,
     private readonly cuttingOptimizer: CuttingOptimizerService,
     private readonly storage: StorageService,
@@ -58,6 +62,7 @@ export class QuotationsController {
   }
 
   @Get('formulas/templates')
+  @RequireFormulaAccess()
   listTemplates(
     @Query('q') query?: string,
     @Query('systemName') systemName?: string,
@@ -76,11 +81,13 @@ export class QuotationsController {
   }
 
   @Get('formulas/templates/:id')
+  @RequireFormulaAccess()
   async getTemplate(@Param('id') id: string) {
     return this.formulaService.getTemplateDetails(id);
   }
 
   @Post('formulas/templates/:id/calc')
+  @RequireFormulaAccess()
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async calcTemplate(@Param('id') id: string, @Body() body: Record<string, any>) {
@@ -88,6 +95,7 @@ export class QuotationsController {
   }
 
   @Post('quotations/optimize-cut')
+  @RequireFormulaAccess()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
   async optimizeCut(@Body() requests: CutRequest[], @CurrentUser() user: JwtUser) {
@@ -95,6 +103,7 @@ export class QuotationsController {
   }
 
   @Post('quotations/:id/optimize')
+  @RequireFormulaAccess()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
   async optimizeQuotation(@Param('id') id: string, @CurrentUser() user: JwtUser) {
@@ -208,7 +217,23 @@ export class QuotationsController {
     return this.service.convertToProject(id, user);
   }
 
+  @Post('quotations/:id/contract-pdf')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY')
+  async getContractPdf(@Param('id') id: string, @Body() body: ContractTermsInput, @Res() res: any, @CurrentUser() user: JwtUser) {
+    const record = await this.service.getQuotation(id, user);
+    const profile = await this.service.getNppProfile(record.createdById || user.sub);
+    const pdf = await this.contractPdf.render(record, profile, body);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="hop-dong-${record.code}.pdf"`,
+      'Content-Length': pdf.length,
+    });
+    res.end(pdf);
+  }
+
   @Post('projects/:id/create-order-draft')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY')
   createOrderDraftFromProject(@Param('id') id: string, @CurrentUser() user: JwtUser) {

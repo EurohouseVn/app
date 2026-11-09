@@ -5,6 +5,7 @@ import {
   NppEurohouseAccessController,
 } from './eurohouse-access.controller';
 import { EurohouseAccessAdminController } from './eurohouse-access-admin.controller';
+import { EurohouseFeatureGuard } from './eurohouse-feature.guard';
 
 @Global()
 @Module({
@@ -13,7 +14,7 @@ import { EurohouseAccessAdminController } from './eurohouse-access-admin.control
     NppEurohouseAccessController,
     EurohouseAccessAdminController,
   ],
-  providers: [EurohouseAccessService],
-  exports: [EurohouseAccessService],
+  providers: [EurohouseAccessService, EurohouseFeatureGuard],
+  exports: [EurohouseAccessService, EurohouseFeatureGuard],
 })
 export class EurohouseAccessModule {}

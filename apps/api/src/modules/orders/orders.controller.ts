@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import type { ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
+import type { ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateNppDeliveryInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -10,6 +10,7 @@ import { CatalogService } from '../catalog/catalog.service';
 import * as exceljs from 'exceljs';
 import { assertInventoryMutationAllowed } from '../inventory/inventory-mutation-policy';
 import type { InventoryCommandContext } from '../inventory/inventory-command.service';
+import { RequiresEurohouseFeature } from '../eurohouse-access/eurohouse-feature.decorator';
 
 function inventoryCommand(user: JwtUser, key: string | undefined, ownerType: 'COMPANY_STOCK' | 'NPP_STOCK', ownerId: string, command: string): InventoryCommandContext {
   if (!key) throw new BadRequestException('Idempotency-Key header is required for inventory mutations.');
@@ -26,13 +27,15 @@ export class OrdersController {
   ) {}
 
   @Post('orders')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'NPP', 'FACTORY')
   createOrder(@Body() body: CreateOrderInput, @CurrentUser() user: JwtUser) {
-    return this.service.createOrder(body, user.sub);
+    return this.service.createOrder(body, user.sub, user);
   }
 
   @Post('orders/convert-from-quotation')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
   convertFromQuotation(@Body() body: ConvertQuoteToOrderInput, @CurrentUser() user: JwtUser) {
@@ -67,6 +70,7 @@ export class OrdersController {
   }
 
   @Delete('orders/:id')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY')
   deleteOrder(@Param('id') id: string, @CurrentUser() user: JwtUser) {
@@ -74,10 +78,11 @@ export class OrdersController {
   }
 
   @Patch('orders/:id')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('FACTORY')
   updateOrder(@Param('id') id: string, @Body() body: UpdateOrderInput, @CurrentUser() user: JwtUser) {
-    return this.service.updateOrder(id, body, user.sub);
+    return this.service.updateOrder(id, body, user.sub, user);
   }
 
   @Post('orders/:id/status')
@@ -88,6 +93,7 @@ export class OrdersController {
   }
 
   @Post('orders/:id/submit-npp')
+  @RequiresEurohouseFeature('EUROHOUSE_ORDERING')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('FACTORY', 'DAILY')
   submitOrderToNpp(@Param('id') id: string, @CurrentUser() user: JwtUser) {
@@ -128,9 +134,7 @@ export class OrdersController {
       invoiceNo: order.invoiceNo ?? '',
       poNo: order.poNo ?? '',
       createdAt: order.createdAt,
-      actualTotalKg: order.sourceType === 'ADMIN_TO_NPP' || ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status)
-        ? order.totalKg
-        : undefined,
+      actualTotalKg: order.actualTotalKg ?? undefined,
       colorNameByCode,
       items: order.items.map((it: any) => ({
         profileCode: it.profile?.code ?? it.productCode,
@@ -207,10 +211,14 @@ export class OrdersController {
       invoiceNo: order.invoiceNo ?? '',
       poNo: order.poNo ?? '',
       debtAmount: order.totalAmount,
+      finalUnitPricePerKg: order.finalUnitPricePerKg ?? undefined,
+      discountAmount: order.pricingDiscountAmount,
+      surchargeAmount: order.pricingSurchargeAmount,
+      pricingNote: order.pricingNote,
       accessoriesNote: order.accessoriesNote ?? '',
       signatureLabels: ['CHỦ NPP', 'NHÂN VIÊN GIAO HÀNG', 'KHÁCH HÀNG NHẬN HÀNG'],
       createdAt: order.createdAt,
-      actualTotalKg: ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) ? order.totalKg : undefined,
+      actualTotalKg: order.actualTotalKg ?? undefined,
       colorNameByCode,
       items: order.items.map((it: any) => ({
         profileCode: it.profile?.code ?? it.productCode,
@@ -244,9 +252,9 @@ export class OrdersController {
       { header: 'Tên hàng', key: 'name', width: 32 },
       { header: 'Màu', key: 'color', width: 18 },
       { header: 'Số cây', key: 'quantity', width: 12 },
-      { header: 'Số kg', key: 'kg', width: 12 },
-      { header: 'Đơn giá', key: 'unitPrice', width: 14 },
-      { header: 'Thành tiền', key: 'amount', width: 16 },
+      { header: 'Kg theo tỷ trọng', key: 'kg', width: 18 },
+      { header: 'Ghi chú giá', key: 'unitPrice', width: 18 },
+      { header: 'Giá trị dòng', key: 'amount', width: 16 },
     ];
     sheet.spliceRows(1, 0,
       ['PHIẾU GIAO HÀNG'],
@@ -268,14 +276,19 @@ export class OrdersController {
         color: item.colorCode ?? '',
         quantity: item.quantity,
         kg: item.totalKg,
-        unitPrice: item.unitPrice,
-        amount: item.totalPrice,
+        unitPrice: 'Chốt toàn đơn',
+        amount: '',
       });
     });
     sheet.addRow([]);
-    const totalRow = sheet.addRow(['', '', '', 'TỔNG CỘNG (KG THỰC TẾ CÂN)', order.items.reduce((s: number, item: any) => s + item.quantity, 0), order.totalKg, '', order.totalAmount]);
+    const totalRow = sheet.addRow(['', '', '', 'TỔNG KG THỰC TẾ CÂN', order.items.reduce((s: number, item: any) => s + item.quantity, 0), order.actualTotalKg ?? order.totalKg, '', '']);
     totalRow.font = { bold: true };
     totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E7' } };
+    sheet.addRow(['', '', '', 'ĐƠN GIÁ NPP', '', '', order.finalUnitPricePerKg ?? 0, '']);
+    sheet.addRow(['', '', '', 'GIẢM GIÁ', '', '', '', order.pricingDiscountAmount ?? 0]);
+    sheet.addRow(['', '', '', 'PHỤ PHÍ', '', '', '', order.pricingSurchargeAmount ?? 0]);
+    const valueRow = sheet.addRow(['', '', '', 'THÀNH TIỀN CHÍNH THỨC', '', '', '', order.totalAmount]);
+    valueRow.font = { bold: true };
     sheet.addRow([]);
     sheet.addRow(['CHỦ NPP', '', 'NHÂN VIÊN GIAO HÀNG', '', '', 'KHÁCH HÀNG NHẬN HÀNG']);
     sheet.addRow(['Ký, ghi rõ họ tên', '', 'Ký, ghi rõ họ tên', '', '', 'Ký, ghi rõ họ tên']);
@@ -314,7 +327,7 @@ export class OrdersController {
   @Post('npp/orders/:id/delivery')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  createNppDelivery(@Param('id') id: string, @Body() body: { actualTotalKg?: number }, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+  createNppDelivery(@Param('id') id: string, @Body() body: CreateNppDeliveryInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
     const ownerId = user.organizationId!;
     return this.service.createNppDelivery(id, user, body, inventoryCommand(user, key, 'NPP_STOCK', ownerId, 'CREATE_NPP_DELIVERY'));
   }
