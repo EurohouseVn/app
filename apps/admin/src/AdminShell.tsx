@@ -47,6 +47,7 @@ const navGroups = [
     items: [
       { label: 'Tổng quan', href: '/', icon: LayoutGrid, moduleKey: 'dashboard' },
       { label: 'Người dùng', href: '/users', icon: Users, moduleKey: 'users' },
+      { label: 'Quyền Eurohouse', href: '/eurohouse-access', icon: BadgeCheck, moduleKey: 'users' },
       { label: 'Chức danh', href: '/roles', icon: UserCog, moduleKey: 'roles' },
     ]
   },
@@ -72,7 +73,6 @@ const navGroups = [
       { label: 'Khuôn đùn', href: '/production/dies', icon: Wrench, moduleKey: 'prod-dies' },
       { label: 'Hệ nhôm', href: '/catalog', icon: LayoutGrid, moduleKey: 'catalog' },
       { label: 'Quản lý Công thức', href: '/formulas', icon: LayoutGrid, moduleKey: 'formulas' },
-      { label: 'Kho 500+ Mẫu Cửa', href: '/door-models-filter', icon: LayoutGrid, moduleKey: 'formulas' },
       { label: 'Dataset kỹ thuật', href: '/manufacturing/datasets', icon: Database, moduleKey: 'manufacturing-datasets' },
       { label: 'Xác minh sản xuất', href: '/manufacturing/verification', icon: BadgeCheck, moduleKey: 'manufacturing-verification' },
       { label: 'Trace tính toán', href: '/manufacturing/traces', icon: ScanSearch, moduleKey: 'manufacturing-traces' },
@@ -133,13 +133,14 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
   };
 
   return (
-    <main style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100vh', background: ui.bg, position: 'relative', zIndex: 1 }}>
+    <main className="admin-shell" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100vh', background: ui.bg, position: 'relative', zIndex: 1 }}>
       {/* AI Ambient Glow Light (Mesh Gradient effect) */}
       <div style={{ position: 'fixed', top: '-10%', left: '-10%', width: '50vw', height: '50vh', background: 'radial-gradient(ellipse at center, rgba(234, 179, 8, 0.15) 0%, transparent 60%)', filter: 'blur(80px)', zIndex: -1, pointerEvents: 'none' }} />
       <div style={{ position: 'fixed', bottom: '-20%', right: '-10%', width: '60vw', height: '60vh', background: 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.08) 0%, transparent 60%)', filter: 'blur(100px)', zIndex: -1, pointerEvents: 'none' }} />
       {/* Grid Pattern Light */}
       <div style={{ position: 'fixed', inset: 0, backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%230f172a\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', zIndex: -1, pointerEvents: 'none' }} />
       <aside
+        className="admin-sidebar"
         style={{
           background: ui.sidebar,
           backdropFilter: 'blur(20px)',
@@ -155,8 +156,14 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
           zIndex: 10,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '0 6px' }}>
-          <Image src="/logo.png" alt="Eurohouse" width={42} height={42} style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.2)' }} />
+        <div className="admin-brand" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '0 6px' }}>
+          <Image
+            src="/logo.png"
+            alt="Eurohouse"
+            width={42}
+            height={37}
+            style={{ width: 42, height: 'auto', borderRadius: 12, boxShadow: '0 4px 12px rgba(212, 175, 55, 0.2)' }}
+          />
           <div>
             <strong style={{ color: ui.text, fontSize: 18, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)' }}>Eurohouse</strong>
             <p style={{ margin: 0, color: ui.brandText, fontSize: 12, fontWeight: 600 }}>Web Admin Pro</p>
@@ -164,6 +171,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
         </div>
 
         <div
+          className="admin-user-card"
           style={{
             marginTop: 24,
             padding: 16,
@@ -182,7 +190,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
           ) : null}
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24, flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+        <nav className="admin-nav" style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24, flex: 1, overflowY: 'auto', paddingRight: 4 }}>
           {navGroups.map((group, groupIdx) => {
             const visibleItems = group.items.filter(item => canAccessModule(user, item.moduleKey));
             if (visibleItems.length === 0) return null;
@@ -253,6 +261,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
         </nav>
 
         <button
+          className="admin-logout"
           onClick={onLogout}
           style={{
             marginTop: 16,
@@ -276,7 +285,7 @@ export function AdminShell({ user, onLogout, children }: { user: DemoAdminUser; 
           <LogOut size={18} color={ui.textFaint} /> Đăng xuất
         </button>
       </aside>
-      <section style={{ padding: 36, maxWidth: 1440, width: '100%', margin: '0 auto' }}>
+      <section className="admin-content" style={{ padding: 36, maxWidth: 1440, width: '100%', minWidth: 0, margin: '0 auto' }}>
         {allowed ? children : <NoAccess />}
       </section>
     </main>
