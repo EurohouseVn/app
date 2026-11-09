@@ -17,6 +17,7 @@
     "prisma:baseline:adopt": "node scripts/adopt-migration-baseline.cjs",
     "prisma:verify:disposable": "node scripts/verify-migrations-disposable.cjs",
     "prisma:deploy": "prisma migrate deploy",
+    "eurohouse-access:backfill": "tsx scripts/backfill-eurohouse-feature-access.ts",
     "pilot:seed": "node --env-file=.env -r ts-node/register scripts/seed-workshop-pilot.ts",
     "catalog:r19:dry-run": "node --env-file=.env scripts/import-r19-catalog.cjs",
     "catalog:r19:snapshot": "node --env-file=.env scripts/import-r19-catalog.cjs --write-snapshot",
