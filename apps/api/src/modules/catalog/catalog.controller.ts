@@ -13,6 +13,13 @@ export class CatalogController {
     return this.service.catalog();
   }
 
+  @Get('company-pricing/systems')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  companyPricingCatalog() {
+    return this.service.catalog({ includeCompanyPricing: true });
+  }
+
   @Get('colors')
   colors() {
     return this.service.colors();

@@ -4,8 +4,11 @@ import type { CatalogSystem, ColorCode } from '@eurohouse/types';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
+type PublicCatalogProfile = Omit<CatalogSystem['profiles'][number], 'pricePerKg'>;
+type PublicCatalogSystem = Omit<CatalogSystem, 'profiles'> & { profiles: PublicCatalogProfile[] };
+
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
-  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-55': 'Hệ 55 Vát Cạnh',
   'EU-TRUOT': 'Hệ trượt Châu Âu',
   'EU-ECPLUS': 'Hệ Ecento Plus',
   'EU-PDH': 'Hệ phào đại hội',
@@ -40,7 +43,9 @@ function profileImageUrl(code: string, current?: string | null) {
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async catalog(): Promise<CatalogSystem[]> {
+  async catalog(options: { includeCompanyPricing: true }): Promise<CatalogSystem[]>;
+  async catalog(options?: { includeCompanyPricing?: false }): Promise<PublicCatalogSystem[]>;
+  async catalog(options: { includeCompanyPricing?: boolean } = {}): Promise<Array<CatalogSystem | PublicCatalogSystem>> {
     const systems = await this.prisma.aluSystem.findMany({
       where: { code: { startsWith: 'EU-' } },
       orderBy: { sortOrder: 'asc' },
@@ -51,7 +56,8 @@ export class CatalogService {
       profiles: s.profiles.map((p) => ({
         id: p.id, code: p.code, name: p.name, thicknessMm: p.thicknessMm ?? undefined,
         kgPerMeter: p.kgPerMeter, barLengthMm: p.barLengthMm, barsPerBundle: p.barsPerBundle,
-        pricePerKg: p.pricePerKg, imageUrl: profileImageUrl(p.code, p.imageUrl),
+        ...(options.includeCompanyPricing ? { pricePerKg: p.pricePerKg } : {}),
+        imageUrl: profileImageUrl(p.code, p.imageUrl),
       })),
     }));
   }

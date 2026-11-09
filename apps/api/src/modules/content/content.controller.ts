@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, BadRequestException } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ContentService } from './content.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
-import { imageExtension, IMAGE_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
+import { imageExtension, IMAGE_UPLOAD_OPTIONS, pdfExtension, PDF_UPLOAD_OPTIONS, uploadedFileBuffer } from '../../common/upload';
 import { StorageService } from '../storage/storage.service';
 
 @Controller('content')
@@ -119,6 +119,44 @@ export class ContentController {
   @Get('library')
   getLibraryItems() {
     return this.service.getLibraryItems();
+  }
+
+  @Get('admin/library')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  getLibraryItemsAdmin() {
+    return this.service.getLibraryItems(false);
+  }
+
+  @Post('admin/library/catalog')
+  @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
+  @Roles('ADMIN', 'STAFF')
+  @Throttle({ default: { limit: 10, ttl: 600_000 } })
+  @UseInterceptors(FileInterceptor('file', PDF_UPLOAD_OPTIONS))
+  async uploadCatalog(
+    @UploadedFile() file: any,
+    @Body() body: { title?: string; description?: string },
+  ) {
+    if (!file) throw new BadRequestException('Vui lòng chọn file catalog PDF.');
+    const buffer = await uploadedFileBuffer(file);
+    const extension = pdfExtension(file, buffer);
+    const stored = await this.storage.putUpload({
+      buffer,
+      originalName: file.originalname,
+      mime: file.mimetype,
+      purpose: 'product-catalog',
+      extension,
+      metadata: { title: body.title || file.originalname },
+    });
+    if (!stored.publicUrl) throw new BadRequestException('Kho tệp chưa cung cấp đường dẫn công khai cho catalog.');
+
+    return this.service.createLibraryItem({
+      title: body.title?.trim() || String(file.originalname || 'Catalog Eurohouse').replace(/\.pdf$/i, ''),
+      description: body.description?.trim() || null,
+      mediaUrl: stored.publicUrl,
+      mediaType: 'DOCUMENT',
+      categoryId: 'PRODUCT_CATALOG',
+    });
   }
 
   @Post('admin/library')

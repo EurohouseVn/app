@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isPublicPublished, sanitizePublicContent } from './public-content-policy';
 
 @Injectable()
 export class ContentService {
@@ -40,7 +41,11 @@ export class ContentService {
       },
       orderBy: { createdAt: 'desc' }
     });
-    return promotions.map((promotion) => this.toPromotion(promotion));
+    const now = new Date();
+    return promotions
+      .map((promotion) => this.toPromotion(promotion))
+      .filter((promotion) => isPublicPublished(promotion, now))
+      .map((promotion) => sanitizePublicContent(promotion));
   }
 
   async getAllPromotionsAdmin() {
@@ -63,11 +68,16 @@ export class ContentService {
 
   // --- Knowledge Articles ---
   async getKnowledgeArticles(isSharedOnly = true) {
-    return this.prisma.knowledgeArticle.findMany({
+    const records = await this.prisma.knowledgeArticle.findMany({
       where: isSharedOnly ? { isShared: true } : {},
       include: { aluSystem: true },
       orderBy: { createdAt: 'desc' }
     });
+    if (!isSharedOnly) return records;
+    const now = new Date();
+    return records
+      .filter((record) => isPublicPublished(record, now))
+      .map((record) => sanitizePublicContent(record));
   }
 
   async createKnowledgeArticle(data: any) {
@@ -83,10 +93,15 @@ export class ContentService {
   }
 
   // --- Library Items ---
-  async getLibraryItems() {
-    return this.prisma.libraryItem.findMany({
+  async getLibraryItems(publicOnly = true) {
+    const records = await this.prisma.libraryItem.findMany({
       orderBy: { createdAt: 'desc' }
     });
+    if (!publicOnly) return records;
+    const now = new Date();
+    return records
+      .filter((record) => isPublicPublished(record, now))
+      .map((record) => sanitizePublicContent(record));
   }
 
   async createLibraryItem(data: any) {
