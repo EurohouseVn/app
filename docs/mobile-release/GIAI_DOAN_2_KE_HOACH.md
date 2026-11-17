@@ -31,7 +31,7 @@ Căn cứ: báo cáo khảo sát Giai đoạn 1, manifest thật lấy bằng `e
 | T7 | Chưa bật R8 và shrink resources | Thêm `expo-build-properties`: `enableProguardInReleaseBuilds` và `enableShrinkResourcesInReleaseBuilds`. Chạy thử bản release trên máy thật để bắt lỗi do R8 | `app.config.ts` |
 | T8 | Danh sách dài render bằng `.map` trong ScrollView (130 chỗ, chỉ 1 chỗ dùng FlatList) | Chuyển sang FlatList cho các danh sách dài: đơn hàng, công trình, báo giá, công nợ, kho, thư viện | các màn tương ứng |
 | T9 | Không có bộ component chung. Loading chỉ là spinner, trạng thái trống và lỗi không thống nhất, bấm nút không có phản hồi | Tạo `src/components/ui`: `Screen`, `Button` (hiệu ứng khi bấm, haptics nhẹ, trạng thái loading), `Card`, `EmptyState`, `ErrorState` (có nút Thử lại), `Skeleton`. Áp trước cho 5 tab chính và màn chi tiết đơn | `src/components/ui`, các màn |
-| T10 | ~~Tên app chưa thống nhất~~ **Đã chốt 17/11/2026:** tên "EUROHOUSE Workshop OS", package `com.nhomeurohouse.workshop` | — | `app.json` |
+| T10 | ~~Tên app chưa thống nhất~~ **Đã chốt 17/11/2026:** tên dưới icon "Eurohouse" (dễ tìm trên Play), trang chủ trong app vẫn ghi "EUROHOUSE WORKSHOP OS"; tên trên cửa hàng đề xuất "Eurohouse - Nhôm kính & Xưởng"; package `com.nhomeurohouse.workshop` (chờ chốt lại vì định hướng nền tảng đa vai trò) | — | `app.json` |
 
 ### Ưu tiên Thấp (làm dần sau bản đầu)
 
