@@ -10,7 +10,7 @@ import { useAuth } from '../src/lib/auth';
 import { formulaUiState } from '../src/lib/formulaAccess';
 import { featureUiState } from '../src/lib/eurohouseFeatureAccess';
 import { statusText, statusTone } from '../src/lib/orderStatus';
-import { fetchWeatherForecast, loadWeatherLocation, resolveOrganizationLocation, weatherIcon, weatherText } from '../src/lib/weather';
+import { fetchWeatherForecast, initialWeatherLocation, weatherIcon, weatherText } from '../src/lib/weather';
 import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import headerWorkshop from '../assets/header-workshop-focus-v2.jpg';
 import logo from '../assets/logo-mark.png';
@@ -181,7 +181,7 @@ function AuthenticatedHomeScreen() {
 
   const loadWeather = useCallback(async () => {
     try {
-      const location = (await loadWeatherLocation()) ?? (await resolveOrganizationLocation(user?.organizationProvince));
+      const location = await initialWeatherLocation(user?.organizationProvince);
       const forecast = await fetchWeatherForecast(location);
       setWeather({
         temperature: forecast.current.temperature,

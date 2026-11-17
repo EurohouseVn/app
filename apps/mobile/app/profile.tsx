@@ -120,33 +120,15 @@ export default function ProfileScreen() {
 
         <EurohouseAccessCard />
 
-        {/* Thợ Pro Summary Card */}
-        <View style={{ backgroundColor: colors.orangeSoft, borderRadius: 22, padding: 16, marginTop: 14, borderWidth: 1, borderColor: '#FED7AA' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
-                <Text style={{ color: colors.brandBlack.main, fontWeight: '900', fontSize: 11 }}>THỢ PRO · GOLD</Text>
-              </View>
-              <Text style={{ color: colors.brandGrey[700], fontSize: 12 }}>Thợ Lành nghề</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/loyalty')} style={({ pressed }) => [styles.pointsCard, pressed && { opacity: 0.88 }]}>
+            <View style={styles.pointsIcon}><Icon name="gift" size={20} color={colors.brandOrangeText} /></View>
+            <View style={styles.pointsCopy}>
+              <Text style={styles.pointsLabel}>Điểm thưởng Eurohouse</Text>
+              <Text style={styles.pointsValue}>{(user?.points ?? 0).toLocaleString('vi-VN')} điểm</Text>
+              <Text style={styles.pointsHint}>Tích 5 điểm cho mỗi 100 kg nhôm Eurohouse đặt qua NPP</Text>
             </View>
-            <Text style={{ color: '#f59e0b', fontWeight: '900', fontSize: 14 }}>{user?.points || 0} EP</Text>
-          </View>
-
-          <View style={{ height: 6, backgroundColor: '#FED7AA', borderRadius: 3, marginVertical: 8, overflow: 'hidden' }}>
-            <View style={{ width: '70%', height: '100%', backgroundColor: '#f59e0b', borderRadius: 3 }} />
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-            <Text style={{ color: colors.brandGrey[700], fontSize: 12 }}>Nhiệm vụ tháng: 2/3 công trình QR</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Link href="/loyalty" asChild>
-                <Pressable style={{ backgroundColor: '#f59e0b', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
-                  <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>Đổi quà</Text>
-                </Pressable>
-              </Link>
-            </View>
-          </View>
-        </View>
+            <Text style={styles.pointsAction}>Đổi quà</Text>
+        </Pressable>
 
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
@@ -226,6 +208,13 @@ const styles = StyleSheet.create({
   area: { color: colors.brandGrey[500], marginTop: 2, fontSize: 12 },
   address: { color: colors.brandGrey[500], marginTop: 2, fontSize: 12 },
   settingsBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#FAFAFA', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  pointsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, padding: 16, borderRadius: 20, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA' },
+  pointsIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  pointsCopy: { flex: 1 },
+  pointsLabel: { color: colors.brandGrey[600], fontSize: 12, fontWeight: '700' },
+  pointsValue: { color: colors.brandBlack.main, fontSize: 18, fontWeight: '900', marginTop: 2 },
+  pointsHint: { color: colors.brandGrey[500], fontSize: 11, lineHeight: 15, marginTop: 3 },
+  pointsAction: { color: colors.brandOrangeText, fontSize: 13, fontWeight: '900' },
   kpiRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   kpiCard: { flex: 1, backgroundColor: colors.white, borderRadius: 18, padding: 14, gap: 6, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   kpiValue: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 20 },

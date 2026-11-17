@@ -71,3 +71,10 @@ test('secondary routes never leak into the five-item tab bar', () => {
     assert.match(declarations[0], /href: null/);
   }
 });
+
+test('profile never shows a hard-coded Thợ Pro tier or fake mission progress', () => {
+  const profile = readFileSync(resolve(testDirectory, '../../app/profile.tsx'), 'utf8');
+  assert.doesNotMatch(profile, /THỢ PRO · GOLD|Thợ Lành nghề|2\/3 công trình QR/);
+  assert.doesNotMatch(profile, /width: '70%'/);
+  assert.match(profile, /user\?\.points/);
+});

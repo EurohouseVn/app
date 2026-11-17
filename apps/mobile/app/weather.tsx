@@ -9,9 +9,8 @@ import { Icon } from '../src/components/Icon';
 import { useAuth } from '../src/lib/auth';
 import {
   fetchWeatherForecast,
+  initialWeatherLocation,
   installationRiskText,
-  loadWeatherLocation,
-  resolveOrganizationLocation,
   saveWeatherLocation,
   searchWeatherLocations,
   weatherIcon,
@@ -34,6 +33,26 @@ function formatDay(date: string, index: number): { day: string; date: string } {
     day: index === 0 ? 'Hôm nay' : value.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('.', ''),
     date: value.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/-/g, '/'),
   };
+}
+
+function WeekStrip({ days }: { days: DailyWeather[] }) {
+  return (
+    <View style={styles.weekStrip} accessibilityLabel="Tóm tắt 7 ngày">
+      {days.slice(0, 7).map((item, index) => {
+        const date = formatDay(item.date, index);
+        const tone = riskColors[item.risk];
+        return (
+          <View key={item.date} style={[styles.weekDay, index === 0 && styles.weekDayToday]}>
+            <Text style={styles.weekDayName} numberOfLines={1}>{index === 0 ? 'Nay' : date.day}</Text>
+            <Icon name={weatherIcon(item.code)} size={18} color={item.risk === 'RAIN' ? '#2563EB' : '#C45513'} />
+            <Text style={styles.weekTemp}>{Math.round(item.tempMax)}°</Text>
+            <Text style={styles.weekTempMin}>{Math.round(item.tempMin)}°</Text>
+            <View style={[styles.weekRiskDot, { backgroundColor: tone.text }]} />
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 function ForecastRow({ item, index }: { item: DailyWeather; index: number }) {
@@ -78,6 +97,7 @@ export default function WeatherScreen() {
   const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
+  const [needsLocation, setNeedsLocation] = useState(false);
 
   const loadForecast = useCallback(async (location: WeatherLocation, persist = false) => {
     setLoading(true);
@@ -86,6 +106,7 @@ export default function WeatherScreen() {
       const nextForecast = await fetchWeatherForecast(location);
       if (persist) await saveWeatherLocation(location);
       setForecast(nextForecast);
+      setNeedsLocation(false);
       setResults([]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không tải được dự báo thời tiết.');
@@ -96,11 +117,16 @@ export default function WeatherScreen() {
 
   useEffect(() => {
     void (async () => {
-      const saved = await loadWeatherLocation();
-      const initial = saved ?? (await resolveOrganizationLocation(user?.organizationProvince));
+      const initial = await initialWeatherLocation(user?.organizationProvince, Boolean(user));
+      if (initial.source === 'default') {
+        // Không đoán bừa TP.HCM: hỏi người dùng khu vực xưởng ngay lần đầu.
+        setNeedsLocation(true);
+        setLoading(false);
+        return;
+      }
       await loadForecast(initial);
     })();
-  }, [loadForecast, user?.organizationProvince]);
+  }, [loadForecast, user]);
 
   async function handleSearch() {
     const normalized = query.trim();
@@ -170,6 +196,14 @@ export default function WeatherScreen() {
       </View>
 
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 112 + insets.bottom }]}>
+        {needsLocation ? (
+          <View style={styles.askCard}>
+            <View style={styles.askIcon}><Icon name="map-pin" size={22} color={colors.brandOrangeText} /></View>
+            <Text style={styles.askTitle}>Xưởng của bạn ở khu vực nào?</Text>
+            <Text style={styles.askText}>Chọn một lần để xem đúng thời tiết 7 ngày nơi lắp đặt. Bạn có thể đổi lại bất cứ lúc nào.</Text>
+          </View>
+        ) : null}
+
         <View style={styles.locationPanel}>
           <View style={styles.searchRow}>
             <View style={styles.searchInputWrap}>
@@ -255,9 +289,11 @@ export default function WeatherScreen() {
               </View>
             </View>
 
+            <WeekStrip days={forecast.daily} />
+
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Dự báo 7 ngày</Text>
+                <Text style={styles.sectionTitle}>Chi tiết 7 ngày</Text>
                 <Text style={styles.sectionSubtitle}>Đánh giá nhanh điều kiện lắp đặt</Text>
               </View>
               {loading ? <ActivityIndicator size="small" color={colors.brandOrange} /> : null}
@@ -332,6 +368,17 @@ const styles = StyleSheet.create({
   temperatureRange: { color: '#172033', fontSize: 11, fontWeight: '900' },
   riskBadge: { minWidth: 66, minHeight: 24, marginTop: 7, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 7, borderWidth: 1 },
   riskText: { fontSize: 9, fontWeight: '900' },
+  askCard: { marginBottom: 12, padding: 16, borderRadius: 14, backgroundColor: '#FFF4E9', borderWidth: 1, borderColor: '#FFD7B5' },
+  askIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  askTitle: { color: '#7A3108', fontSize: 16, fontWeight: '900', marginTop: 10 },
+  askText: { color: '#75472C', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  weekStrip: { marginTop: 12, flexDirection: 'row', gap: 4, padding: 6, borderRadius: 14, borderWidth: 1, borderColor: '#E3E7EC', backgroundColor: colors.white },
+  weekDay: { flex: 1, minWidth: 0, alignItems: 'center', gap: 4, paddingVertical: 8, borderRadius: 10 },
+  weekDayToday: { backgroundColor: '#FFF2E8' },
+  weekDayName: { color: '#344054', fontSize: 10, fontWeight: '900' },
+  weekTemp: { color: '#172033', fontSize: 13, fontWeight: '900' },
+  weekTempMin: { color: '#98A2B3', fontSize: 10, fontWeight: '700', marginTop: -3 },
+  weekRiskDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
   note: { marginTop: 12, padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: 10, backgroundColor: '#EEF1F4' },
   noteText: { flex: 1, color: '#475467', fontSize: 10, lineHeight: 15, fontWeight: '600' },
 });

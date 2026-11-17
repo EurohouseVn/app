@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { IconName } from '../components/Icon';
+import { api } from './api';
+import { locationCandidates, pickProvinceMatch } from './weatherLocationQuery';
 
 const LOCATION_STORAGE_KEY = 'eurohouse-weather-location-v1';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
@@ -133,34 +135,56 @@ export async function saveWeatherLocation(location: WeatherLocation): Promise<vo
   await AsyncStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(location));
 }
 
+async function geocode(name: string, count = 8): Promise<GeocodingResult[]> {
+  const response = await fetch(`${GEOCODING_URL}?name=${encodeURIComponent(name)}&count=${count}&language=vi&format=json&countryCode=VN`);
+  if (!response.ok) throw new Error('Không tìm được địa điểm. Vui lòng thử lại.');
+  const payload = (await response.json()) as GeocodingPayload;
+  return payload.results ?? [];
+}
+
+function toLocation(item: GeocodingResult, source: WeatherLocation['source']): WeatherLocation {
+  const detailParts = [item.admin2, item.admin1, item.country].filter((part, index, parts): part is string => Boolean(part) && parts.indexOf(part) === index);
+  return { latitude: item.latitude, longitude: item.longitude, label: item.name, detail: detailParts.join(', '), source };
+}
+
 export async function searchWeatherLocations(query: string): Promise<WeatherLocation[]> {
   const name = query.trim();
   if (name.length < 2) return [];
-  const response = await fetch(`${GEOCODING_URL}?name=${encodeURIComponent(name)}&count=8&language=vi&format=json&countryCode=VN`);
-  if (!response.ok) throw new Error('Không tìm được địa điểm. Vui lòng thử lại.');
-  const payload = (await response.json()) as GeocodingPayload;
-  return (payload.results ?? []).map((item) => {
-    const detailParts = [item.admin2, item.admin1, item.country].filter((part, index, parts): part is string => Boolean(part) && parts.indexOf(part) === index);
-    return {
-      latitude: item.latitude,
-      longitude: item.longitude,
-      label: item.name,
-      detail: detailParts.join(', '),
-      source: 'search' as const,
-    };
-  });
+  return (await geocode(name)).map((item) => toLocation(item, 'search'));
 }
 
-export async function resolveOrganizationLocation(province?: string | null): Promise<WeatherLocation> {
-  const query = province?.trim();
-  if (!query) return DEFAULT_WEATHER_LOCATION;
-  try {
-    const [match] = await searchWeatherLocations(query);
-    if (!match) return DEFAULT_WEATHER_LOCATION;
-    return { ...match, source: 'organization' };
-  } catch {
-    return DEFAULT_WEATHER_LOCATION;
+/**
+ * Locates the workshop from its saved province and/or free-text address
+ * ("Sầm Sơn - Thanh Hoá", "Bình Tân, TP.HCM"). A district is only accepted
+ * when the geocoder places it in the same province. Returns the default
+ * location (source 'default') when nothing matches, so callers can ask.
+ */
+export async function resolveOrganizationLocation(province?: string | null, address?: string | null): Promise<WeatherLocation> {
+  for (const candidate of locationCandidates(province, address)) {
+    try {
+      const match = pickProvinceMatch(await geocode(candidate.name), candidate.province);
+      if (match) return toLocation(match, 'organization');
+    } catch {
+      return DEFAULT_WEATHER_LOCATION;
+    }
   }
+  return DEFAULT_WEATHER_LOCATION;
+}
+
+/**
+ * Location to show first: the user's saved choice, else the workshop found
+ * from its profile address/province (then remembered), else the default
+ * (source 'default', which the weather screen turns into a "chọn khu vực" prompt).
+ */
+export async function initialWeatherLocation(province?: string | null, signedIn = true): Promise<WeatherLocation> {
+  const saved = await loadWeatherLocation();
+  if (saved) return saved;
+  const address = signedIn
+    ? (await api.get<{ address?: string }>('/npp/profile').catch(() => null))?.address
+    : undefined;
+  const location = await resolveOrganizationLocation(province, address);
+  if (location.source === 'organization') await saveWeatherLocation(location).catch(() => undefined);
+  return location;
 }
 
 export async function fetchWeatherForecast(location: WeatherLocation): Promise<WeatherForecast> {
