@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nhomeurohouse.workshop"
+      "bundleIdentifier": "com.nhomeurohouse.app"
     },
     "android": {
-      "package": "com.nhomeurohouse.workshop",
+      "package": "com.nhomeurohouse.app",
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon/adaptive-foreground-1024.png",

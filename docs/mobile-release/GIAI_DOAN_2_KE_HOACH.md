@@ -22,7 +22,7 @@ Căn cứ: báo cáo khảo sát Giai đoạn 1, manifest thật lấy bằng `e
 
 | # | Vấn đề | Giải pháp | Chỗ sửa |
 |---|---|---|---|
-| T1 | Không tách môi trường. Preview và production cùng API, cùng package nên không cài song song được | Biến `APP_VARIANT` = development/preview/production trong `app.config.ts`. Bản preview đổi package thành `com.nhomeurohouse.workshop.preview` và tên thành "Eurohouse (Test)"; nếu có máy chủ staging thì trỏ vào staging | `app.config.ts`, `eas.json` |
+| T1 | Không tách môi trường. Preview và production cùng API, cùng package nên không cài song song được | Biến `APP_VARIANT` = development/preview/production trong `app.config.ts`. Bản preview đổi package thành `com.nhomeurohouse.app.preview` và tên thành "Eurohouse (Test)"; nếu có máy chủ staging thì trỏ vào staging | `app.config.ts`, `eas.json` |
 | T2 | JWT hạn 7 ngày, không có refresh. Người dùng bị đá ra khi token hết hạn | Gia hạn trượt: thêm `POST /auth/refresh` (token còn hạn thì cấp token mới 7 ngày). Mobile gọi khi mở app hoặc khi token còn dưới 2 ngày. Gặp 401 thì thử refresh một lần rồi mới đăng xuất. Viết test trước | `apps/api/src/auth`, `src/lib/api.ts`, `src/lib/auth.tsx` |
 | T3 | Không phát hiện mất mạng. GET không có retry. 16 chỗ `catch {}` nuốt lỗi. Câu báo lỗi mỗi màn một kiểu | Thêm `@react-native-community/netinfo` và banner "Đang ngoại tuyến" toàn app. Đồng bộ hàng đợi ngay khi có mạng lại. GET thử lại 2 lần (backoff 0,5s và 1,5s, chỉ cho lỗi mạng và 5xx). Một hàm `toUserMessage(error)` dùng chung. Rà các `catch {}` ở chỗ người dùng nhìn thấy | `src/lib/api.ts`, `src/lib/network.ts`, `_layout` |
 | T4 | Chưa cấu hình splash. `StatusBar style="light"` nằm trên nền trắng | Thêm plugin `expo-splash-screen` (logo trên nền trắng, có biến thể tối), giữ splash cho đến khi `auth.ready`. Đặt StatusBar `dark` | `app.config.ts`, `_layout` |
@@ -31,7 +31,7 @@ Căn cứ: báo cáo khảo sát Giai đoạn 1, manifest thật lấy bằng `e
 | T7 | Chưa bật R8 và shrink resources | Thêm `expo-build-properties`: `enableProguardInReleaseBuilds` và `enableShrinkResourcesInReleaseBuilds`. Chạy thử bản release trên máy thật để bắt lỗi do R8 | `app.config.ts` |
 | T8 | Danh sách dài render bằng `.map` trong ScrollView (130 chỗ, chỉ 1 chỗ dùng FlatList) | Chuyển sang FlatList cho các danh sách dài: đơn hàng, công trình, báo giá, công nợ, kho, thư viện | các màn tương ứng |
 | T9 | Không có bộ component chung. Loading chỉ là spinner, trạng thái trống và lỗi không thống nhất, bấm nút không có phản hồi | Tạo `src/components/ui`: `Screen`, `Button` (hiệu ứng khi bấm, haptics nhẹ, trạng thái loading), `Card`, `EmptyState`, `ErrorState` (có nút Thử lại), `Skeleton`. Áp trước cho 5 tab chính và màn chi tiết đơn | `src/components/ui`, các màn |
-| T10 | ~~Tên app chưa thống nhất~~ **Đã chốt 17/11/2026:** tên dưới icon "Eurohouse" (dễ tìm trên Play), trang chủ trong app vẫn ghi "EUROHOUSE WORKSHOP OS"; tên trên cửa hàng đề xuất "Eurohouse - Nhôm kính & Xưởng"; package `com.nhomeurohouse.workshop` (chờ chốt lại vì định hướng nền tảng đa vai trò) | — | `app.json` |
+| T10 | ~~Tên app chưa thống nhất~~ **Đã chốt 17/11/2026:** tên dưới icon "Eurohouse" (dễ tìm trên Play), trang chủ trong app vẫn ghi "EUROHOUSE WORKSHOP OS"; tên trên cửa hàng đề xuất "Eurohouse - Nhôm kính & Xưởng"; package `com.nhomeurohouse.app` (chốt 17/11/2026, trung tính cho nền tảng nhiều vai trò: CSSX, NPP/đại lý, nhân viên) | — | `app.json` |
 
 ### Ưu tiên Thấp (làm dần sau bản đầu)
 
@@ -78,7 +78,7 @@ Phần còn lại của Giai đoạn 4 (hướng dẫn keystore, Data Safety, �
 ## 3. Việc chủ dự án cần quyết định hoặc chuẩn bị
 
 1. **Bản gốc (C1):** giữ chế độ khách (bản HEAD) hay bỏ (bản đang sửa)?
-2. **Tên app và package:** "EUROHOUSE Workshop" hay "Eurohouse CSSX"? Giữ package `com.nhomeurohouse.workshop`?
+2. **Tên app và package:** "EUROHOUSE Workshop" hay "Eurohouse CSSX"? ~~Đã chốt: package `com.nhomeurohouse.app`~~
 3. **Staging:** có máy chủ API staging không? Nếu không có, bản preview dùng API thật với tài khoản test.
 4. **Xoá tài khoản:** đồng ý cách ẩn danh hoá thông tin cá nhân và giữ đơn hàng, công nợ cho kế toán?
 5. **Tài khoản:** đã có tài khoản Expo (EAS) và Google Play Console (tổ chức, phí 25 USD) chưa? Với tài khoản cá nhân mới, Play bắt buộc kiểm thử kín 12 người trong 14 ngày trước khi phát hành công khai.
