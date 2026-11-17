@@ -26,10 +26,37 @@ export interface PdfIssuerProfile {
   logoUrl?: string;
 }
 
+type LayoutFeatures = string[] | Record<string, boolean> | undefined;
+type FontkitFont = { layout: (text: string, features?: LayoutFeatures, ...rest: unknown[]) => unknown; __eurohouseNoCcmp?: boolean };
+
+/**
+ * NotoSans' `ccmp` feature splits Vietnamese dot-below letters (ị, ọ, ạ, ụ...)
+ * into a base glyph plus `dotbelowcomb`, which has no Unicode value. pdfkit then
+ * writes an empty `<>` entry into the ToUnicode CMap and PDF readers mis-map every
+ * following glyph, so copied/searched Vietnamese text comes out garbled. The font
+ * already contains the precomposed glyphs, so turning `ccmp` off keeps rendering
+ * identical and the text layer valid.
+ */
+function disableGlyphDecomposition(doc: PDFKit.PDFDocument, fontName: string) {
+  doc.font(fontName);
+  const font = (doc as unknown as { _font?: { font?: FontkitFont } })._font?.font;
+  if (!font || font.__eurohouseNoCcmp) return;
+  const layout = font.layout.bind(font);
+  font.layout = (text, features, ...rest) => {
+    const enabled: Record<string, boolean> = Array.isArray(features)
+      ? Object.fromEntries(features.map((feature) => [feature, true]))
+      : { ...(features ?? {}) };
+    return layout(text, { ...enabled, ccmp: false }, ...rest);
+  };
+  font.__eurohouseNoCcmp = true;
+}
+
 export function registerPdfFonts(doc: PDFKit.PDFDocument) {
   const fontDir = join(process.cwd(), 'assets', 'fonts');
   doc.registerFont('body', join(fontDir, 'NotoSans-Regular.ttf'));
   doc.registerFont('bold', join(fontDir, 'NotoSans-Bold.ttf'));
+  disableGlyphDecomposition(doc, 'bold');
+  disableGlyphDecomposition(doc, 'body');
 }
 
 export function formatMoney(value: number): string {

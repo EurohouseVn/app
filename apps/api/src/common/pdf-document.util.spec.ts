@@ -1,8 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { moneyInWords } from './pdf-document.util';
+import { inflateSync } from 'node:zlib';
+import PDFDocument from 'pdfkit';
+import { moneyInWords, registerPdfFonts } from './pdf-document.util';
 import { QuotationPdfService } from '../modules/quotations/quotation-pdf.service';
 import { ProjectFinancialPdfService } from '../modules/workshop-operations/project-financial-pdf.service';
+
+// Every ToUnicode CMap in the file, inflated. An empty "<>" entry makes PDF
+// readers mis-map all following glyphs (copy/search of Vietnamese breaks).
+function toUnicodeMaps(buffer: Buffer): string[] {
+  const raw = buffer.toString('latin1');
+  const maps: string[] = [];
+  const streamPattern = /(?<!end)stream\r?\n/g;
+  let match: RegExpExecArray | null;
+  while ((match = streamPattern.exec(raw))) {
+    const start = match.index + match[0].length;
+    const end = raw.indexOf('endstream', start);
+    if (end < 0) break;
+    const bytes = buffer.subarray(start, end);
+    let text = bytes.toString('latin1');
+    try { text = inflateSync(bytes).toString('latin1'); } catch { /* not compressed */ }
+    if (text.includes('beginbfrange')) maps.push(text);
+    streamPattern.lastIndex = end + 'endstream'.length;
+  }
+  return maps;
+}
+
+function renderDoc(draw: (doc: PDFKit.PDFDocument) => void): Promise<Buffer> {
+  return new Promise((resolve) => {
+    const doc = new PDFDocument({ size: 'A4' });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    draw(doc);
+    doc.end();
+  });
+}
 
 function pageCount(buffer: Buffer): number {
   return buffer.toString('latin1').match(/\/Type \/Page\b/g)?.length || 0;
@@ -22,7 +55,7 @@ test('quotation PDF is a single-page valid document for a compact quotation', as
     baseAmount: 10_000_000, accessoryCost: 0, laborCost: 0, installCost: 0, depreciation: 0,
     profitPct: 0, profitAmount: 0, vatPct: 0, vatAmount: 0, totalAmount: 10_000_000,
     items: [{
-      id: 'i1', name: 'D1', doorType: 'Cửa đi 2 cánh', system: 'Hệ 55 Euroqueen', widthMm: 2000,
+      id: 'i1', name: 'D1', doorType: 'Cửa đi 2 cánh', system: 'Hệ 55 Vát Cạnh', widthMm: 2000,
       heightMm: 2000, quantity: 1, pricePerM2: 2_500_000, areaM2: 4, totalPrice: 10_000_000,
     }],
   }, null, 'quotation');
@@ -44,4 +77,30 @@ test('financial PDF is a single-page valid document for a compact project', asyn
   assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
   assert.equal(pageCount(pdf), 1);
   assert.ok(pdf.length > 10_000);
+});
+
+test('Vietnamese dot-below letters keep a valid text layer (no empty ToUnicode entries)', async () => {
+  const pdf = await renderDoc((doc) => {
+    registerPdfFonts(doc);
+    doc.font('body').text('Địa chỉ công trình: Ký, ghi rõ họ tên. Hợp đồng, quyết toán, nghiệm thu.');
+    doc.font('bold').text('ĐẠI DIỆN KHÁCH HÀNG · Tổng cộng thanh toán');
+  });
+  const maps = toUnicodeMaps(pdf);
+  assert.ok(maps.length >= 2, 'both fonts embed a ToUnicode CMap');
+  for (const map of maps) assert.doesNotMatch(map, /<>/);
+  assert.match(maps.join('\n'), /<1ecb>/i, 'ị is mapped as a single precomposed glyph');
+});
+
+test('a real quotation PDF has no empty ToUnicode entries', async () => {
+  const pdf = await new QuotationPdfService().render({
+    id: 'q2', code: 'BG-TEST-02', customerName: 'Nguyễn Thị Định', customerPhone: '0901000000',
+    customerAddress: 'Sầm Sơn, Thanh Hoá', createdAt: new Date().toISOString(), areaM2: 4,
+    baseAmount: 10_000_000, accessoryCost: 0, laborCost: 0, installCost: 0, depreciation: 0,
+    profitPct: 0, profitAmount: 0, vatPct: 0, vatAmount: 0, totalAmount: 10_000_000,
+    items: [{
+      id: 'i1', name: 'D1', doorType: 'Cửa đi mở quay', system: 'Hệ 55 Vát Cạnh', widthMm: 2000,
+      heightMm: 2000, quantity: 1, pricePerM2: 2_500_000, areaM2: 4, totalPrice: 10_000_000,
+    }],
+  }, null, 'quotation');
+  for (const map of toUnicodeMaps(pdf)) assert.doesNotMatch(map, /<>/);
 });

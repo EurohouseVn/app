@@ -202,12 +202,18 @@ export class ProjectFinancialPdfService {
         const colWidths = [34, 176, 200, 125];
         const xs = [left];
         colWidths.forEach((cellWidth) => xs.push(xs[xs.length - 1] + cellWidth));
+        const cellFont = (header: boolean, totalRow: boolean) => doc.font(header || totalRow ? 'bold' : 'body').fontSize(header ? 7.6 : 8);
+        const rowHeightFor = (values: string[], header: boolean, totalRow: boolean) => {
+          cellFont(header, totalRow);
+          const textHeight = Math.max(...values.map((value, index) => doc.heightOfString(value || ' ', { width: colWidths[index] - 8 })));
+          return Math.max(header ? 24 : totalRow ? 34 : 22, Math.ceil(textHeight) + 12);
+        };
         const drawRow = (values: string[], rowY: number, header = false, totalRow = false) => {
-          const height = header ? 24 : totalRow ? 34 : 22;
+          const height = rowHeightFor(values, header, totalRow);
           doc.rect(left, rowY, width, height).fillAndStroke(header ? PDF_COLORS.ink : totalRow ? PDF_COLORS.orangeSoft : PDF_COLORS.white, PDF_COLORS.line);
           values.forEach((value, index) => {
             doc.font(header || totalRow ? 'bold' : 'body').fontSize(header ? 7.6 : 8).fillColor(header ? PDF_COLORS.white : totalRow ? PDF_COLORS.orange : PDF_COLORS.text)
-              .text(value, xs[index] + 4, rowY + 6, { width: colWidths[index] - 8, align: index === 3 ? 'right' : index === 0 ? 'center' : 'left', lineBreak: false, ellipsis: true });
+              .text(value, xs[index] + 4, rowY + 6, { width: colWidths[index] - 8, align: index === 3 ? 'right' : index === 0 ? 'center' : 'left' });
             if (index > 0) doc.moveTo(xs[index], rowY).lineTo(xs[index], rowY + height).lineWidth(0.35).strokeColor(PDF_COLORS.line).stroke();
           });
           return rowY + height;
@@ -215,7 +221,7 @@ export class ProjectFinancialPdfService {
         const tableHeaders = ['STT', 'Khoản mục', 'Diễn giải', 'Số tiền'];
         cursor = drawRow(tableHeaders, cursor, true);
         rows.forEach((row, index) => {
-          if (cursor + 46 > bottom()) {
+          if (cursor + rowHeightFor([String(index + 1), row.label, row.note, formatMoney(row.amount)], false, false) + 24 > bottom()) {
             doc.addPage();
             cursor = drawHeader(true);
             cursor = drawRow(tableHeaders, cursor, true);
@@ -268,21 +274,23 @@ export class ProjectFinancialPdfService {
         };
         y = drawTransactionHeader(y);
         transactions.forEach((transaction, index) => {
-          if (y + 25 > bottom()) {
-            doc.addPage();
-            y = drawHeader(true);
-            y = drawTransactionHeader(y);
-          }
-          doc.rect(left, y, width, 25).fillAndStroke(PDF_COLORS.white, PDF_COLORS.line);
           const values = [
             String(index + 1), formatPdfDate(transaction.transDate), transaction.type === 'RECEIPT' ? 'Thu' : 'Chi',
             transaction.code, transaction.category || '-', [transaction.partnerName, transaction.note].filter(Boolean).join(' - ') || '-',
             formatMoney(transaction.type === 'PAYMENT' ? -transaction.amount : transaction.amount),
           ];
+          const rowHeight = Math.max(25, Math.ceil(Math.max(...values.map((value, cellIndex) =>
+            doc.font(cellIndex === 6 ? 'bold' : 'body').fontSize(7.4).heightOfString(value, { width: colWidths[cellIndex] - 6 })))) + 14);
+          if (y + rowHeight > bottom()) {
+            doc.addPage();
+            y = drawHeader(true);
+            y = drawTransactionHeader(y);
+          }
+          doc.rect(left, y, width, rowHeight).fillAndStroke(PDF_COLORS.white, PDF_COLORS.line);
           values.forEach((value, cellIndex) => doc.font(cellIndex === 6 ? 'bold' : 'body').fontSize(7.4)
             .fillColor(cellIndex === 6 ? (transaction.type === 'RECEIPT' ? PDF_COLORS.green : PDF_COLORS.red) : PDF_COLORS.text)
-            .text(value, xs[cellIndex] + 3, y + 7, { width: colWidths[cellIndex] - 6, align: cellIndex === 6 ? 'right' : cellIndex === 0 ? 'center' : 'left', lineBreak: false, ellipsis: true }));
-          y += 25;
+            .text(value, xs[cellIndex] + 3, y + 7, { width: colWidths[cellIndex] - 6, align: cellIndex === 6 ? 'right' : cellIndex === 0 ? 'center' : 'left' }));
+          y += rowHeight;
         });
         y += 12;
       }

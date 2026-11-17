@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { join } from 'path';
 import PDFDocument from 'pdfkit';
-
-const FONT_DIR = join(process.cwd(), 'assets', 'fonts');
+import { registerPdfFonts } from '../../common/pdf-document.util';
 
 export interface OrderPdfItem {
   profileCode: string;
@@ -69,8 +68,7 @@ export class OrderPdfService {
   render(order: OrderPdfData): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 36 });
-      doc.registerFont('body', join(FONT_DIR, 'NotoSans-Regular.ttf'));
-      doc.registerFont('bold', join(FONT_DIR, 'NotoSans-Bold.ttf'));
+      registerPdfFonts(doc);
 
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
