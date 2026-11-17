@@ -171,11 +171,21 @@ export class WorkshopOperationsService {
 
   async projects(user: JwtUser, organizationId?: string) {
     const orgId = this.org(user, organizationId);
-    return this.prisma.project.findMany({
+    const projects = await this.prisma.project.findMany({
       where: { organizationId: orgId },
-      include: { customerV2: true, sites: { include: { zones: true } }, openings: true },
+      include: {
+        customerV2: true,
+        sites: { include: { zones: true } },
+        openings: true,
+        cashTransactions: { where: { type: 'RECEIPT' }, select: { amount: true } },
+      },
       orderBy: { updatedAt: 'desc' },
     });
+    // Tổng phiếu thu để app tính "còn phải thu" ngay trên danh sách.
+    return projects.map(({ cashTransactions, ...project }) => ({
+      ...project,
+      receivedAmount: cashTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    }));
   }
 
   async projectFinancialPdfData(user: JwtUser, projectId: string, requestedOrganizationId?: string) {

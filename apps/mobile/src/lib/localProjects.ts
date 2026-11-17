@@ -35,6 +35,8 @@ export type LocalProject = {
   costInstallation: number;
   costOther: number;
   extraRevenue: number;
+  /** Tổng phiếu thu do máy chủ tính; chưa có (công trình mới, API cũ) thì để trống. */
+  receivedAmount?: number;
   createdAt: number;
   updatedAt: number;
   syncState?: 'SYNCED' | 'PENDING' | 'CONFLICT';
@@ -67,6 +69,7 @@ type ServerProject = {
   costInstallation?: number;
   costOther?: number;
   extraRevenue?: number;
+  receivedAmount?: number;
   images?: string[];
   quotationId?: string;
   quotationCode?: string;
@@ -156,6 +159,7 @@ function fromServer(project: ServerProject): LocalProject {
     costInstallation: Number(project.costInstallation || 0),
     costOther: Number(project.costOther || 0),
     extraRevenue: Number(project.extraRevenue || 0),
+    receivedAmount: typeof project.receivedAmount === 'number' ? project.receivedAmount : undefined,
     createdAt: new Date(project.createdAt).getTime(),
     updatedAt: new Date(project.updatedAt).getTime(),
     syncState: 'SYNCED',

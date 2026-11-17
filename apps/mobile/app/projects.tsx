@@ -1,194 +1,254 @@
-﻿import { useCallback, useState } from 'react';
+﻿import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@eurohouse/ui';
 import { LocalProjectsApi, type LocalProject } from '../src/lib/localProjects';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
-import { confirmAction, showAlert } from '../src/lib/alert';
+import { PROJECT_STATUS } from '../src/components/projectStatus';
 import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
+import {
+  amountDue,
+  compactVnd,
+  contractValue,
+  countByFilter,
+  daysSinceUpdate,
+  filterProjects,
+  hasDebt,
+  isStale,
+  projectSummary,
+  sortForList,
+  type ProjectFilter,
+} from '../src/lib/projectListState';
 
-const statusLabel: Record<string, { text: string; color: string }> = {
-  OPEN: { text: 'Khảo sát', color: colors.brandOrange },
-  IN_PROGRESS: { text: 'Đang thi công', color: colors.warning },
-  DONE: { text: 'Hoàn tất', color: colors.success },
-  CANCELLED: { text: 'Đã hủy', color: colors.danger },
-};
+
+const FILTERS: { key: ProjectFilter; label: string }[] = [
+  { key: 'ALL', label: 'Tất cả' },
+  { key: 'ATTENTION', label: 'Cần xử lý' },
+  { key: 'IN_PROGRESS', label: 'Đang thi công' },
+  { key: 'DEBT', label: 'Còn nợ' },
+  { key: 'OPEN', label: 'Báo giá' },
+  { key: 'DONE', label: 'Hoàn tất' },
+  { key: 'CANCELLED', label: 'Đã huỷ' },
+];
+
+function ProjectRow({ project, now, onPress }: { project: LocalProject; now: number; onPress: () => void }) {
+  const status = PROJECT_STATUS[project.status] ?? PROJECT_STATUS.OPEN;
+  const due = amountDue(project);
+  const stale = isStale(project, now);
+  const debt = hasDebt(project);
+  let sideLabel = 'Giá trị';
+  let sideValue = compactVnd(contractValue(project));
+  let sideTone: 'due' | 'ok' | 'muted' | 'plain' = 'plain';
+  if (project.status === 'CANCELLED') { sideLabel = 'Đã huỷ'; sideValue = '—'; sideTone = 'muted'; }
+  else if (project.status === 'OPEN') sideLabel = 'Báo giá';
+  else if (due !== undefined && due > 0) { sideLabel = 'Còn phải thu'; sideValue = compactVnd(due); sideTone = 'due'; }
+  else if (due === 0 && project.receivedAmount !== undefined && contractValue(project) > 0) { sideLabel = 'Đã thu đủ'; sideTone = 'ok'; }
+  const meta = [project.customerName, project.address].filter(Boolean).join(' · ') || project.code;
+
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Mở công trình ${project.name}`} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+      <View style={[styles.rowIcon, { backgroundColor: status.bg }]}><Icon name={status.icon} size={18} color={status.text} /></View>
+      <View style={styles.rowMain}>
+        <Text style={styles.rowName} numberOfLines={2}>{project.name || 'Công trình chưa đặt tên'}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>{meta}</Text>
+        <View style={styles.flags}>
+          <View style={[styles.badge, { backgroundColor: status.bg }]}><Text style={[styles.badgeText, { color: status.text }]}>{status.label}</Text></View>
+          {debt ? <View style={[styles.badge, styles.badgeDanger]}><Icon name="alert-circle" size={11} color="#B42318" /><Text style={[styles.badgeText, { color: '#B42318' }]}>Còn nợ</Text></View> : null}
+          {stale ? <View style={[styles.badge, styles.badgeMuted]}><Icon name="clock" size={11} color="#475467" /><Text style={[styles.badgeText, { color: '#475467' }]}>{daysSinceUpdate(project, now)} ngày chưa cập nhật</Text></View> : null}
+          {project.syncState === 'PENDING' ? <View style={[styles.badge, styles.badgeMuted]}><Icon name="refresh-cw" size={11} color="#475467" /><Text style={[styles.badgeText, { color: '#475467' }]}>Chờ đồng bộ</Text></View> : null}
+        </View>
+      </View>
+      <View style={styles.rowSide}>
+        <Text style={styles.sideLabel}>{sideLabel}</Text>
+        <Text style={[styles.sideValue, sideTone === 'due' && styles.sideDue, sideTone === 'ok' && styles.sideOk, sideTone === 'muted' && styles.sideMuted]} numberOfLines={1}>{sideValue}</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<LocalProject>>(null);
   const [projects, setProjects] = useState<LocalProject[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ProjectFilter>('ALL');
 
-  useResetScrollOnFocus(scrollRef);
+  useResetScrollOnFocus(listRef);
 
   const load = useCallback(async () => {
-    const data = await LocalProjectsApi.getAll();
-    setProjects(data);
+    try {
+      setProjects(await LocalProjectsApi.getAll());
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
+
+  const now = Date.now();
+  const summary = useMemo(() => projectSummary(projects, now), [projects, now]);
+  const counts = useMemo(() => countByFilter(projects, now), [projects, now]);
+  const visible = useMemo(() => sortForList(filterProjects(projects, { query, filter }, now)), [projects, query, filter, now]);
+
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  }
 
   async function createProject() {
     setCreating(true);
     try {
-      const project = await LocalProjectsApi.create({
-        name: 'Công trình mới',
-      });
+      const project = await LocalProjectsApi.create({ name: 'Công trình mới' });
       router.push(`/project/${project.id}` as Href);
     } finally {
       setCreating(false);
     }
   }
 
-  const handleDeleteProject = (id: string, name: string) => {
-    confirmAction('Xoá công trình', `Bạn có chắc chắn muốn xoá công trình "${name}"?`, async () => {
-      setDeletingId(id);
-      try {
-        await LocalProjectsApi.delete(id);
-        setProjects(prev => prev.filter(p => p.id !== id && p.code !== id));
-      } catch (error) {
-        showAlert('Không thể xoá công trình', error instanceof Error ? error.message : 'Vui lòng thử lại.');
-      } finally {
-        setDeletingId(null);
-      }
-    });
-  };
+  const open = (project: LocalProject) => router.push(`/project/${project.id}` as Href);
+  const filtersShown = FILTERS.filter((item) => item.key === 'ALL' || counts[item.key] > 0 || item.key === filter);
 
-  // Phan tich dashboard.
-  const currentYear = new Date().getFullYear();
-  let yearlyRevenue = 0;
-  projects.forEach((p) => {
-    const pDate = new Date(p.createdAt);
-    if (pDate.getFullYear() === currentYear && p.status === 'DONE') {
-      yearlyRevenue += p.finalAmount || p.estimatedAmount || 0;
-    }
-  });
+  const header = (
+    <View>
+      <View style={styles.kpis}>
+        <View style={styles.kpi}><Text style={styles.kpiLabel}>Đang thi công</Text><Text style={styles.kpiValue}>{summary.running}</Text></View>
+        <View style={styles.kpi}><Text style={styles.kpiLabel} numberOfLines={1}>Còn phải thu</Text><Text style={[styles.kpiValue, summary.totalDue > 0 && styles.kpiDue]} numberOfLines={1}>{summary.dueKnown ? compactVnd(summary.totalDue) : '—'}</Text></View>
+        <View style={styles.kpi}><Text style={styles.kpiLabel} numberOfLines={1}>Doanh thu {new Date(now).getFullYear()}</Text><Text style={styles.kpiValue} numberOfLines={1}>{compactVnd(summary.revenueThisYear)}</Text></View>
+      </View>
+
+      {summary.attention > 0 && filter !== 'ATTENTION' ? (
+        <Pressable accessibilityRole="button" onPress={() => setFilter('ATTENTION')} style={({ pressed }) => [styles.attention, pressed && { opacity: 0.85 }]}>
+          <View style={styles.attentionIcon}><Icon name="alert-circle" size={16} color={colors.brandOrangeText} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.attentionTitle}>Cần xử lý ({summary.attention})</Text>
+            <Text style={styles.attentionText}>Còn nợ hoặc quá 14 ngày chưa cập nhật</Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.brandOrangeText} />
+        </Pressable>
+      ) : null}
+
+      <View style={styles.search}>
+        <Icon name="search" size={17} color="#667085" />
+        <TextInput value={query} onChangeText={setQuery} placeholder="Tìm tên, khách hàng, mã công trình" placeholderTextColor="#98A2B3" style={styles.searchInput} returnKeyType="search" />
+        {query ? <Pressable accessibilityLabel="Xoá tìm kiếm" hitSlop={8} onPress={() => setQuery('')}><Icon name="x" size={17} color="#667085" /></Pressable> : null}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        {filtersShown.map((item) => {
+          const active = item.key === filter;
+          return (
+            <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setFilter(item.key)} style={[styles.chip, active && styles.chipActive]}>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
+              <Text style={[styles.chipCount, active && styles.chipCountActive]}>{counts[item.key]}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
+  const empty = !loaded ? (
+    <View style={styles.listCard}>{[0, 1, 2].map((i) => <View key={i} style={styles.row}><View style={[styles.rowIcon, styles.skeleton]} /><View style={styles.rowMain}><View style={[styles.skeleton, { height: 13, width: '70%' }]} /><View style={[styles.skeleton, { height: 10, width: '50%', marginTop: 8 }]} /></View></View>)}</View>
+  ) : projects.length === 0 ? (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}><Icon name="briefcase" size={24} color={colors.brandOrangeText} /></View>
+      <Text style={styles.emptyTitle}>Chưa có công trình nào</Text>
+      <Text style={styles.emptyText}>Tạo công trình đầu tiên để lập báo giá, đặt nhôm và theo dõi thu chi ở một chỗ.</Text>
+      <Pressable style={styles.emptyButton} disabled={creating} onPress={createProject}><Icon name="plus" size={16} color={colors.white} /><Text style={styles.emptyButtonText}>Tạo công trình</Text></Pressable>
+    </View>
+  ) : (
+    <View style={styles.empty}>
+      <Text style={styles.emptyTitle}>Không có công trình phù hợp</Text>
+      <Text style={styles.emptyText}>Thử từ khoá khác hoặc bỏ bộ lọc đang chọn.</Text>
+      <Pressable style={styles.clearButton} onPress={() => { setQuery(''); setFilter('ALL'); }}><Text style={styles.clearButtonText}>Xem tất cả</Text></Pressable>
+    </View>
+  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Công trình" subtitle="Lưu trữ an toàn trên thiết bị" />
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-
-        {/* DASHBOARD TỔNG DOANH THU */}
-        <View style={styles.dashboardCard}>
-          <View style={styles.dashHeader}>
-            <Icon name="trending-up" size={20} color={colors.brandOrangeText} />
-            <Text style={styles.dashTitle}>Doanh thu {currentYear}</Text>
+    <View style={styles.screen}>
+      <AppHeader title="Công trình" subtitle={loaded ? `${projects.length} công trình` : 'Đang tải...'} />
+      <FlatList
+        ref={listRef}
+        data={visible}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        renderItem={({ item, index }) => (
+          <View style={[styles.rowWrap, index === 0 && styles.rowWrapFirst, index === visible.length - 1 && styles.rowWrapLast]}>
+            <ProjectRow project={item} now={now} onPress={() => open(item)} />
           </View>
-          <Text style={styles.dashAmount}>{(yearlyRevenue / 1000000).toLocaleString('vi-VN')} triệu</Text>
-          <Text style={styles.dashSubtitle}>Chỉ tính các công trình đã Hoàn tất</Text>
-        </View>
-
-        <Pressable style={[styles.createBtn, creating && { opacity: 0.6 }]} disabled={creating} onPress={createProject}>
-          <Icon name="plus" size={20} color={colors.brandBlack.main} />
-          <Text style={styles.createText}>{creating ? 'Đang tạo...' : 'Tạo công trình mới'}</Text>
-        </Pressable>
-
-        {projects.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}><Icon name="layers" size={26} color={colors.brandGrey[500]} /></View>
-            <Text style={styles.emptyText}>Chưa có công trình. Tạo công trình đầu tiên để theo dõi doanh thu và lợi nhuận.</Text>
-          </View>
-        ) : (
-          projects.map((p) => {
-            const st = statusLabel[p.status] ?? statusLabel.OPEN;
-            const profitColor = p.expectedProfit >= 0 ? colors.success : colors.danger;
-            const revenue = p.finalAmount || p.estimatedAmount || 0;
-            return (
-              <View key={p.id} style={styles.card}>
-                <View style={styles.cardHead}>
-                  <Pressable style={styles.cardIcon} onPress={() => router.push(`/project/${p.id}` as Href)}>
-                    <Icon name="home" size={20} color={colors.brandOrange} />
-                  </Pressable>
-                  <Pressable style={{ flex: 1 }} onPress={() => router.push(`/project/${p.id}` as Href)}>
-                    <Text style={styles.code}>{p.code}</Text>
-                    <Text style={styles.pname} numberOfLines={2}>{p.name}</Text>
-                    {p.customerName ? <Text style={styles.customer}>{p.customerName}</Text> : null}
-                  </Pressable>
-
-                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <View style={[styles.badge, { backgroundColor: st.color + '1A' }]}>
-                      <Text style={[styles.badgeText, { color: st.color }]}>{st.text}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                      <Pressable style={styles.actionBtn} onPress={() => router.push(`/project/${p.id}` as Href)}>
-                        <Icon name="edit-2" size={13} color={colors.brandBlack.main} />
-                      </Pressable>
-                      <Pressable
-                        accessibilityLabel={`Xoá công trình ${p.name}`}
-                        disabled={deletingId === p.id}
-                        style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }, deletingId === p.id && { opacity: 0.45 }]}
-                        onPress={() => handleDeleteProject(p.id, p.name)}
-                      >
-                        <Icon name="trash-2" size={13} color={colors.danger} />
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-
-                <Pressable style={styles.metrics} onPress={() => router.push(`/project/${p.id}` as Href)}>
-                  <View><Text style={styles.mLabel}>Doanh thu</Text><Text style={styles.mValue}>{(revenue / 1000000).toFixed(1)}tr</Text></View>
-                  <View><Text style={styles.mLabel}>Phát sinh</Text><Text style={styles.mValue}>{(p.additionalCosts / 1000000).toFixed(1)}tr</Text></View>
-                  <View><Text style={styles.mLabel}>Lợi nhuận</Text><Text style={[styles.mValue, { color: profitColor }]}>{(p.expectedProfit / 1000000).toFixed(1)}tr</Text></View>
-                </Pressable>
-
-                <Pressable
-                  style={styles.orderBtn}
-                  onPress={() => {
-                    router.push({
-                      pathname: '/orders',
-                      params: {
-                        projectId: p.id,
-                        projectCode: p.code,
-                        projectName: p.name,
-                        customerName: p.customerName,
-                        customerPhone: p.customerPhone,
-                        deliveryAddress: p.address,
-                        quotationCode: p.quotationCode,
-                      },
-                    } as Href);
-                  }}
-                >
-                  <Icon name="shopping-bag" size={14} color={colors.brandBlack.main} />
-                  <Text style={styles.orderBtnText} numberOfLines={1}>BÓC TÁCH & ĐẶT NHÔM TỪ CÔNG TRÌNH</Text>
-                </Pressable>
-              </View>
-            );
-          })
         )}
-      </ScrollView>
+        contentContainerStyle={[styles.content, { paddingBottom: 190 + insets.bottom }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.brandOrange} />}
+      />
+      {projects.length > 0 ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Tạo công trình mới" disabled={creating} onPress={createProject} style={({ pressed }) => [styles.fab, { bottom: 104 + insets.bottom }, (pressed || creating) && { opacity: 0.85 }]}>
+          <Icon name="plus" size={20} color={colors.white} />
+          <Text style={styles.fabText}>{creating ? 'Đang tạo...' : 'Công trình'}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingBottom: 110 },
-  dashboardCard: { backgroundColor: colors.orangeSoft, borderRadius: 22, padding: 20, marginBottom: 18, shadowColor: colors.brandOrange, shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  dashHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  dashTitle: { color: colors.brandOrangeText, fontSize: 12, lineHeight: 16, fontWeight: '800', textTransform: 'uppercase' },
-  dashAmount: { color: colors.brandBlack.main, fontSize: 30, lineHeight: 36, fontWeight: '900' },
-  dashSubtitle: { color: colors.brandGrey[500], fontSize: 12, lineHeight: 17, marginTop: 2 },
-  createBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, backgroundColor: colors.brandOrange, borderRadius: 16, paddingVertical: 14, marginBottom: 16, shadowColor: colors.brandOrange, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  createText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 14 },
-  empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: colors.brandGrey[500], textAlign: 'center', paddingHorizontal: 20 },
-  card: { backgroundColor: colors.white, borderRadius: 18, padding: 15, marginBottom: 12, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  code: { color: colors.brandOrange, fontWeight: '900', fontSize: 11, lineHeight: 14 },
-  pname: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 14, lineHeight: 18, marginTop: 2 },
-  customer: { color: colors.brandGrey[500], fontSize: 12, lineHeight: 16, marginTop: 2 },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  badgeText: { fontWeight: '800', fontSize: 11 },
-  metrics: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, borderTopWidth: 1, borderTopColor: '#EEF0F3', paddingTop: 10 },
-  mLabel: { color: colors.brandGrey[500], fontSize: 10, lineHeight: 14, fontWeight: '700' },
-  mValue: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13, lineHeight: 17, marginTop: 1 },
-  actionBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
-  orderBtn: { minHeight: 40, backgroundColor: colors.brandOrange, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 12, marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  orderBtnText: { flexShrink: 1, color: colors.brandBlack.main, fontWeight: '900', fontSize: 11, lineHeight: 14 },
+  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  content: { paddingHorizontal: 14, paddingTop: 12 },
+  kpis: { flexDirection: 'row', gap: 8 },
+  kpi: { flex: 1, minWidth: 0, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: '#E4E7EC', paddingHorizontal: 10, paddingVertical: 9 },
+  kpiLabel: { color: '#667085', fontSize: 10.5, fontWeight: '700' },
+  kpiValue: { color: '#101828', fontSize: 16, fontWeight: '900', marginTop: 2 },
+  kpiDue: { color: '#B54708' },
+  attention: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 11, borderRadius: 14, backgroundColor: '#FFF7EF', borderWidth: 1, borderColor: '#FED7AA' },
+  attentionIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  attentionTitle: { color: '#7A3108', fontSize: 13.5, fontWeight: '900' },
+  attentionText: { color: '#9A4B15', fontSize: 11.5, marginTop: 1 },
+  search: { marginTop: 10, height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E4E7EC' },
+  searchInput: { flex: 1, minWidth: 0, color: '#101828', fontSize: 14, paddingVertical: 0 },
+  chips: { gap: 6, paddingTop: 10, paddingBottom: 10 },
+  chip: { height: 32, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
+  chipActive: { backgroundColor: colors.brandBlack.main, borderColor: colors.brandBlack.main },
+  chipText: { color: '#1D2939', fontSize: 12.5, fontWeight: '800' },
+  chipTextActive: { color: colors.white },
+  chipCount: { color: '#667085', fontSize: 12, fontWeight: '700' },
+  chipCountActive: { color: '#D0D5DD' },
+  rowWrap: { backgroundColor: colors.white, borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#E4E7EC', borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
+  rowWrapFirst: { borderTopWidth: 1, borderTopColor: '#E4E7EC', borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
+  rowWrapLast: { borderBottomColor: '#E4E7EC', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, overflow: 'hidden' },
+  listCard: { backgroundColor: colors.white, borderRadius: 18, borderWidth: 1, borderColor: '#E4E7EC', overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 12, paddingVertical: 12 },
+  rowPressed: { backgroundColor: '#F9FAFB' },
+  rowIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowMain: { flex: 1, minWidth: 0 },
+  rowName: { color: '#101828', fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  rowMeta: { color: '#667085', fontSize: 11.5, marginTop: 2 },
+  flags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 6 },
+  badge: { height: 22, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, borderRadius: 999 },
+  badgeText: { fontSize: 11, fontWeight: '800' },
+  badgeDanger: { backgroundColor: '#FEF3F2' },
+  badgeMuted: { backgroundColor: '#F2F4F7' },
+  rowSide: { alignItems: 'flex-end', maxWidth: 112 },
+  sideLabel: { color: '#667085', fontSize: 10.5, fontWeight: '700' },
+  sideValue: { color: '#101828', fontSize: 14, fontWeight: '900', marginTop: 1 },
+  sideDue: { color: '#B54708' },
+  sideOk: { color: '#067647' },
+  sideMuted: { color: '#98A2B3' },
+  skeleton: { backgroundColor: '#EEF0F3', borderRadius: 8 },
+  empty: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20, backgroundColor: colors.white, borderRadius: 18, borderWidth: 1, borderColor: '#E4E7EC' },
+  emptyIcon: { width: 52, height: 52, borderRadius: 16, backgroundColor: '#FFF2E8', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  emptyTitle: { color: '#101828', fontSize: 15, fontWeight: '900' },
+  emptyText: { color: '#667085', fontSize: 12.5, lineHeight: 18, textAlign: 'center', marginTop: 6 },
+  emptyButton: { marginTop: 14, height: 42, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, borderRadius: 12, backgroundColor: colors.brandOrange },
+  emptyButtonText: { color: colors.white, fontSize: 14, fontWeight: '900' },
+  clearButton: { marginTop: 12, height: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: '#D0D5DD', justifyContent: 'center' },
+  clearButtonText: { color: '#1D2939', fontSize: 13, fontWeight: '800' },
+  fab: { position: 'absolute', right: 18, height: 52, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 14, paddingRight: 18, borderRadius: 18, backgroundColor: colors.brandOrange, shadowColor: colors.brandOrange, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  fabText: { color: colors.white, fontSize: 14, fontWeight: '900' },
 });

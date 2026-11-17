@@ -6,7 +6,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@eurohouse/ui';
 import { LocalProjectsApi, type LocalProject } from '../../src/lib/localProjects';
-import { Icon } from '../../src/components/Icon';
+import { Icon, type IconName } from '../../src/components/Icon';
+import { PROJECT_STATUS } from '../../src/components/projectStatus';
 import { api, API_URL, authHeaders } from '../../src/lib/api';
 import { confirmAction } from '../../src/lib/alert';
 import { resetScrollToTop, useResetScrollOnFocus } from '../../src/hooks/useResetScrollOnFocus';
@@ -62,7 +63,8 @@ export default function ProjectDetailScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [project, setProject] = useState<LocalProject | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'costs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'costs' | 'files'>('overview');
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -119,6 +121,8 @@ export default function ProjectDetailScreen() {
       return;
     }
     setProject(p);
+    // Công trình vừa tạo, chưa có thông tin: mở thẳng chế độ sửa.
+    if (p.name === 'Công trình mới' && !p.customerName && !p.estimatedAmount) setMode('edit');
     setName(p.name);
     setAddress(p.address);
     setCustomerName(p.customerName || '');
@@ -450,33 +454,79 @@ export default function ProjectDetailScreen() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  const status = (project?.status ?? 'OPEN') as LocalProject['status'];
+  const statusInfo = PROJECT_STATUS[status] ?? PROJECT_STATUS.OPEN;
+  const contractTotal = num(finalAmount) || num(estimatedAmount);
+  const remaining = status === 'OPEN' || status === 'CANCELLED' ? 0 : Math.max(0, contractTotal - actualReceipt);
+  const steps: { key: LocalProject['status']; label: string }[] = [
+    { key: 'OPEN', label: 'Báo giá' },
+    { key: 'IN_PROGRESS', label: 'Đang thi công' },
+    { key: 'DONE', label: 'Hoàn tất' },
+  ];
+  const stepIndex = status === 'DONE' ? 2 : status === 'IN_PROGRESS' ? 1 : 0;
+  const metaLine = [customerName, customerPhone, address].filter(Boolean).join(' · ');
+  const updatedDays = project ? Math.floor((Date.now() - project.updatedAt) / 86_400_000) : 0;
+  const updatedText = updatedDays <= 0 ? 'Hôm nay' : updatedDays === 1 ? 'Hôm qua' : `${updatedDays} ngày trước`;
+
+  const goQuotation = () => {
+    if (quotationCode) void handlePreviewQuotation();
+    else router.push('/quote');
+  };
+  const goOrder = () => {
+    if (quotationCode) { void handleOrderFromProjectQuotation(); return; }
+    router.push({ pathname: '/orders', params: { projectId: project?.id, projectCode: project?.code, projectName: name, customerName, customerPhone, deliveryAddress: address } } as never);
+  };
+
+  async function saveAndClose() {
+    await handleSave();
+    await load();
+    setMode('view');
+  }
+
+  const infoRows: [string, string][] = [
+    ['Loại công trình', projectType || 'Chưa chọn'],
+    ['Hạng mục', categories.length ? categories.join(' · ') : 'Chưa chọn'],
+    ['Hợp đồng', isContractSigned ? 'Đã ký' : 'Chưa ký'],
+    ['Dự toán ban đầu', `${num(estimatedAmount).toLocaleString('vi-VN')} đ`],
+    ['Phát sinh', `${incurredType === 'DECREASE' ? '−' : '+'}${num(additionalCosts).toLocaleString('vi-VN')} đ`],
+    ['Giá trị quyết toán', `${num(finalAmount).toLocaleString('vi-VN')} đ`],
+    ['Thu bổ sung', `${num(extraRevenue).toLocaleString('vi-VN')} đ`],
+    ['Cập nhật', updatedText],
+  ];
+
+  const quickActions: { icon: IconName; label: string; onPress: () => void }[] = [
+    { icon: 'file-text', label: quotationCode ? 'Báo giá' : 'Lập báo giá', onPress: goQuotation },
+    { icon: 'package', label: 'Đặt nhôm', onPress: goOrder },
+    { icon: 'dollar-sign', label: 'Thu chi', onPress: () => setActiveTab('costs') },
+    { icon: 'download', label: 'Xuất PDF', onPress: () => setActiveTab('files') },
+  ];
+  const documents: { icon: IconName; label: string; onPress: () => Promise<void> | void }[] = [
+    { icon: 'clipboard', label: exportingAcceptancePdf ? 'Đang tạo biên bản...' : 'Biên bản nghiệm thu', onPress: exportAcceptancePdf },
+    { icon: 'bar-chart-2', label: exportingFinancialPdf ? 'Đang tạo báo cáo...' : 'Bảng tổng hợp thu chi', onPress: exportFinancialPdf },
+    ...(quotationCode ? [{ icon: 'file-text' as IconName, label: `Báo giá / dự toán ${quotationCode}`, onPress: handlePreviewQuotation }] : []),
+  ];
+  const tabs: { key: 'overview' | 'costs' | 'files'; label: string }[] = [
+    { key: 'overview', label: 'Tổng quan' },
+    { key: 'costs', label: `Thu chi (${cashTransactions.length})` },
+    { key: 'files', label: `Hồ sơ (${images.length})` },
+  ];
+  const isNewDraft = project?.name === 'Công trình mới' && !project?.customerName;
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.white }}>
+    <View style={{ flex: 1, backgroundColor: '#F6F7F9' }}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.brandOrangeText} /></Pressable>
-        <Text style={styles.topTitle}>{project?.code ?? 'Chi tiết công trình'}</Text>
-        <Pressable onPress={handleDelete} style={[styles.backBtn, { backgroundColor: '#FEE2E2' }]}>
+        <Pressable accessibilityLabel="Quay lại" onPress={() => (mode === 'edit' && !isNewDraft ? setMode('view') : router.back())} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.brandOrangeText} /></Pressable>
+        <Text style={styles.topTitle} numberOfLines={1}>{mode === 'edit' ? 'Sửa công trình' : project?.code ?? 'Chi tiết công trình'}</Text>
+        {mode === 'view' ? (
+          <Pressable accessibilityRole="button" onPress={() => setMode('edit')} style={styles.editBtn}><Icon name="edit-2" size={15} color="#1D2939" /><Text style={styles.editBtnText}>Sửa</Text></Pressable>
+        ) : null}
+        <Pressable accessibilityLabel="Xoá công trình" onPress={handleDelete} style={[styles.backBtn, { backgroundColor: '#FEF3F2' }]}>
           <Icon name="trash-2" size={18} color={colors.danger} />
         </Pressable>
       </View>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.statusCard}>
-          <View><Text style={styles.statusEyebrow}>TÌNH TRẠNG CÔNG TRÌNH</Text><Text style={styles.statusText}>{project?.status === 'DONE' ? 'Đã hoàn thành' : project?.status === 'IN_PROGRESS' ? 'Đang thi công' : 'Mới tạo'}</Text></View>
-          <Icon name={project?.status === 'DONE' ? 'check-circle' : 'tool'} size={22} color={project?.status === 'DONE' ? colors.success : colors.brandOrangeText} />
-        </View>
-        <View style={styles.projectTabs}>
-          <Pressable style={[styles.projectTab, activeTab === 'overview' && styles.projectTabActive]} onPress={() => setActiveTab('overview')}>
-            <Icon name="briefcase" size={16} color={activeTab === 'overview' ? colors.brandOrangeText : colors.brandGrey[500]} />
-            <Text style={[styles.projectTabText, activeTab === 'overview' && styles.projectTabTextActive]}>Tổng quan</Text>
-          </Pressable>
-          <Pressable style={[styles.projectTab, activeTab === 'costs' && styles.projectTabActive]} onPress={() => setActiveTab('costs')}>
-            <Icon name="credit-card" size={16} color={activeTab === 'costs' ? colors.brandOrangeText : colors.brandGrey[500]} />
-            <Text style={[styles.projectTabText, activeTab === 'costs' && styles.projectTabTextActive]}>Chi phí công trình</Text>
-          </Pressable>
-        </View>
-
-        {activeTab === 'overview' ? (
+        {mode === 'edit' ? (
           <>
         <Text style={[styles.sectionTitle, styles.detailsSectionTitle]}>Thông tin chung</Text>
         <View style={styles.infoPanel}>
@@ -590,9 +640,98 @@ export default function ProjectDetailScreen() {
           <VndMoneyInput value={extraRevenue} onChangeText={setExtraRevenue} />
         </View>
 
+        {/* ẢNH CÔNG TRÌNH (TỐI ĐA 5 ẢNH) */}
+        <Text style={styles.sectionTitle}>Ảnh công trình ({images.length}/5)</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
+          {images.length < 5 && (
+            <Pressable style={styles.addImageBtn} onPress={pickImage}>
+              <Icon name="camera" size={24} color={colors.brandGrey[500]} />
+              <Text style={styles.addImageText}>Thêm ảnh</Text>
+            </Pressable>
+          )}
+          {images.map((img, idx) => (
+            <View key={idx} style={styles.imgWrapper}>
+              <Image source={{ uri: img }} style={styles.previewImage} />
+              <Pressable style={styles.removeImgBtn} onPress={() => removeImage(idx)}>
+                <Icon name="x" size={14} color={colors.white} />
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+
+
+            <Pressable style={styles.saveBtn} onPress={() => void saveAndClose()}>
+              <Text style={styles.saveText}>{saved ? '✓ Đã lưu thành công' : 'Lưu công trình'}</Text>
+            </Pressable>
           </>
         ) : (
           <>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryName}>{name || 'Công trình chưa đặt tên'}</Text>
+              {metaLine ? <Text style={styles.summaryMeta}>{metaLine}</Text> : null}
+              {status === 'CANCELLED' ? (
+                <View style={[styles.statusPill, { backgroundColor: statusInfo.bg }]}><Text style={[styles.statusPillText, { color: statusInfo.text }]}>{statusInfo.label}</Text></View>
+              ) : (
+                <View style={styles.steps}>
+                  {steps.map((step, index) => (
+                    <View key={step.key} style={styles.step}>
+                      <View style={[styles.stepBar, index <= stepIndex && styles.stepBarDone]} />
+                      <Text style={[styles.stepText, index === stepIndex && styles.stepTextNow, index < stepIndex && styles.stepTextDone]}>{step.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.moneyGrid}>
+              <View style={styles.moneyCell}><Text style={styles.moneyLabel}>Giá trị hợp đồng</Text><Text style={styles.moneyValue} numberOfLines={1} adjustsFontSizeToFit>{contractTotal.toLocaleString('vi-VN')} đ</Text></View>
+              <View style={styles.moneyCell}><Text style={styles.moneyLabel}>Đã thu</Text><Text style={[styles.moneyValue, { color: '#067647' }]} numberOfLines={1} adjustsFontSizeToFit>{actualReceipt.toLocaleString('vi-VN')} đ</Text></View>
+              <View style={styles.moneyCell}><Text style={styles.moneyLabel}>Còn phải thu</Text><Text style={[styles.moneyValue, remaining > 0 && { color: '#B54708' }]} numberOfLines={1} adjustsFontSizeToFit>{remaining.toLocaleString('vi-VN')} đ</Text></View>
+              <View style={styles.moneyCell}><Text style={styles.moneyLabel}>Lợi nhuận tạm tính</Text><Text style={[styles.moneyValue, calculatedProfit < 0 && { color: colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>{calculatedProfit.toLocaleString('vi-VN')} đ</Text></View>
+            </View>
+
+            <View style={styles.quickActions}>
+              {quickActions.map((action) => (
+                <Pressable key={action.label} accessibilityRole="button" onPress={action.onPress} style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.8 }]}>
+                  <View style={styles.quickIcon}><Icon name={action.icon} size={18} color={colors.brandOrangeText} /></View>
+                  <Text style={styles.quickText} numberOfLines={1}>{action.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.viewTabs}>
+              {tabs.map((tab) => (
+                <Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab.key }} onPress={() => setActiveTab(tab.key)} style={[styles.viewTab, activeTab === tab.key && styles.viewTabActive]}>
+                  <Text style={[styles.viewTabText, activeTab === tab.key && styles.viewTabTextActive]}>{tab.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {activeTab === 'overview' ? (
+              <>
+                <View style={styles.infoList}>
+                  {infoRows.map(([label, value], index) => (
+                    <View key={label} style={[styles.infoRow, index === infoRows.length - 1 && !quotationCode && { borderBottomWidth: 0 }]}>
+                      <Text style={styles.infoLabel}>{label}</Text>
+                      <Text style={styles.infoValue}>{value}</Text>
+                    </View>
+                  ))}
+                  {quotationCode ? (
+                    <Pressable style={[styles.infoRow, { borderBottomWidth: 0 }]} onPress={() => void handlePreviewQuotation()}>
+                      <Text style={styles.infoLabel}>Báo giá liên kết</Text>
+                      <Text style={[styles.infoValue, { color: colors.brandOrangeText }]}>{quotationCode} ›</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {status !== 'DONE' && status !== 'CANCELLED' ? (
+                  <Pressable style={[styles.completeBtn, completing && { opacity: 0.6 }]} disabled={completing} onPress={completeProject}>
+                    <Icon name="check-circle" size={18} color={colors.white} />
+                    <Text style={styles.completeText}>{completing ? 'Đang hoàn thành...' : 'Đánh dấu hoàn thành công trình'}</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : activeTab === 'costs' ? (
+              <>
             <View style={styles.costTabHeader}>
               <View style={styles.costTabIcon}><Icon name="bar-chart-2" size={20} color={colors.brandOrangeText} /></View>
               <View style={{ flex: 1 }}>
@@ -663,46 +802,34 @@ export default function ProjectDetailScreen() {
               <Icon name="file-text" size={18} color={colors.brandBlack.main} />
               <Text style={styles.financialPdfButtonText}>{exportingFinancialPdf ? 'Đang tạo báo cáo...' : 'Xuất bảng tổng hợp thu chi PDF'}</Text>
             </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>Ảnh công trình ({images.length}/5)</Text>
+                {images.length ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
+                    {images.map((img, idx) => <Image key={idx} source={{ uri: img }} style={styles.previewImage} />)}
+                  </ScrollView>
+                ) : (
+                  <Pressable style={styles.filesEmpty} onPress={() => setMode('edit')}>
+                    <Icon name="camera" size={20} color={colors.brandGrey[500]} />
+                    <Text style={styles.filesEmptyText}>Chưa có ảnh. Bấm để thêm ảnh trong phần Sửa.</Text>
+                  </Pressable>
+                )}
+                <Text style={styles.sectionTitle}>Xuất tài liệu</Text>
+                <View style={styles.infoList}>
+                  {documents.map((doc, index) => (
+                    <Pressable key={doc.icon + index} onPress={() => void doc.onPress()} style={[styles.docRow, index === documents.length - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={styles.quickIcon}><Icon name={doc.icon} size={17} color={colors.brandOrangeText} /></View>
+                      <Text style={styles.docText}>{doc.label}</Text>
+                      <Icon name="download" size={17} color="#667085" />
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
           </>
         )}
-
-        {activeTab === 'overview' ? (
-          <>
-        <Pressable style={[styles.financialPdfButton, exportingAcceptancePdf && { opacity: 0.6 }]} disabled={exportingAcceptancePdf} onPress={exportAcceptancePdf}>
-          <Icon name="clipboard" size={18} color={colors.brandBlack.main} />
-          <Text style={styles.financialPdfButtonText}>{exportingAcceptancePdf ? 'Đang tạo biên bản...' : 'Xuất PDF biên bản nghiệm thu'}</Text>
-        </Pressable>
-
-        {/* ẢNH CÔNG TRÌNH (TỐI ĐA 5 ẢNH) */}
-        <Text style={styles.sectionTitle}>Ảnh công trình ({images.length}/5)</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
-          {images.length < 5 && (
-            <Pressable style={styles.addImageBtn} onPress={pickImage}>
-              <Icon name="camera" size={24} color={colors.brandGrey[500]} />
-              <Text style={styles.addImageText}>Thêm ảnh</Text>
-            </Pressable>
-          )}
-          {images.map((img, idx) => (
-            <View key={idx} style={styles.imgWrapper}>
-              <Image source={{ uri: img }} style={styles.previewImage} />
-              <Pressable style={styles.removeImgBtn} onPress={() => removeImage(idx)}>
-                <Icon name="x" size={14} color={colors.white} />
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-
-        <Pressable style={styles.saveBtn} onPress={handleSave}>
-          <Text style={styles.saveText}>{saved ? '✓ Đã lưu thành công' : 'Lưu công trình'}</Text>
-        </Pressable>
-        {project?.status !== 'DONE' ? (
-          <Pressable style={[styles.completeBtn, completing && { opacity: 0.6 }]} disabled={completing} onPress={completeProject}>
-            <Icon name="check-circle" size={18} color={colors.white} />
-            <Text style={styles.completeText}>{completing ? 'Đang hoàn thành...' : 'Đã hoàn thành công trình'}</Text>
-          </Pressable>
-        ) : null}
-          </>
-        ) : null}
       </ScrollView>
 
       {/* MODAL IMPORT BÁO GIÁ */}
@@ -775,6 +902,41 @@ export default function ProjectDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  editBtn: { height: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#D0D5DD', backgroundColor: colors.white },
+  editBtnText: { color: '#1D2939', fontSize: 13, fontWeight: '800' },
+  summaryCard: { backgroundColor: colors.white, borderRadius: 18, borderWidth: 1, borderColor: '#E4E7EC', padding: 14 },
+  summaryName: { color: '#101828', fontSize: 18, lineHeight: 23, fontWeight: '900' },
+  summaryMeta: { color: '#667085', fontSize: 12.5, lineHeight: 18, marginTop: 4 },
+  statusPill: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 10, height: 24, borderRadius: 999, justifyContent: 'center' },
+  statusPillText: { fontSize: 12, fontWeight: '800' },
+  steps: { flexDirection: 'row', gap: 6, marginTop: 12 },
+  step: { flex: 1, minWidth: 0 },
+  stepBar: { height: 4, borderRadius: 4, backgroundColor: '#EEF0F3' },
+  stepBarDone: { backgroundColor: colors.brandOrange },
+  stepText: { color: '#98A2B3', fontSize: 11, fontWeight: '800', marginTop: 5, textAlign: 'center' },
+  stepTextNow: { color: colors.brandOrangeText },
+  stepTextDone: { color: '#1D2939' },
+  moneyGrid: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', backgroundColor: '#E4E7EC', gap: 1, borderRadius: 18, borderWidth: 1, borderColor: '#E4E7EC', overflow: 'hidden' },
+  moneyCell: { width: '49.8%', flexGrow: 1, backgroundColor: colors.white, paddingHorizontal: 12, paddingVertical: 11 },
+  moneyLabel: { color: '#667085', fontSize: 11, fontWeight: '700' },
+  moneyValue: { color: '#101828', fontSize: 16, fontWeight: '900', marginTop: 2 },
+  quickActions: { marginTop: 10, flexDirection: 'row', gap: 8 },
+  quickAction: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
+  quickIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF2E8' },
+  quickText: { color: '#1D2939', fontSize: 11.5, fontWeight: '800' },
+  viewTabs: { marginTop: 16, flexDirection: 'row', gap: 18, borderBottomWidth: 1, borderBottomColor: '#E4E7EC', paddingHorizontal: 4 },
+  viewTab: { paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  viewTabActive: { borderBottomColor: colors.brandOrange },
+  viewTabText: { color: '#667085', fontSize: 13.5, fontWeight: '800' },
+  viewTabTextActive: { color: '#101828' },
+  infoList: { marginTop: 10, backgroundColor: colors.white, borderRadius: 18, borderWidth: 1, borderColor: '#E4E7EC', paddingHorizontal: 12 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
+  infoLabel: { color: '#667085', fontSize: 13 },
+  infoValue: { flexShrink: 1, color: '#101828', fontSize: 13, fontWeight: '800', textAlign: 'right' },
+  docRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
+  docText: { flex: 1, color: '#1D2939', fontSize: 13.5, fontWeight: '800' },
+  filesEmpty: { marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D0D5DD', backgroundColor: colors.white },
+  filesEmptyText: { flex: 1, color: '#667085', fontSize: 12.5 },
   topBar: { paddingTop: 50, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: colors.orangeSoft, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(217, 92, 0, 0.1)', alignItems: 'center', justifyContent: 'center' },
   topTitle: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 17 },
