@@ -1,6 +1,8 @@
-const fallback = 'http://127.0.0.1:3001/api';
+import { resolveApiUrl } from './apiUrl';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? fallback;
+// Biến EXPO_PUBLIC_* phải viết nguyên văn để Metro nhúng giá trị lúc build.
+// Bản phát hành (không phải __DEV__) bắt buộc https; app.config.ts đã chặn từ lúc build.
+export const API_URL = resolveApiUrl(process.env.EXPO_PUBLIC_API_URL, { requireSecure: !__DEV__ });
 
 // Gốc server (bỏ "/api") để dựng URL ảnh tĩnh từ /static/...
 export const SERVER_URL = API_URL.replace(/\/api\/?$/, '');

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { View, ActivityIndicator, AppState, Platform } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { tabBarIcon } from '../src/components/Icon';
@@ -8,8 +9,22 @@ import { AuthProvider, useAuth } from '../src/lib/auth';
 import AuthScreen from './auth';
 import { syncOperationsQueue } from '../src/lib/localProjects';
 
+// Giữ splash cho tới khi khôi phục xong phiên, tránh nháy màn trắng lúc mở app.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+// Màn đã đăng nhập có đầu trang ảnh tối (AppHeader) nên dùng chữ sáng;
+// màn đăng nhập và màn của khách nền sáng nên dùng chữ tối.
+function SessionStatusBar() {
+  const { user } = useAuth();
+  return <StatusBar style={user ? 'light' : 'dark'} />;
+}
+
 function Gate() {
   const { user, ready, sessionTier } = useAuth();
+
+  useEffect(() => {
+    if (ready) void SplashScreen.hideAsync().catch(() => undefined);
+  }, [ready]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -117,7 +132,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <StatusBar style="light" />
+      <SessionStatusBar />
       <Gate />
     </AuthProvider>
   );

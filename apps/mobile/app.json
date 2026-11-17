@@ -7,27 +7,33 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "icon": "./public/icon-512.png",
+    "icon": "./assets/app-icon/icon-1024.png",
     "web": {
       "output": "static",
       "favicon": "./public/icon-192.png"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nhomeurohouse.workshop",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.nhomeurohouse.workshop"
     },
     "android": {
       "package": "com.nhomeurohouse.workshop",
-      "versionCode": 1,
+      "allowBackup": false,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo-mark.png",
-        "backgroundColor": "#F47C20"
+        "foregroundImage": "./assets/app-icon/adaptive-foreground-1024.png",
+        "monochromeImage": "./assets/app-icon/adaptive-monochrome-1024.png",
+        "backgroundColor": "#FCB042"
       },
       "permissions": [
         "CAMERA",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [
@@ -36,22 +42,42 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Cho phép Eurohouse dùng camera để quét mã QR bảo hành trên sản phẩm."
+          "cameraPermission": "Cho phép Eurohouse dùng camera để quét mã QR bảo hành và chụp ảnh công trình.",
+          "recordAudioAndroid": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Cho phép Eurohouse dùng vị trí để tải dự báo thời tiết cho khu vực lắp đặt."
+          "locationWhenInUsePermission": "Cho phép Eurohouse dùng vị trí gần đúng để tải dự báo thời tiết cho khu vực lắp đặt."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Cho phép Eurohouse truy cập thư viện ảnh để thay ảnh đại diện và logo cơ sở sản xuất."
+          "photosPermission": "Cho phép Eurohouse truy cập thư viện ảnh để thay ảnh đại diện và logo cơ sở sản xuất.",
+          "microphonePermission": false
         }
       ],
-      "expo-font"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app-icon/splash-mark-1024.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#FCB042"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
