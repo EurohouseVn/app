@@ -18,6 +18,14 @@ Căn cứ: đọc mã nguồn, chạy app web với API local bằng tài khoả
 
 **Rủi ro bản quyền.** API miễn phí của Open-Meteo chỉ cho dùng phi thương mại. App Eurohouse là app thương mại, nên cần gói trả phí (khoảng 29 EUR/tháng) hoặc đổi nhà cung cấp.
 
+**Chọn nhà cung cấp (kiểm 17/11/2026, chủ dự án muốn dùng gói miễn phí):**
+- **Google Maps Weather API:** miễn phí 10.000 lượt/tháng, nhưng bảng vùng phủ chính thức ghi Việt Nam *không có* thời tiết hiện tại, dự báo ngày hay dự báo giờ (chỉ có cảnh báo). Loại.
+- **Nhà cung cấp tại Việt Nam:** không tìm thấy API công khai cho nhà phát triển. Trung tâm Dự báo KTTV Quốc gia không mở API.
+- **Open-Meteo bản miễn phí:** điều khoản chỉ cho dùng phi thương mại.
+- **MET Norway Locationforecast:** miễn phí, giấy phép CC BY 4.0, có dữ liệu cho Việt Nam. Yêu cầu: ghi nguồn "Dữ liệu thời tiết: MET Norway", gửi User-Agent có liên hệ, lưu đệm theo header `Expires`, toạ độ tối đa 4 chữ số thập phân, khuyến nghị gọi qua máy chủ trung gian. **→ Đề xuất dùng nhà cung cấp này, gọi qua API Eurohouse trên MINI 02.**
+- Hiện tại app vẫn gọi Open-Meteo để chạy thử. Sẽ chuyển sang MET Norway khi làm phần API.
+- **Đã làm 17/11 (commit 5632e4a):** tìm vị trí theo địa chỉ xưởng (có kiểm đúng tỉnh), hỏi vị trí lần đầu thay vì tự đoán TP.HCM, dải 7 ngày gọn trong một màn.
+
 **Thiết kế.**
 - **Gọi qua API Eurohouse:** thêm `GET /weather?lat&lon`. API lưu đệm kết quả theo ô lưới khoảng 10 km trong 30 phút. Như vậy không lộ khoá API ra app, và nghìn người dùng chỉ tốn vài chục lượt gọi tới nhà cung cấp.
 - **Nhà cung cấp:** Open-Meteo gói thương mại (chọn mô hình "best match", gồm ECMWF, GFS, ICON). Việt Nam chưa có API công khai từ Trung tâm Dự báo Khí tượng Thuỷ văn Quốc gia.
