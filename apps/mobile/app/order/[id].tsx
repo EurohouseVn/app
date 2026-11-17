@@ -8,9 +8,9 @@ import { AppHeader } from '../../src/components/AppHeader';
 import { Icon } from '../../src/components/Icon';
 import { ProfileThumb } from '../../src/components/ProfileThumb';
 import { api, API_URL, authHeaders } from '../../src/lib/api';
+import { statusText, statusTone } from '../../src/lib/orderStatus';
 import { useAuth } from '../../src/lib/auth';
 import { orderingScreenPolicy } from '../../src/lib/eurohouseFeatureAccess';
-import { statusText, statusTone } from '../../src/lib/orderStatus';
 
 type OrderDetail = {
   id: string;
@@ -21,7 +21,14 @@ type OrderDetail = {
   deliveryAddress: string;
   nppName: string;
   totalKg: number;
+  theoreticalTotalKg: number;
+  actualTotalKg?: number | null;
   totalAmount: number;
+  pricingStatus: 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
+  finalUnitPricePerKg?: number | null;
+  pricingDiscountAmount?: number;
+  pricingSurchargeAmount?: number;
+  pricingNote?: string;
   note: string;
   accessoriesNote: string;
   items: { productCode: string; productName: string; quantity: number; unit: string; totalKg: number; totalPrice: number; profile?: { imageUrl?: string | null } }[];
@@ -86,6 +93,8 @@ export default function OrderDetailScreen() {
   }
 
   const tone = statusTone[order.status] ?? colors.brandGrey[500];
+  const pricingFinalized = order.pricingStatus === 'FINALIZED';
+  const estimatedKg = order.theoreticalTotalKg || order.items.reduce((sum, item) => sum + (item.totalKg || 0), 0) || order.totalKg;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
@@ -95,8 +104,36 @@ export default function OrderDetailScreen() {
           <View style={[styles.statusPill, { backgroundColor: tone + '1A' }]}>
             <Text style={[styles.statusPillText, { color: tone }]}>{statusText[order.status] ?? order.status}</Text>
           </View>
-          <Text style={styles.totalAmount}>{order.totalAmount.toLocaleString('vi-VN')} đ</Text>
+          <Text style={pricingFinalized ? styles.totalAmount : styles.pendingAmount}>
+            {pricingFinalized ? `${order.totalAmount.toLocaleString('vi-VN')} đ` : 'Chờ NPP chốt giá'}
+          </Text>
         </View>
+
+        <View style={styles.pricingCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pricingLabel}>KHỐI LƯỢNG DỰ TÍNH</Text>
+            <Text style={styles.pricingValue}>{estimatedKg.toFixed(2)} kg</Text>
+          </View>
+          <View style={styles.pricingDivider} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pricingLabel}>KG THỰC TẾ</Text>
+            <Text style={styles.pricingValue}>{order.actualTotalKg ? `${order.actualTotalKg.toFixed(2)} kg` : 'Chờ cân'}</Text>
+          </View>
+        </View>
+        {pricingFinalized ? (
+          <View style={styles.finalPriceCard}>
+            <Text style={styles.finalPriceTitle}>Giá trị NPP đã xác nhận</Text>
+            <Text style={styles.finalPriceLine}>Đơn giá: {(order.finalUnitPricePerKg || 0).toLocaleString('vi-VN')} đ/kg</Text>
+            {order.pricingDiscountAmount ? <Text style={styles.finalPriceLine}>Giảm giá: -{order.pricingDiscountAmount.toLocaleString('vi-VN')} đ</Text> : null}
+            {order.pricingSurchargeAmount ? <Text style={styles.finalPriceLine}>Phụ phí: +{order.pricingSurchargeAmount.toLocaleString('vi-VN')} đ</Text> : null}
+            {order.pricingNote ? <Text style={styles.finalPriceNote}>{order.pricingNote}</Text> : null}
+          </View>
+        ) : (
+          <View style={styles.pendingPriceCard}>
+            <Icon name="clock" size={16} color={colors.brandOrangeText} />
+            <Text style={styles.pendingPriceCopy}>Đơn hàng chưa phát sinh số tiền. NPP sẽ cân hàng và xác nhận giá trị chính thức khi giao.</Text>
+          </View>
+        )}
 
         {order.customerName || order.deliveryAddress ? (
           <View style={styles.card}>
@@ -106,7 +143,7 @@ export default function OrderDetailScreen() {
           </View>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Chi tiết hàng · {order.totalKg.toFixed(1)} kg</Text>
+        <Text style={styles.sectionTitle}>Chi tiết hàng · {estimatedKg.toFixed(2)} kg dự tính</Text>
         {order.items.map((item, idx) => (
           <View key={`${item.productCode}-${idx}`} style={styles.itemRow}>
             <ProfileThumb imageUrl={item.profile?.imageUrl || undefined} size={44} />
@@ -115,7 +152,7 @@ export default function OrderDetailScreen() {
               <Text style={styles.itemName} numberOfLines={1}>{item.productName}</Text>
             </View>
             <Text style={styles.itemQty}>×{item.quantity}</Text>
-            <Text style={styles.itemAmount}>{item.totalPrice.toLocaleString('vi-VN')} đ</Text>
+            <Text style={styles.itemAmount}>{item.totalKg.toFixed(2)} kg</Text>
           </View>
         ))}
 
@@ -180,6 +217,17 @@ const styles = StyleSheet.create({
   statusPill: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   statusPillText: { fontWeight: '800', fontSize: 12 },
   totalAmount: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 18 },
+  pendingAmount: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 13 },
+  pricingCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: 16, padding: 14, marginBottom: 12 },
+  pricingDivider: { width: 1, height: 38, backgroundColor: '#E4E7EC', marginHorizontal: 14 },
+  pricingLabel: { color: colors.brandGrey[500], fontSize: 10, fontWeight: '800' },
+  pricingValue: { color: colors.brandBlack.main, fontSize: 16, fontWeight: '900', marginTop: 3 },
+  finalPriceCard: { backgroundColor: '#ECFDF3', borderRadius: 16, padding: 14, marginBottom: 16 },
+  finalPriceTitle: { color: colors.success, fontWeight: '900', marginBottom: 6 },
+  finalPriceLine: { color: colors.brandBlack.main, fontSize: 13, marginTop: 2 },
+  finalPriceNote: { color: colors.brandGrey[500], fontSize: 12, lineHeight: 17, marginTop: 7 },
+  pendingPriceCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, backgroundColor: colors.orangeSoft, borderRadius: 16, padding: 14, marginBottom: 16 },
+  pendingPriceCopy: { flex: 1, color: colors.brandOrangeText, fontSize: 12, lineHeight: 18, fontWeight: '700' },
   card: { backgroundColor: colors.white, borderRadius: 16, padding: 14, marginBottom: 16 },
   cardTitle: { color: colors.brandGrey[500], fontWeight: '800', fontSize: 12, marginBottom: 6, textTransform: 'uppercase' },
   cardLine: { color: colors.brandBlack.main, fontSize: 13, marginTop: 2 },

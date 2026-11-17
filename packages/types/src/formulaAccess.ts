@@ -25,9 +25,10 @@ export interface RegisterWorkshopInput {
   displayName: string;
   organizationName: string;
   password: string;
-  email: string;
+  email?: string;
   phone?: string;
   province?: string;
+  verificationChannel?: 'EMAIL' | 'PHONE';
 }
 
 export interface VerificationConfirmInput {

@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useRef } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors } from '@eurohouse/ui';
-import type { CatalogProfile, CatalogSystem, ColorCode, CreateOrderResult, QuotationRecord } from '@eurohouse/types';
+import type { CatalogProfile, CatalogSystem, ColorCode, CreateOrderResult, EurohouseFeatureCapability, FormulaCapability, QuotationRecord } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
-import { EurohouseFeatureLocked } from '../src/components/EurohouseFeatureLocked';
 import { Icon } from '../src/components/Icon';
 import { ProfileThumb } from '../src/components/ProfileThumb';
 import { api, API_URL, authHeaders } from '../src/lib/api';
+import { resetScrollToTop, useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
+import { reconcileOpenCatalogSystem, shouldShowOrderSummary } from '../src/lib/orderCatalogState.js';
 import { useAuth } from '../src/lib/auth';
 import { canCallFormulaApi, guardFormulaCall } from '../src/lib/formulaAccess';
+import { featureUiState, guardEurohouseMutation, orderingCta, orderingScreenPolicy } from '../src/lib/eurohouseFeatureAccess';
 
 const STD_BAR_M = 6;
 
@@ -67,7 +70,7 @@ export function isSystemAllowedForColors(system: Pick<CatalogSystem, 'code' | 'n
     const isGroup2 = colSearch.includes('cafe thuong') || colSearch.includes('cafe_thuong') || colSearch.includes('cafe-thuong') || colSearch.includes('rita');
 
     if (isGroup2) {
-      // Cafe thường hoặc Xám Rita: CHỈ hiện hệ 55 Euroqueen, Preco, và mặt dựng
+      // Cafe thường hoặc Xám Rita: chỉ hiện hệ 55 Vát Cạnh, Preco và mặt dựng.
       return is55 || isPreco || isMatDung;
     }
 
@@ -124,11 +127,7 @@ function buildAccessoriesNote(accessoriesNote: string, glassLines: GlassLine[]) 
   return [accessoriesNote.trim(), glassNote ? `Đặt kính:\n${glassNote}` : ''].filter(Boolean).join('\n\n');
 }
 
-async function buildQuantitiesFromQuotation(
-  quotation: QuotationRecord,
-  systems: CatalogSystem[],
-  formulaCapability: NonNullable<ReturnType<typeof useAuth>['user']>['capabilities']['eurohouse']['features']['FORMULA_CUTTING'] | undefined,
-) {
+async function buildQuantitiesFromQuotation(quotation: QuotationRecord, systems: CatalogSystem[], capability?: FormulaCapability) {
   const quantities: Record<string, number> = {};
   let firstSystemId: string | undefined;
   let lines = 0;
@@ -136,9 +135,9 @@ async function buildQuantitiesFromQuotation(
   systems.forEach((system) => system.profiles.forEach((profile) => profileByCode.set(profile.code.toUpperCase(), { profile, systemId: system.id })));
 
   for (const item of quotation.items) {
-    if (item.templateId && canCallFormulaApi(formulaCapability)) {
+    if (item.templateId && canCallFormulaApi(capability)) {
       try {
-        const result = await guardFormulaCall(formulaCapability, () => api.post<{ aluminum?: { code?: string; quantity?: number }[] }>(`/formulas/templates/${item.templateId}/calc`, {
+        const result = await guardFormulaCall(capability, () => api.post<{ aluminum?: { code?: string; quantity?: number }[] }>(`/formulas/templates/${item.templateId}/calc`, {
           width: item.widthMm,
           height: item.heightMm,
           quantity: item.quantity,
@@ -172,17 +171,44 @@ async function buildQuantitiesFromQuotation(
   return { quantities, firstSystemId, lines };
 }
 
-export default function OrderTreeScreen() {
-  const { user } = useAuth();
-  const capability = user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING;
-  if (capability?.status !== 'ACTIVE') return <EurohouseFeatureLocked featureKey="EUROHOUSE_ORDERING" />;
-  return <ActiveOrderingScreen formulaCapability={user?.capabilities.eurohouse.features.FORMULA_CUTTING} />;
+function OrderingLockedScreen({
+  capability,
+  cta,
+}: {
+  capability?: EurohouseFeatureCapability;
+  cta: ReturnType<typeof orderingCta>;
+}) {
+  const appRouter = useRouter();
+  const ui = featureUiState(capability);
+  return (
+    <View style={styles.lockedScreen}>
+      <AppHeader title="Đặt hàng Eurohouse" subtitle={ui.statusLabel} />
+      <View style={styles.lockedCard}>
+        <View style={styles.lockedIcon}><Icon name="lock" size={26} color={colors.brandOrangeText} /></View>
+        <Text style={styles.lockedTitle}>Đặt hàng Nhôm Eurohouse</Text>
+        <Text style={styles.lockedCopy}>{ui.message}</Text>
+        <Pressable style={styles.lockedButton} onPress={() => appRouter.push(cta.href)}>
+          <Text style={styles.lockedButtonText}>{cta.label}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
-function ActiveOrderingScreen({ formulaCapability }: {
-  formulaCapability: NonNullable<ReturnType<typeof useAuth>['user']>['capabilities']['eurohouse']['features']['FORMULA_CUTTING'] | undefined;
-}) {
+export default function OrderTreeScreen() {
+  const { user, sessionTier } = useAuth();
+  const access = user?.capabilities.eurohouse;
+  const orderingCapability = access?.features.EUROHOUSE_ORDERING;
+  const orderingPolicy = orderingScreenPolicy(orderingCapability);
+  if (!orderingPolicy.canLoadCatalog) return <OrderingLockedScreen capability={orderingCapability} cta={orderingCta(sessionTier ?? 'GUEST', access)} />;
+  return <ActiveOrderingScreen orderingCapability={orderingCapability!} />;
+}
+
+function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: EurohouseFeatureCapability }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const formulaCapability = user?.capabilities.formulas;
+  const scrollRef = useRef<ScrollView>(null);
   const draftParams = useLocalSearchParams<{
     projectId?: string;
     projectCode?: string;
@@ -207,16 +233,22 @@ function ActiveOrderingScreen({ formulaCapability }: {
   const [accessoriesNote, setAccessoriesNote] = useState('');
   const [glassLines, setGlassLines] = useState<GlassLine[]>([createGlassLine()]);
   const [openGlassPicker, setOpenGlassPicker] = useState<{ id: string; field: 'color' | 'type' } | null>(null);
+
+  useResetScrollOnFocus(scrollRef);
   const [result, setResult] = useState<CreateOrderResult | null>(null);
   const [clientRequestId, setClientRequestId] = useState(createClientRequestId);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [draftAppliedKey, setDraftAppliedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    const timer = setTimeout(() => resetScrollToTop(scrollRef), 0);
+    return () => clearTimeout(timer);
+  }, [step, result]);
+
   const load = useCallback(() => {
     api.get<CatalogSystem[]>('/catalog/systems').then((data) => {
       setSystems(data);
-      setOpenSystem((cur) => cur ?? data[0]?.id ?? null);
     }).catch((e) => setMessage(e instanceof Error ? e.message : 'Lỗi tải danh mục'));
     api.get<ColorCode[]>('/catalog/colors').then((data) => {
       setColorList(data);
@@ -261,21 +293,15 @@ function ActiveOrderingScreen({ formulaCapability }: {
       .catch(() => {
         setMessage('Không tải được báo giá liên kết. Vui lòng chọn thanh nhôm thủ công.');
       });
-  }, [draftParams.projectId, draftParams.projectCode, draftParams.projectName, draftParams.customerName, draftParams.customerPhone, draftParams.deliveryAddress, draftParams.quotationCode, draftAppliedKey, formulaCapability, systems]);
+  }, [draftParams.projectId, draftParams.projectCode, draftParams.projectName, draftParams.customerName, draftParams.customerPhone, draftParams.deliveryAddress, draftParams.quotationCode, draftAppliedKey, systems, formulaCapability]);
 
   const visibleSystems = useMemo(() => {
     return systems.filter((sys) => isSystemAllowedForColors(sys, selectedColors, colorList));
   }, [systems, selectedColors, colorList]);
 
   useEffect(() => {
-    if (visibleSystems.length > 0) {
-      setOpenSystem((cur) => {
-        if (!cur || !visibleSystems.some((s) => s.id === cur)) {
-          return visibleSystems[0].id;
-        }
-        return cur;
-      });
-    }
+    const visibleSystemIds = visibleSystems.map((system) => system.id);
+    setOpenSystem((currentSystemId) => reconcileOpenCatalogSystem(currentSystemId, visibleSystemIds));
   }, [visibleSystems]);
 
   const colorRuleHint = useMemo(() => {
@@ -292,7 +318,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
     });
 
     if (hasGroup2 && !hasGroup1) {
-      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Euroqueen, Preco & Mặt dựng';
+      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Vát Cạnh, Preco & Mặt dựng';
     }
     if (hasGroup1 && !hasGroup2) {
       return 'Màu Metalic / Vân gỗ / Ngọc trai: Khả dụng tất cả hệ (trừ Preco, Mặt dựng, Nội thất)';
@@ -323,24 +349,21 @@ function ActiveOrderingScreen({ formulaCapability }: {
 
   const cart = useMemo(() => {
     let totalKg = 0;
-    let totalAmount = 0;
     let lines = 0;
-    const items: { id: string; profileId: string; colorCode: string; colorName: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
+    const items: { id: string; profileId: string; colorCode: string; colorName: string; code: string; name: string; quantity: number; kg: number }[] = [];
     Object.entries(qty).forEach(([id, q]) => {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
       const kg = theoreticalKgPerBar(p) * q;
-      const amount = kg * p.pricePerKg;
       selectedColors.forEach((colorCode) => {
         const colorName = colorList.find((color) => color.code === colorCode)?.name || colorCode;
         lines += 1;
         totalKg += kg;
-        totalAmount += amount;
-        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, colorName, code: p.code, name: p.name, quantity: q, kg, amount });
+        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, colorName, code: p.code, name: p.name, quantity: q, kg });
       });
     });
-    return { totalKg, totalAmount, lines, items };
+    return { totalKg, lines, items };
   }, [qty, profileById, selectedColors, colorList]);
 
   function toggleColor(code: string) {
@@ -394,7 +417,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
         const p = profileById.get(item.profileId)!;
         return { profileId: item.profileId, productCode: p.code, productName: p.name, colorCode: item.colorCode, quantity: item.quantity };
       });
-      const order = await api.post<CreateOrderResult>('/orders', {
+      const order = await guardEurohouseMutation(orderingCapability, () => api.post<CreateOrderResult>('/orders', {
         sourceType: 'FACTORY',
         clientRequestId,
         submitToNpp: true,
@@ -405,7 +428,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
         note: note || undefined,
         accessoriesNote: buildAccessoriesNote(accessoriesNote, glassLines) || undefined,
         items,
-      });
+      }));
       setResult(order);
       setQty({});
       setClientRequestId(createClientRequestId());
@@ -450,7 +473,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
     return (
       <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
         <AppHeader title="Đặt hàng nhôm" subtitle="Đơn đã được tạo" />
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
           <View style={styles.successBox}>
             <Icon name="check-circle" size={32} color={colors.success} />
             <Text style={styles.successTitle}>Đã tạo đơn {result.code}</Text>
@@ -483,7 +506,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
     return (
       <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
         <AppHeader title="Xác nhận đơn hàng" subtitle="Kiểm tra lại trước khi gửi" />
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
           <Text style={styles.label}>Danh sách thanh nhôm</Text>
           {cart.items.map((item) => (
             <View key={item.id} style={styles.confirmRow}>
@@ -492,13 +515,15 @@ function ActiveOrderingScreen({ formulaCapability }: {
                 <Text style={styles.confirmName} numberOfLines={1}>{item.name} · {item.colorName}</Text>
               </View>
               <Text style={styles.confirmQty}>×{item.quantity}</Text>
-              <Text style={styles.confirmAmount}>{Math.round(item.amount).toLocaleString('vi-VN')} đ</Text>
+              <Text style={styles.confirmAmount}>{item.kg.toFixed(2)} kg</Text>
             </View>
           ))}
 
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Tổng: {cart.totalKg.toFixed(1)} kg</Text>
-            <Text style={styles.totalValue}>{Math.round(cart.totalAmount).toLocaleString('vi-VN')} đ</Text>
+            <View>
+              <Text style={styles.totalLabel}>Tổng dự tính: {cart.totalKg.toFixed(2)} kg</Text>
+              <Text style={styles.pendingPriceText}>NPP sẽ cân hàng và xác nhận giá trị chính thức khi giao.</Text>
+            </View>
           </View>
 
           <Text style={[styles.label, { marginTop: 20 }]}>Ghi chú đơn hàng</Text>
@@ -593,7 +618,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
       <AppHeader title="Đặt hàng nhôm" subtitle="Chọn màu → hệ → thanh → số lượng" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.labelRow}>
           <Text style={styles.label}>Mã màu</Text>
           <Text style={styles.labelHint}>Chọn 1 hoặc nhiều màu · đã chọn {selectedColors.length}</Text>
@@ -652,7 +677,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.leafCode}>{p.code}</Text>
                     <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                    <Text style={styles.leafMeta}>{systemName} · {theoreticalKgPerBar(p).toFixed(2)} kg/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
+                    <Text style={styles.leafMeta}>{systemName} · {theoreticalKgPerBar(p).toFixed(2)} kg dự tính/cây</Text>
                   </View>
                   <View style={styles.stepper}>
                     <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
@@ -688,7 +713,7 @@ function ActiveOrderingScreen({ formulaCapability }: {
                         <View style={{ flex: 1 }}>
                           <Text style={styles.leafCode}>{p.code}</Text>
                           <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                          <Text style={styles.leafMeta}>{theoreticalKgPerBar(p).toFixed(2)} kg tạm tính/cây · {p.pricePerKg.toLocaleString('vi-VN')} đ/kg</Text>
+                          <Text style={styles.leafMeta}>{theoreticalKgPerBar(p).toFixed(2)} kg dự tính/cây</Text>
                         </View>
                         <View style={styles.stepper}>
                           <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
@@ -708,21 +733,30 @@ function ActiveOrderingScreen({ formulaCapability }: {
         <View style={{ height: 150 }} />
       </ScrollView>
 
-      <View style={styles.summary}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sumLabel}>{cart.lines} loại · {cart.totalKg.toFixed(1)} kg · {selectedColors.length} màu</Text>
-          <Text style={styles.sumValue}>{Math.round(cart.totalAmount).toLocaleString('vi-VN')} đ</Text>
+      {shouldShowOrderSummary(cart.lines) ? (
+        <View style={styles.summary}>
+          <View style={styles.summaryCopy}>
+            <Text style={styles.sumLabel}>{cart.lines} loại · {cart.totalKg.toFixed(1)} kg · {selectedColors.length} màu</Text>
+            <Text style={styles.sumValue} numberOfLines={1}>NPP xác nhận giá sau khi cân</Text>
+          </View>
+          <Pressable style={styles.submit} onPress={goToConfirm}>
+            <Icon name="send" size={14} color={colors.brandBlack.main} />
+            <Text style={styles.submitText}>Xem lại đơn</Text>
+          </Pressable>
         </View>
-        <Pressable style={styles.submit} onPress={goToConfirm}>
-          <Icon name="send" size={15} color={colors.brandBlack.main} />
-          <Text style={styles.submitText}>Xem lại đơn</Text>
-        </Pressable>
-      </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  lockedScreen: { flex: 1, backgroundColor: '#F7F8FA' },
+  lockedCard: { margin: 18, padding: 24, borderRadius: 24, backgroundColor: colors.white, borderWidth: 1, borderColor: '#F0DFD0', alignItems: 'center', gap: 12 },
+  lockedIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  lockedTitle: { color: colors.brandBlack.main, fontSize: 19, fontWeight: '900', textAlign: 'center' },
+  lockedCopy: { color: colors.brandGrey[600], fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 420 },
+  lockedButton: { minHeight: 48, marginTop: 4, borderRadius: 999, backgroundColor: colors.brandOrange, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
+  lockedButtonText: { color: colors.white, fontSize: 14, fontWeight: '900' },
   container: { padding: 18, paddingBottom: 20 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
   label: { color: colors.brandBlack.main, fontWeight: '800' },
@@ -757,20 +791,21 @@ const styles = StyleSheet.create({
   stepBtnAdd: { backgroundColor: colors.brandOrange },
   stepVal: { minWidth: 22, textAlign: 'center', color: colors.brandBlack.main, fontWeight: '900' },
   errorText: { color: colors.danger, fontWeight: '700', marginTop: 12 },
-  summary: { position: 'absolute', left: 16, right: 16, bottom: 90, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: colors.brandBlack.main, borderRadius: 22, padding: 16, paddingHorizontal: 18, shadowColor: colors.brandBlack.main, shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
-  sumLabel: { color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: 12 },
-  sumValue: { color: colors.white, fontWeight: '900', fontSize: 19, marginTop: 2 },
-  submit: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 13 },
-  submitText: { color: colors.brandBlack.main, fontWeight: '900' },
+  summary: { position: 'absolute', left: 18, right: 18, bottom: 92, minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 9, shadowColor: colors.brandOrange, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  summaryCopy: { flex: 1, minWidth: 0, paddingLeft: 2 },
+  sumLabel: { color: colors.brandOrangeText, fontWeight: '700', fontSize: 11 },
+  sumValue: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 11, marginTop: 2 },
+  submit: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  submitText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
   input: { backgroundColor: colors.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, color: colors.brandBlack.main, fontSize: 14 },
   confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderRadius: 14, padding: 12, marginBottom: 8 },
   confirmCode: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
   confirmName: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
   confirmQty: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 13 },
   confirmAmount: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 13, minWidth: 90, textAlign: 'right' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.brandBlack.main, borderRadius: 16, padding: 16, marginTop: 6 },
-  totalLabel: { color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: 13 },
-  totalValue: { color: colors.white, fontWeight: '900', fontSize: 18 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 16, padding: 16, marginTop: 6 },
+  totalLabel: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 13 },
+  pendingPriceText: { color: colors.brandGrey[700], fontWeight: '700', fontSize: 12, lineHeight: 17, marginTop: 4 },
   glassHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 10 },
   addGlassBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.orangeSoft, borderRadius: 999, paddingHorizontal: 12 },
   addGlassText: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 12 },

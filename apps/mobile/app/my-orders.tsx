@@ -6,12 +6,22 @@ import type { PaginatedOrders } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
-import { useAuth } from '../src/lib/auth';
-import { orderingScreenPolicy } from '../src/lib/eurohouseFeatureAccess';
 import { confirmAction, showAlert } from '../src/lib/alert';
 import { statusText, statusTone } from '../src/lib/orderStatus';
+import { useAuth } from '../src/lib/auth';
+import { guardEurohouseMutation, orderingScreenPolicy } from '../src/lib/eurohouseFeatureAccess';
 
-type OrderRow = { id: string; code: string; status: string; totalAmount: number; totalKg: number; createdAt: string };
+type OrderRow = {
+  id: string;
+  code: string;
+  status: string;
+  totalAmount: number;
+  totalKg: number;
+  theoreticalTotalKg: number;
+  actualTotalKg?: number | null;
+  pricingStatus: 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
+  createdAt: string;
+};
 
 const PAGE_SIZE = 5;
 const ORDER_LIMIT = 100;
@@ -33,7 +43,8 @@ function dayLabel(iso: string): string {
 
 export default function MyOrdersScreen() {
   const { user } = useAuth();
-  const orderingPolicy = orderingScreenPolicy(user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING);
+  const orderingCapability = user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING;
+  const orderingPolicy = orderingScreenPolicy(orderingCapability);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -85,9 +96,9 @@ export default function MyOrdersScreen() {
     confirmAction('Xoá đơn hàng', 'Bạn có chắc chắn muốn xoá đơn hàng này?', async () => {
       setLoading(true);
       try {
-        await api.delete(`/orders/${id}`);
+        await guardEurohouseMutation(orderingCapability, () => api.delete(`/orders/${id}`));
         load(1, filter);
-      } catch (e) {
+      } catch {
         showAlert('Lỗi', 'Không thể xoá đơn hàng');
         setLoading(false);
       }
@@ -135,7 +146,9 @@ export default function MyOrdersScreen() {
                       <View style={styles.cardIcon}><Icon name="box" size={18} color={colors.brandOrangeText} /></View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.code}>{order.code}</Text>
-                        <Text style={styles.meta}>{order.totalKg.toFixed(1)} kg · {order.totalAmount.toLocaleString('vi-VN')} đ</Text>
+                        <Text style={styles.meta}>
+                          {(order.actualTotalKg ?? order.theoreticalTotalKg ?? order.totalKg).toFixed(2)} kg · {order.pricingStatus === 'FINALIZED' ? `${order.totalAmount.toLocaleString('vi-VN')} đ` : 'Chờ NPP chốt giá'}
+                        </Text>
                       </View>
                     </Pressable>
                   </Link>

@@ -5,34 +5,69 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const testDirectory = fileURLToPath(new URL('.', import.meta.url));
-const appFile = (path: string) => readFileSync(resolve(testDirectory, '../../app', path), 'utf8');
 
-test('authenticated home preserves the approved legacy Eurohouse interface', () => {
-  const home = appFile('index.tsx');
-  assert.match(home, /header-house\.jpg/);
-  assert.match(home, /assets\/logo\.png/);
-  assert.match(home, /Tổng quan vận hành/);
-  assert.doesNotMatch(home, /function GuestHome/);
-  assert.doesNotMatch(home, /header-workshop-focus-v2\.jpg|logo-mark\.png/);
+const contentScreens = [
+  'contract.tsx',
+  'estimate.tsx',
+  'knowledge.tsx',
+  'loyalty.tsx',
+  'orders.tsx',
+  'profile.tsx',
+  'promo.tsx',
+  'quote.tsx',
+  'reminders.tsx',
+  'project/[id].tsx',
+];
+
+test('content cards and actions do not use black backgrounds', () => {
+  for (const file of contentScreens) {
+    const source = readFileSync(resolve(testDirectory, '../../app', file), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /backgroundColor:\s*(?:colors\.brandBlack\.main(?:\s*\|\|\s*'#[^']+')?|['"]#(?:0f172a|1e293b|172033|334155)['"])/i,
+      `${file} still contains a black content background`,
+    );
+  }
 });
 
-test('login keeps the compact legacy screen instead of introducing a replacement landing page', () => {
-  const auth = appFile('auth.tsx');
-  assert.match(auth, /Đăng nhập bằng email hoặc số điện thoại đã đăng ký/);
-  assert.match(auth, /style=\{styles\.segment\}/);
-  assert.doesNotMatch(auth, /guestDivider|guestUpgrade|Dùng ngay/);
+test('knowledge categories use a wrapped grid instead of an overflowing horizontal strip', () => {
+  const source = readFileSync(resolve(testDirectory, '../../app/knowledge.tsx'), 'utf8');
+  assert.doesNotMatch(source, /<ScrollView\s+horizontal[^>]*>\s*\{categories\.map/s);
+  assert.match(source, /style=\{styles\.categoryGrid\}/);
 });
 
-test('permission work does not replace the existing active feature screens', () => {
-  assert.match(appFile('formulas.tsx'), /function ActiveFormulasScreen/);
-  assert.match(appFile('orders.tsx'), /function ActiveOrderingScreen/);
-  assert.match(appFile('profile.tsx'), /Khu làm việc/);
-  assert.match(appFile('profile.tsx'), /EurohouseAccessCard/);
+test('guest home follows approved layout A and onboarding offers immediate use', () => {
+  const home = readFileSync(resolve(testDirectory, '../../app/index.tsx'), 'utf8');
+  const free = home.indexOf('Dùng miễn phí');
+  const discovery = home.indexOf('Khám phá Eurohouse');
+  const upgrade = home.indexOf('Mở thêm tính năng quản lý');
+  assert.ok(free >= 0 && discovery > free && upgrade > discovery, 'approved Home A section order is missing');
+
+  const auth = readFileSync(resolve(testDirectory, '../../app/auth.tsx'), 'utf8');
+  assert.match(auth, /Dùng ngay/);
+  assert.match(auth, /continueAsGuest/);
 });
 
-test('secondary routes never leak into the approved five-item tab bar', () => {
-  const layout = appFile('_layout.tsx');
+test('guest local tool branches do not call protected mutations', () => {
+  const attendance = readFileSync(resolve(testDirectory, '../../app/workforce.tsx'), 'utf8');
+  const quote = readFileSync(resolve(testDirectory, '../../app/quote.tsx'), 'utf8');
+  assert.match(attendance, /GuestAttendanceScreen/);
+  assert.match(attendance, /sessionTier\s*===\s*'GUEST'/);
+  assert.match(quote, /GuestQuoteScreen/);
+  assert.match(quote, /sessionTier\s*===\s*'GUEST'/);
+});
+
+test('profile keeps the workspace section and shows Eurohouse feature access', () => {
+  const profile = readFileSync(resolve(testDirectory, '../../app/profile.tsx'), 'utf8');
+  assert.match(profile, /Khu làm việc/);
+  assert.match(profile, /<EurohouseAccessCard \/>/);
+});
+
+test('secondary routes never leak into the five-item tab bar', () => {
+  const layout = readFileSync(resolve(testDirectory, '../../app/_layout.tsx'), 'utf8');
   for (const route of ['catalog', 'weather', 'contract']) {
-    assert.match(layout, new RegExp(`Tabs\\.Screen name=["']${route}["'][\\s\\S]*?href: null`));
+    const declarations = layout.match(new RegExp(`Tabs\.Screen name="${route}"[^\n]*`, 'g')) ?? [];
+    assert.equal(declarations.length, 1, `${route} must be declared exactly once`);
+    assert.match(declarations[0], /href: null/);
   }
 });

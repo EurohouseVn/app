@@ -20,9 +20,10 @@ test('new registered workshops keep management tools but receive no Eurohouse mu
   assert.equal(PUBLIC_WORKSHOP_DEFAULT_MODULE_KEYS.includes('factory:formulas'), false);
 });
 
-test('registration contract requires email while phone remains optional profile data', () => {
+test('registration contracts allow email, phone, or both without requiring an email', () => {
   const registrations = [
     { displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', email: 'an@example.com' },
+    { displayName: 'Bình', organizationName: 'Xưởng Bình', password: 'secret123', phone: '0912345678' },
     {
       displayName: 'Cường',
       organizationName: 'Xưởng Cường',
@@ -31,7 +32,7 @@ test('registration contract requires email while phone remains optional profile 
       phone: '0912345678',
     },
   ];
-  assert.equal(registrations.every((registration) => Boolean(registration.email)), true);
+  assert.equal(registrations.every((registration) => Boolean(registration.email || registration.phone)), true);
 });
 
 test('formula capability exposes the approved locked customer copy', () => {

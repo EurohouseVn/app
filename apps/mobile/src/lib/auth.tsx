@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.post<WorkshopRegistrationResponse>('/auth/register-workshop', input), []);
 
   const registerFactory = useCallback(async (input: RegisterFactoryInput) => {
-    const res = await api.post<LoginResponse>('/auth/register', input);
+    const res = await api.post<LoginResponse>('/auth/register-factory', input);
     await establishSession(res);
   }, [establishSession]);
 

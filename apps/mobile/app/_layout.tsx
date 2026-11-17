@@ -9,7 +9,7 @@ import AuthScreen from './auth';
 import { syncOperationsQueue } from '../src/lib/localProjects';
 
 function Gate() {
-  const { user, ready } = useAuth();
+  const { user, ready, sessionTier } = useAuth();
 
   useEffect(() => {
     if (!user) return undefined;
@@ -28,7 +28,7 @@ function Gate() {
     );
   }
 
-  if (!user) {
+  if (!user && sessionTier !== 'GUEST') {
     return <AuthScreen />;
   }
 
@@ -58,10 +58,10 @@ function Gate() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Trang chủ', tabBarIcon: tabBarIcon('home') }} />
-      <Tabs.Screen name="projects" options={{ title: 'Công trình', tabBarIcon: tabBarIcon('briefcase') }} />
-      <Tabs.Screen name="orders" options={{ title: 'Đơn hàng', tabBarIcon: tabBarIcon('truck') }} />
-      <Tabs.Screen name="formulas" options={{ title: 'Công thức', tabBarIcon: tabBarIcon('layout') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Tài khoản', tabBarIcon: tabBarIcon('user') }} />
+      <Tabs.Screen name="projects" options={{ title: 'Công trình', href: sessionTier === 'GUEST' ? null : undefined, tabBarIcon: tabBarIcon('briefcase') }} />
+      <Tabs.Screen name="orders" options={{ title: 'Đơn hàng', href: sessionTier === 'GUEST' ? null : undefined, tabBarIcon: tabBarIcon('truck') }} />
+      <Tabs.Screen name="formulas" options={{ title: 'Công thức', href: sessionTier === 'GUEST' ? null : undefined, tabBarIcon: tabBarIcon('layout') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Tài khoản', href: sessionTier === 'GUEST' ? null : undefined, tabBarIcon: tabBarIcon('user') }} />
       <Tabs.Screen name="auth" options={{ href: null }} />
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
       <Tabs.Screen name="estimate" options={{ href: null }} />
@@ -74,16 +74,16 @@ function Gate() {
       <Tabs.Screen name="quotations" options={{ href: null }} />
       <Tabs.Screen name="quotation/[id]" options={{ href: null }} />
       <Tabs.Screen name="quote" options={{ href: null }} />
-      <Tabs.Screen name="inventory" options={{ href: null }} />
-      <Tabs.Screen name="catalog" options={{ href: null }} />
-      <Tabs.Screen name="weather" options={{ href: null }} />
       <Tabs.Screen name="contract" options={{ href: null }} />
+      <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="library" options={{ href: null }} />
+      <Tabs.Screen name="catalog" options={{ href: null }} />
       <Tabs.Screen name="knowledge" options={{ href: null }} />
       <Tabs.Screen name="order/[id]" options={{ href: null }} />
       <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />
       <Tabs.Screen name="workforce" options={{ href: null }} />
       <Tabs.Screen name="reminders" options={{ href: null }} />
+      <Tabs.Screen name="weather" options={{ href: null }} />
       <Tabs.Screen name="survey" options={{ href: null }} />
       <Tabs.Screen name="shop-floor" options={{ href: null }} />
       <Tabs.Screen name="qc" options={{ href: null }} />
