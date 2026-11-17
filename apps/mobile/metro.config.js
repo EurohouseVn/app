@@ -11,8 +11,8 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the whole monorepo so workspace packages resolve.
-config.watchFolders = [workspaceRoot];
+// Keep Expo's SDK defaults and add the workspace packages used by this app.
+config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

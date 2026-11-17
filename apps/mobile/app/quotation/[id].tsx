@@ -5,7 +5,7 @@ import { colors } from '@eurohouse/ui';
 import { Icon } from '../../src/components/Icon';
 import { api } from '../../src/lib/api';
 import type { QuotationRecord } from '@eurohouse/types';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { API_URL, authHeaders } from '../../src/lib/api';
 
@@ -98,9 +98,9 @@ export default function QuotationDetailScreen() {
             <Icon name="download" size={16} color={colors.brandBlack.main} />
             <Text style={styles.documentButtonText}>{exporting === 'quotation' ? 'Đang xuất...' : 'Báo giá PDF'}</Text>
           </Pressable>
-          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => exportPdf('estimate')}>
+          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => router.push({ pathname: '/contract', params: { quotationId: q.id } })}>
             <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-            <Text style={styles.documentButtonText}>{exporting === 'estimate' ? 'Đang xuất...' : 'Dự toán PDF'}</Text>
+            <Text style={styles.documentButtonText}>Sinh hợp đồng</Text>
           </Pressable>
         </View>
 

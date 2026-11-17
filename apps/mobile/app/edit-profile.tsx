@@ -1,13 +1,65 @@
 import { useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View, Alert, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View, Alert, TouchableOpacity, Platform, Image } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { API_URL, authHeaders, assetUrl } from '../src/lib/api';
-import { Image } from 'react-native';
+import { assetUrl, ApiError } from '../src/lib/api';
 import { colors } from '@eurohouse/ui';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+
+type LogoUploadResponse = {
+  url: string;
+};
+
+type WorkshopProfileResponse = {
+  name?: string;
+  productionName?: string;
+  logoUrl?: string;
+  mainCategories?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  fanpage?: string;
+};
+
+const allowedLogoTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+function uploadFileName(asset: ImagePicker.ImagePickerAsset, mime: string) {
+  if (asset.fileName) return asset.fileName;
+  if (mime === 'image/png') return 'logo.png';
+  if (mime === 'image/webp') return 'logo.webp';
+  return 'logo.jpg';
+}
+
+async function appendLogo(formData: FormData, asset: ImagePicker.ImagePickerAsset) {
+  if (Platform.OS === 'web') {
+    const webFile = (asset as ImagePicker.ImagePickerAsset & { file?: File }).file;
+    if (webFile) {
+      const mime = webFile.type || asset.mimeType || 'image/jpeg';
+      if (!allowedLogoTypes.has(mime)) throw new Error('Ảnh phải có định dạng PNG, JPEG hoặc WebP.');
+      formData.append('logo', webFile, uploadFileName(asset, mime));
+      return;
+    }
+
+    const response = await fetch(asset.uri);
+    if (!response.ok) throw new Error('Không đọc được ảnh đã chọn.');
+    const blob = await response.blob();
+    const mime = blob.type || asset.mimeType || 'image/jpeg';
+    if (!allowedLogoTypes.has(mime)) throw new Error('Ảnh phải có định dạng PNG, JPEG hoặc WebP.');
+    formData.append('logo', blob, uploadFileName(asset, mime));
+    return;
+  }
+
+  const mime = asset.mimeType || 'image/jpeg';
+  if (!allowedLogoTypes.has(mime)) throw new Error('Ảnh phải có định dạng PNG, JPEG hoặc WebP.');
+  const nativeFile = {
+    uri: asset.uri,
+    name: uploadFileName(asset, mime),
+    type: mime,
+  } as unknown as Blob;
+  formData.append('logo', nativeFile);
+}
 
 export default function SettingsScreen() {
   const [loading, setLoading] = useState(true);
@@ -25,7 +77,7 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      api.get<any>('/npp/profile').then(res => {
+      api.get<WorkshopProfileResponse>('/npp/profile').then(res => {
         if (!active) return;
         setForm({
           productionName: res.productionName || res.name || '',
@@ -50,7 +102,7 @@ export default function SettingsScreen() {
       await api.put('/npp/profile', form);
       Alert.alert('Thành công', 'Lưu cấu hình thành công!');
       router.back();
-    } catch (e) {
+    } catch {
       Alert.alert('Lỗi', 'Không thể lưu cấu hình, vui lòng thử lại.');
     }
     setSaving(false);
@@ -59,42 +111,37 @@ export default function SettingsScreen() {
   const update = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const asset = result.assets[0];
-      setLoading(true);
-      try {
-        const formData = new FormData();
-        formData.append('logo', {
-          uri: asset.uri,
-          name: asset.fileName || 'logo.jpg',
-          type: asset.mimeType || 'image/jpeg',
-        } as any);
-
-        const res = await fetch(`${API_URL}/npp/profile/logo`, {
-          method: 'POST',
-          headers: {
-            ...authHeaders(),
-            'Content-Type': 'multipart/form-data',
-          },
-          body: formData,
-        });
-        
-        if (!res.ok) throw new Error('Upload failed');
-        const data = await res.json();
-        if (data.url) {
-          update('logoUrl', data.url);
-          Alert.alert('Thành công', 'Đã tải ảnh lên.');
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Cần quyền truy cập ảnh', 'Hãy cho phép Eurohouse truy cập thư viện ảnh để thay ảnh đại diện.');
+          return;
         }
-      } catch (e) {
-        Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
-      } finally {
-        setLoading(false);
       }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.82,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      setLoading(true);
+      const formData = new FormData();
+      await appendLogo(formData, result.assets[0]);
+      const data = await api.upload<LogoUploadResponse>('/npp/profile/logo', formData);
+      if (!data.url) throw new Error('Máy chủ chưa trả về đường dẫn ảnh.');
+      update('logoUrl', data.url);
+      Alert.alert('Thành công', 'Ảnh đại diện đã được tải lên và đồng bộ với hồ sơ cơ sở.');
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error
+        ? error.message
+        : 'Không thể tải ảnh lên. Vui lòng thử lại.';
+      Alert.alert('Không tải được ảnh', message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,7 +157,7 @@ export default function SettingsScreen() {
       ) : (
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={styles.card}>
-            <Text style={styles.subtitle}>Thông tin và logo này chỉ thuộc cơ sở đang đăng nhập, được dùng trên báo giá, dự toán và báo cáo PDF.</Text>
+            <Text style={styles.subtitle}>Thông tin và ảnh đại diện này chỉ thuộc cơ sở đang đăng nhập, được đồng bộ trên tài khoản, báo giá, hợp đồng và báo cáo PDF.</Text>
 
             <View style={styles.field}>
               <Text style={styles.label}>Tên cơ sở / NPP</Text>
@@ -118,7 +165,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Ảnh Logo (Tùy chọn)</Text>
+              <Text style={styles.label}>Ảnh đại diện / Logo cơ sở (Tùy chọn)</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {form.logoUrl ? (
                   <Image source={{ uri: assetUrl(form.logoUrl) || form.logoUrl }} style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: '#f0f0f0' }} resizeMode="contain" />
@@ -132,7 +179,7 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
                 {form.logoUrl ? (
                   <TouchableOpacity onPress={() => update('logoUrl', '')} style={{ paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFF1F2', borderRadius: 8 }}>
-                    <Text style={{ fontWeight: '700', color: '#B42318' }}>Gỡ logo</Text>
+                    <Text style={{ fontWeight: '700', color: '#B42318' }}>Gỡ ảnh</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>

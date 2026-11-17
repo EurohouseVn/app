@@ -4,7 +4,7 @@ import { colors } from '@eurohouse/ui';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 
-const SYSTEMS = ['EUROQUEEN Hệ 55', 'EUROQUEEN Hệ 93 (Lùa)'];
+const SYSTEMS = ['Hệ 55 Vát Cạnh', 'EUROQUEEN Hệ 93 (Lùa)'];
 const DOOR_TYPES = ['Cửa đi 1 cánh mở quay', 'Cửa sổ lùa 2 cánh'];
 
 export default function EstimateScreen() {
@@ -103,7 +103,7 @@ export default function EstimateScreen() {
           </View>
 
           <Pressable style={styles.calcBtn} onPress={calculate}>
-            <Icon name="zap" size={18} color={colors.white} />
+            <Icon name="zap" size={18} color={colors.brandOrangeText} />
             <Text style={styles.calcText}>Bóc tách vật tư</Text>
           </Pressable>
         </View>
@@ -158,18 +158,18 @@ const styles = StyleSheet.create({
   choiceText: { fontSize: 14, fontWeight: '600', color: colors.brandGrey[500] },
   choiceTextActive: { color: colors.brandOrangeText, fontWeight: '800' },
   input: { backgroundColor: '#F0F2F5', borderRadius: 12, padding: 14, fontSize: 16, fontWeight: '700', color: colors.brandBlack.main },
-  calcBtn: { backgroundColor: colors.brandBlack.main, borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 },
-  calcText: { color: colors.white, fontWeight: '800', fontSize: 16 },
+  calcBtn: { backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 },
+  calcText: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 16 },
   
   resultContainer: { marginTop: 20 },
-  summaryCard: { backgroundColor: colors.brandBlack.main, borderRadius: 20, padding: 20, marginBottom: 20, shadowColor: colors.brandOrange, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 },
-  summaryTitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600' },
-  summaryTotal: { color: colors.brandOrange, fontSize: 32, fontWeight: '900', marginVertical: 8 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 12 },
+  summaryCard: { backgroundColor: colors.orangeSoft, borderRadius: 20, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#FED7AA' },
+  summaryTitle: { color: colors.brandOrangeText, fontSize: 14, fontWeight: '700' },
+  summaryTotal: { color: colors.brandBlack.main, fontSize: 32, fontWeight: '900', marginVertical: 8 },
+  divider: { height: 1, backgroundColor: '#FED7AA', marginVertical: 12 },
   costRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  costLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
-  costValue: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  editAccBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 10, borderRadius: 8 },
+  costLabel: { color: colors.brandGrey[700], fontSize: 14 },
+  costValue: { color: colors.brandBlack.main, fontSize: 14, fontWeight: '700' },
+  editAccBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 16, backgroundColor: 'rgba(255,107,0,0.1)', paddingVertical: 10, borderRadius: 8 },
   editAccText: { color: colors.brandOrangeText, fontSize: 13, fontWeight: '700' },
 
   formulaTitle: { fontSize: 18, fontWeight: '900', color: colors.brandBlack.main, marginBottom: 12, marginLeft: 4 },

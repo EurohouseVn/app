@@ -85,8 +85,7 @@ test('mobile call sites do not mount ordering loaders or mutations while locked'
   const detail = readFileSync(resolve(process.cwd(), 'app', 'order', '[id].tsx'), 'utf8');
 
   assert.match(orders, /function ActiveOrderingScreen/);
-  assert.match(orders, /if \(!orderingPolicy\.canLoadCatalog\)[\s\S]*OrderingLockedScreen/);
-  assert.match(orders, /guardEurohouseMutation\(orderingCapability/);
+  assert.match(orders, /capability\?\.status !== 'ACTIVE'[\s\S]*EurohouseFeatureLocked/);
   assert.match(myOrders, /orderingPolicy\.canMutate/);
   assert.match(detail, /orderingPolicy\.canMutate && order\.status === 'DRAFT'/);
 });

@@ -3,7 +3,6 @@ import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal, FlatList, ActivityIndicator, Image, Platform, Switch } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@eurohouse/ui';
 import type { QuotationInput, QuotationRecord, QuotationResult, QuotationItemInput } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
@@ -11,24 +10,8 @@ import { Icon } from '../src/components/Icon';
 import { api, API_URL, authHeaders } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth';
 import { canCallFormulaApi, guardFormulaCall } from '../src/lib/formulaAccess';
-import { getInstallationIdentity } from '../src/lib/installationIdentity';
-import { calculateGuestQuote, saveGuestQuote } from '../src/lib/localGuestQuotes';
 
 function num(v: string | number): number { return Number(String(v).replace(/[^\d.-]/g, '')) || 0; }
-
-function normalizeLookup(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-type ManagedSystem = { id: string; code: string; name: string; templateCount: number };
-type ManagedTemplate = {
-  id: string;
-  templateId: string;
-  templateName: string;
-  systemName: string;
-  imageUrl?: string;
-  requiredInputs?: Array<{ id: string; name: string; type?: 'number' | 'boolean'; defaultValue?: number }>;
-};
 
 type MobileQuotationItemInput = QuotationItemInput & {
   phaoDinhName?: string;
@@ -37,49 +20,9 @@ type MobileQuotationItemInput = QuotationItemInput & {
 };
 
 export default function QuoteScreen() {
-  const { sessionTier } = useAuth();
-  return sessionTier === 'GUEST' ? <GuestQuoteScreen /> : <AuthenticatedQuoteScreen />;
-}
-
-function GuestQuoteScreen() {
-  const router = useRouter();
-  const [customerName, setCustomerName] = useState('');
-  const [description, setDescription] = useState('Cửa nhôm kính');
-  const [quantity, setQuantity] = useState('1');
-  const [unitPrice, setUnitPrice] = useState('0');
-  const [savedMessage, setSavedMessage] = useState('');
-  const calculation = calculateGuestQuote([{ description, quantity: num(quantity), unitPrice: num(unitPrice) }]);
-
-  async function saveLocalQuote() {
-    if (!description.trim() || calculation.total <= 0) {
-      Alert.alert('Chưa đủ dữ liệu', 'Nhập tên hạng mục, số lượng và đơn giá trước khi lưu.');
-      return;
-    }
-    const installationId = await getInstallationIdentity(AsyncStorage);
-    await saveGuestQuote(AsyncStorage, installationId, { customerName: customerName.trim(), items: calculation.items, total: calculation.total });
-    setSavedMessage('Đã lưu báo giá trên thiết bị này.');
-  }
-
-  return <ScrollView style={{ flex: 1, backgroundColor: '#F6F7F9' }} contentContainerStyle={{ width: '100%', maxWidth: 680, alignSelf: 'center', padding: 20, paddingBottom: 80 }}>
-    <Pressable onPress={() => router.back()} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon name="arrow-left" size={20} color="#344054" /><Text style={{ color: '#344054', fontWeight: '800' }}>Trang chủ</Text></Pressable>
-    <Text style={{ color: colors.brandOrangeText, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 18 }}>BÁO GIÁ THỦ CÔNG</Text>
-    <Text style={{ color: '#172033', fontSize: 28, lineHeight: 35, fontWeight: '900', marginTop: 8 }}>Lập nhanh một báo giá ngay trên thiết bị</Text>
-    <Text style={{ color: '#667085', fontSize: 14, lineHeight: 21, marginTop: 8 }}>Bản miễn phí không dùng công thức cắt và không gửi dữ liệu nghiệp vụ lên máy chủ.</Text>
-    <View style={{ marginTop: 22, padding: 18, borderRadius: 20, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E4E7EC', gap: 12 }}>
-      <TextInput value={customerName} onChangeText={setCustomerName} placeholder="Tên khách hàng (không bắt buộc)" placeholderTextColor="#98A2B3" style={styles.input} />
-      <TextInput value={description} onChangeText={setDescription} placeholder="Hạng mục" placeholderTextColor="#98A2B3" style={styles.input} />
-      <View style={{ flexDirection: 'row', gap: 10 }}><TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" placeholder="Số lượng" placeholderTextColor="#98A2B3" style={[styles.input, { flex: 1 }]} /><TextInput value={unitPrice} onChangeText={setUnitPrice} keyboardType="numeric" placeholder="Đơn giá" placeholderTextColor="#98A2B3" style={[styles.input, { flex: 1 }]} /></View>
-      <View style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#EAECF0', flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#475467', fontWeight: '800' }}>Tạm tính</Text><Text style={{ color: '#172033', fontSize: 20, fontWeight: '900' }}>{calculation.total.toLocaleString('vi-VN')} đ</Text></View>
-      <Pressable onPress={() => void saveLocalQuote()} style={{ minHeight: 50, borderRadius: 14, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.white, fontWeight: '900' }}>Lưu trên thiết bị</Text></Pressable>
-      {savedMessage ? <Text style={{ color: '#087A5B', textAlign: 'center', fontSize: 12, fontWeight: '800' }}>{savedMessage}</Text> : null}
-    </View>
-  </ScrollView>;
-}
-
-function AuthenticatedQuoteScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const formulaCapability = user?.capabilities.formulas;
+  const formulaCapability = user?.capabilities.eurohouse.features.FORMULA_CUTTING;
   const formulaEnabled = canCallFormulaApi(formulaCapability);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -100,8 +43,7 @@ function AuthenticatedQuoteScreen() {
   const [saved, setSaved] = useState<QuotationRecord | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [managedSystems, setManagedSystems] = useState<ManagedSystem[]>([]);
-  const [templates, setTemplates] = useState<ManagedTemplate[]>([]);
+  const [templates, setTemplates] = useState<{templateId: string; templateName: string; imagePath?: string}[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectingIndex, setSelectingIndex] = useState<number | null>(null);
 
@@ -179,7 +121,6 @@ function AuthenticatedQuoteScreen() {
               widthMm: i.widthMm,
               heightMm: i.heightMm,
               wallHugging: i.wallHugging,
-              templateId: i.templateId,
               quantity: i.quantity,
               pricePerM2: i.pricePerM2,
               includesAccessories: i.includesAccessories,
@@ -205,56 +146,38 @@ function AuthenticatedQuoteScreen() {
   }>({ visible: false, title: '', options: [], field: '', index: null });
 
   useEffect(() => {
-    if (!formulaEnabled) { setManagedSystems([]); return; }
-    void guardFormulaCall(formulaCapability, () => api.get<ManagedSystem[]>('/system-formulas/managed/systems')).then(setManagedSystems).catch(() => setManagedSystems([]));
+    if (!formulaEnabled) {
+      setTemplates([]);
+      return;
+    }
+    guardFormulaCall(formulaCapability, () => api.get<{templateId: string; templateName: string; imagePath?: string}[]>('/formulas/templates?onlyPopular=true')).then(setTemplates).catch(() => undefined);
   }, [formulaCapability, formulaEnabled]);
 
-  const openTemplateModal = async (index: number) => {
-    const item = items[index];
-    const systemNeedle = normalizeLookup(item.system || '');
-    const system = managedSystems.find(candidate => [candidate.name, candidate.code].some(value => normalizeLookup(value) === systemNeedle));
-    if (!system) {
-      Alert.alert('Chưa nhận diện hệ nhôm', 'Hãy chọn đúng hệ nhôm Eurohouse trước khi gắn công thức cắt.');
-      return;
-    }
-    if (system.templateCount <= 0) {
-      Alert.alert('Chưa có công thức phát hành', `${system.name} chưa có công thức được WebAdmin phát hành.`);
-      return;
-    }
-    try {
-      const list = await guardFormulaCall(formulaCapability, () => api.get<ManagedTemplate[]>(`/system-formulas/managed/templates?aluSystemId=${encodeURIComponent(system.id)}`));
-      setTemplates(list);
-      setSelectingIndex(index);
-      setModalVisible(true);
-    } catch (error) {
-      Alert.alert('Không tải được công thức', error instanceof Error ? error.message : 'Vui lòng thử lại.');
-    }
+  const openTemplateModal = (index: number) => {
+    setSelectingIndex(index);
+    setModalVisible(true);
   };
 
-  const selectTemplate = async (t: ManagedTemplate) => {
+  const selectTemplate = async (t: {templateId: string; templateName: string}) => {
     if (selectingIndex !== null) {
-      setItems(prev => {
-        const clone = [...prev];
-        const current = clone[selectingIndex];
-        const init: Record<string, string> = {};
-        (t.requiredInputs || []).forEach(req => {
-          const key = req.id.toUpperCase();
-          const fallback = ['W', 'WIDTH', 'B'].includes(key) ? current.widthMm
-            : ['H', 'HEIGHT'].includes(key) ? current.heightMm
-              : ['Q', 'QUANTITY'].includes(key) ? current.quantity
-                : req.defaultValue ?? '';
-          init[req.id] = String(fallback);
-        });
-        clone[selectingIndex] = {
-          ...current,
-          system: t.systemName || current.system,
-          doorType: t.templateName,
-          templateId: t.templateId,
-          requiredInputs: (t.requiredInputs || []) as any,
-          dynamicInputs: init,
-        };
-        return clone;
-      });
+      updateItem(selectingIndex, 'doorType', t.templateName);
+      updateItem(selectingIndex, 'templateId', t.templateId);
+      
+      try {
+        const data = await guardFormulaCall(formulaCapability, () => api.get<any>(`/formulas/templates/${t.templateId}`));
+        if (data && data.requiredInputs) {
+          setItems(prev => {
+            const clone = [...prev];
+            clone[selectingIndex].requiredInputs = data.requiredInputs;
+            const init: Record<string, string> = {};
+            data.requiredInputs.forEach((req: any) => {
+              init[req.id] = String(req.defaultValue ?? (req.id === 'quantity' ? '1' : ''));
+            });
+            clone[selectingIndex].dynamicInputs = init;
+            return clone;
+          });
+        }
+      } catch (e) {}
     }
     setModalVisible(false);
   };
@@ -467,7 +390,7 @@ function AuthenticatedQuoteScreen() {
       const cutsBySystem: Record<string, { lengths: number[]; pieces: any[] }> = {};
 
       items.forEach((it) => {
-        const sysKey = it.system || 'Hệ 55 Vát Cạnh';
+        const sysKey = it.system || 'EUROQUEEN 55';
         if (!cutsBySystem[sysKey]) cutsBySystem[sysKey] = { lengths: [], pieces: [] };
         const qty = it.quantity || 1;
         for (let q = 0; q < qty; q++) {
@@ -508,7 +431,7 @@ function AuthenticatedQuoteScreen() {
     if (upper.startsWith('VK')) {
       return ['Vách hệ 55', 'Vách hệ Ecento 70', 'Vách hệ Ecento Plus', 'Vách mặt dựng'];
     }
-    let sys = ['Hệ Thuỷ lực', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ Trượt quay', 'Hệ trượt Châu âu', 'Hệ 55 Vát Cạnh', 'Hệ 55 Preco'];
+    let sys = ['Hệ Thuỷ lực', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ Trượt quay', 'Hệ trượt Châu âu', 'Hệ 55 Euroqueen', 'Hệ 55 Preco'];
     if (name !== 'D1-Cửa chính' && name !== 'D2') {
       sys = sys.filter(s => s !== 'Hệ Thuỷ lực');
     }
@@ -554,7 +477,7 @@ function AuthenticatedQuoteScreen() {
       case 'Hệ Ecento Plus': return ['Cửa 1 cánh 98', 'Cửa 2 cánh 98', 'Cửa 4 cánh 98', 'Cửa 1 cánh 138', 'Cửa 2 cánh 138', 'Cửa 4 cánh 138', 'Cửa 1 cánh liền phào 138', 'Cửa 2 cánh liền phào 138', 'Cửa 4 cánh liền phào 138'];
       case 'Hệ Trượt quay': return ['Trượt quay 2 cánh', 'Trượt quay 4 cánh'];
       case 'Hệ trượt Châu âu': return ['Cửa trượt ray đơn 1 cánh', 'Cửa trượt ray đôi 2 cánh', 'Cửa trượt ray đôi 4 cánh', 'Cửa trượt 3 ray – 3 cánh', 'Cửa trượt 3 ray – 6 cánh'];
-      case 'Hệ 55 Vát Cạnh': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91', 'Cửa 1 cánh VIP 118', 'Cửa 2 cánh VIP 118', 'Cửa 4 cánh VIP 118', 'Cửa 1 cánh liền phào 125', 'Cửa 2 cánh liền phào 125', 'Cửa 4 cánh liền phào 125'];
+      case 'Hệ 55 Euroqueen': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91', 'Cửa 1 cánh VIP 118', 'Cửa 2 cánh VIP 118', 'Cửa 4 cánh VIP 118', 'Cửa 1 cánh liền phào 125', 'Cửa 2 cánh liền phào 125', 'Cửa 4 cánh liền phào 125'];
       case 'Hệ 55 Preco': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91'];
       default: return ['Cửa 1 cánh', 'Cửa 2 cánh', 'Cửa 4 cánh'];
     }
@@ -634,17 +557,6 @@ function AuthenticatedQuoteScreen() {
                 </View>
               </View>
 
-              {formulaEnabled ? <Pressable style={styles.formulaPicker} onPress={() => openTemplateModal(index)}>
-                <Icon name={item.templateId ? 'check-circle' : 'tool'} size={17} color={item.templateId ? colors.success : colors.brandOrangeText} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formulaPickerLabel}>Công thức cắt dùng để bóc tách nhôm</Text>
-                  <Text style={[styles.formulaPickerValue, item.templateId && { color: colors.success }]} numberOfLines={1}>
-                    {item.templateId ? `Đã gắn: ${item.doorType}` : 'Chọn công thức WebAdmin đã phát hành'}
-                  </Text>
-                </View>
-                <Icon name="chevron-right" size={17} color={colors.brandGrey[500]} />
-              </Pressable> : null}
-
               {/* Extra toggles based on system/doorType */}
 
               {/* Glass & Wall Hugging */}
@@ -677,7 +589,7 @@ function AuthenticatedQuoteScreen() {
                         <Icon name="chevron-down" size={14} color={colors.brandGrey[500]} />
                       </Pressable>
                     </View>
-                  {(Boolean((item.dynamicInputs as any)?.chanSongSystem) && (item.dynamicInputs as any)?.chanSongSystem !== 'Không') && (
+                    {((item.dynamicInputs as any)?.chanSongSystem && (item.dynamicInputs as any)?.chanSongSystem !== 'Không') && (
                       <View style={{ flex: 1 }}>
                         <Text style={styles.fieldLabel}>Loại song</Text>
                         <Pressable 
@@ -779,7 +691,7 @@ function AuthenticatedQuoteScreen() {
             </View>
           </View>
 
-          {Boolean(phaoDinh.name) && phaoDinh.name !== 'Không' && (
+          {phaoDinh.name && phaoDinh.name !== 'Không' && (
             <View style={[styles.rowInputs, { backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, marginTop: 4 }]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Mét dài (md)</Text>
@@ -1033,7 +945,7 @@ function AuthenticatedQuoteScreen() {
                 
                 <View style={styles.actionRow}>
                   <Pressable style={styles.darkButton} onPress={save} disabled={busy}>
-                    <Icon name="save" size={16} color={colors.brandOrangeText} />
+                    <Icon name="save" size={16} color={colors.white} />
                     <Text style={styles.darkButtonText}>{isEditing ? 'Cập nhật' : 'Lưu dự toán'}</Text>
                   </Pressable>
                   <Pressable style={[styles.orangeButton, !saved && { opacity: 0.5 }]} onPress={() => exportPdf('quotation')} disabled={busy || !saved}>
@@ -1041,20 +953,20 @@ function AuthenticatedQuoteScreen() {
                     <Text style={styles.orangeButtonText}>Báo giá PDF</Text>
                   </Pressable>
                 </View>
-                <Pressable style={[styles.orangeButton, { marginTop: 10 }, !saved && { opacity: 0.5 }]} onPress={() => saved && router.push({ pathname: '/contract', params: { quotationId: saved.id } })} disabled={busy || !saved}>
+                <Pressable style={[styles.orangeButton, { marginTop: 10 }, !saved && { opacity: 0.5 }]} onPress={() => exportPdf('estimate')} disabled={busy || !saved}>
                   <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-                  <Text style={styles.orangeButtonText}>Sinh hợp đồng từ báo giá này</Text>
+                  <Text style={styles.orangeButtonText}>Dự toán PDF</Text>
                 </Pressable>
 
                 {/* NÚT TỐI ƯU CẮT & SƠ ĐỒ THANH NHÔM */}
-                {formulaEnabled ? <Pressable
+                <Pressable
                   style={[styles.purpleButton, { marginTop: 10 }]}
                   onPress={runCuttingOptimizer}
                   disabled={busy}
                 >
                   <Icon name="zap" size={16} color="#ffffff" />
                   <Text style={styles.purpleButtonText}>TỐI ƯU CẮT & SƠ ĐỒ THANH (TIẾT KIỆM PHẾ)</Text>
-                </Pressable> : null}
+                </Pressable>
 
                 {saved ? (
                   <View style={{ marginTop: 10, gap: 10 }}>
@@ -1196,8 +1108,8 @@ function AuthenticatedQuoteScreen() {
               contentContainerStyle={{ padding: 18, paddingBottom: 40 }}
               renderItem={({ item }) => (
                 <Pressable style={styles.templateItem} onPress={() => selectTemplate(item)}>
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl.startsWith('http') ? item.imageUrl : `${API_URL.replace('/api', '')}${item.imageUrl}` }} style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: '#f1f5f9', marginRight: 12 }} resizeMode="contain" />
+                  {item.imagePath ? (
+                    <Image source={{ uri: item.imagePath.startsWith('http') ? item.imagePath : `${API_URL.replace('/api', '')}${item.imagePath}` }} style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: '#f1f5f9', marginRight: 12 }} resizeMode="contain" />
                   ) : (
                     <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff7ed', borderRadius: 6, marginRight: 12 }}>
                       <Icon name="file" size={20} color={colors.brandOrange} />
@@ -1280,16 +1192,13 @@ const styles = StyleSheet.create({
   itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   itemTitle: { fontWeight: '700', color: colors.brandBlack.main },
   rowInputs: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  formulaPicker: { minHeight: 58, borderRadius: 12, borderWidth: 1, borderColor: colors.brandOrange, backgroundColor: colors.orangeSoft, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  formulaPickerLabel: { color: colors.brandBlack.main, fontSize: 11, fontWeight: '800' },
-  formulaPickerValue: { color: colors.brandOrangeText, fontSize: 12, fontWeight: '900', marginTop: 3 },
   field: { marginBottom: 12 },
   fieldLabel: { color: colors.brandBlack.main, fontWeight: '700', marginBottom: 6, fontSize: 12 },
   input: { backgroundColor: '#F7F8FA', borderRadius: 12, padding: 14, color: colors.brandBlack.main },
   inputSmall: { backgroundColor: '#FFF', borderRadius: 8, padding: 10, color: colors.brandBlack.main, borderWidth: 1, borderColor: '#EEE' },
   addBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255, 107, 0, 0.1)', borderWidth: 1, borderColor: colors.brandOrange },
   addBtnText: { color: colors.brandOrange, fontWeight: '700' },
-  calcBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 999, paddingVertical: 16, marginTop: 16 },
+  calcBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandBlack.main, borderRadius: 999, paddingVertical: 16, marginTop: 16 },
   calcText: { color: colors.brandOrange, fontWeight: '900', fontSize: 16 },
   result: { backgroundColor: colors.white, borderRadius: 20, padding: 18, marginTop: 18, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   resultTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 16, marginBottom: 12 },
@@ -1298,8 +1207,8 @@ const styles = StyleSheet.create({
   rowValue: { color: colors.brandBlack.main, fontWeight: '800' },
   divider: { height: 1, backgroundColor: '#EEF0F3', marginVertical: 8 },
   actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  darkButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
-  darkButtonText: { color: colors.brandOrangeText, fontWeight: '800' },
+  darkButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandBlack.main, borderRadius: 14, paddingVertical: 14 },
+  darkButtonText: { color: colors.white, fontWeight: '800' },
   orangeButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
   orangeButtonText: { color: colors.brandBlack.main, fontWeight: '800' },
   purpleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#8B5CF6', borderRadius: 14, paddingVertical: 14 },

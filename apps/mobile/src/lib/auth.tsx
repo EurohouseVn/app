@@ -6,6 +6,7 @@ import type {
   AccessTier,
   AuthUser,
   LoginResponse,
+  RegisterFactoryInput,
   RegisterWorkshopInput,
   VerificationConfirmInput,
   WorkshopRegistrationResponse,
@@ -53,6 +54,7 @@ interface AuthContextValue {
   ready: boolean;
   sessionTier: AccessTier | null;
   login: (identifier: string, password: string) => Promise<void>;
+  registerFactory: (input: RegisterFactoryInput) => Promise<void>;
   registerWorkshop: (input: RegisterWorkshopInput) => Promise<WorkshopRegistrationResponse>;
   confirmVerification: (input: VerificationConfirmInput) => Promise<void>;
   resendVerification: (pendingVerificationId: string) => Promise<void>;
@@ -163,6 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerWorkshop = useCallback((input: RegisterWorkshopInput) =>
     api.post<WorkshopRegistrationResponse>('/auth/register-workshop', input), []);
 
+  const registerFactory = useCallback(async (input: RegisterFactoryInput) => {
+    const res = await api.post<LoginResponse>('/auth/register', input);
+    await establishSession(res);
+  }, [establishSession]);
+
   const confirmVerification = useCallback(async (input: VerificationConfirmInput) => {
     const res = await api.post<LoginResponse>('/auth/verification/confirm', input);
     await establishSession(res);
@@ -177,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ready,
     sessionTier: sessionTierFor(user, guestMode),
     login,
+    registerFactory,
     registerWorkshop,
     confirmVerification,
     resendVerification,
@@ -185,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     leaveGuestMode,
     upgradeGuestData,
     logout,
-  }), [user, ready, guestMode, login, registerWorkshop, confirmVerification, resendVerification, refreshUser, continueAsGuest, leaveGuestMode, upgradeGuestData, logout]);
+  }), [user, ready, guestMode, login, registerFactory, registerWorkshop, confirmVerification, resendVerification, refreshUser, continueAsGuest, leaveGuestMode, upgradeGuestData, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

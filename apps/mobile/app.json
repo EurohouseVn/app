@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Eurohouse",
+    "name": "EUROHOUSE Workshop",
     "slug": "eurohouse-mobile",
     "scheme": "eurohouse",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -13,12 +13,22 @@
       "favicon": "./public/icon-192.png"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nhomeurohouse.workshop",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.nhomeurohouse.workshop",
+      "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-mark.png",
         "backgroundColor": "#F47C20"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -28,10 +38,27 @@
         {
           "cameraPermission": "Cho phép Eurohouse dùng camera để quét mã QR bảo hành trên sản phẩm."
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cho phép Eurohouse dùng vị trí để tải dự báo thời tiết cho khu vực lắp đặt."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép Eurohouse truy cập thư viện ảnh để thay ảnh đại diện và logo cơ sở sản xuất."
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "legalPublisher": "LELOI EXIM GLOBAL",
+      "publicWebsite": "https://nhomeurohouse.com"
     }
   }
 }

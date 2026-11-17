@@ -74,26 +74,21 @@ export default function KnowledgeScreen() {
       <AppHeader title="Học viện & Kỹ thuật" subtitle="Cẩm nang & Video thi công Eurohouse" />
 
       {/* Category Tabs */}
-      <View style={{ backgroundColor: '#fff', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#e2e8f0' }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+      <View style={styles.categoryBar}>
+        <View style={styles.categoryGrid}>
           {categories.map((cat) => {
             const active = selectedCat === cat.id;
             return (
               <Pressable
                 key={cat.id}
                 onPress={() => setSelectedCat(cat.id)}
-                style={{
-                  backgroundColor: active ? colors.brandOrange : '#f1f5f9',
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                }}
+                style={[styles.categoryButton, active && styles.categoryButtonActive]}
               >
-                <Text style={{ color: active ? '#fff' : '#475569', fontWeight: '800', fontSize: 13 }}>{cat.name}</Text>
+                <Text numberOfLines={1} style={[styles.categoryText, active && styles.categoryTextActive]}>{cat.name}</Text>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       <ScrollView 
@@ -104,13 +99,13 @@ export default function KnowledgeScreen() {
         {/* Banner Học viện Eurohouse */}
         <View style={styles.academyBanner}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <View style={{ backgroundColor: '#f59e0b', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>EUROHOUSE ACADEMY</Text>
+            <View style={{ backgroundColor: colors.brandOrange, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ color: colors.brandBlack.main, fontSize: 10, fontWeight: '900' }}>EUROHOUSE ACADEMY</Text>
             </View>
-            <Text style={{ color: '#94a3b8', fontSize: 12 }}>Chứng nhận Thợ Pro</Text>
+            <Text style={{ color: colors.brandOrangeText, fontSize: 12 }}>Chứng nhận Thợ Pro</Text>
           </View>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 2 }}>Nâng Cao Tay Nghề & Kỹ Thuật Thi Công</Text>
-          <Text style={{ color: '#cbd5e1', fontSize: 12, marginTop: 4 }}>Học tập chuẩn hóa quy trình sản xuất nhôm cửa công nghệ mới.</Text>
+          <Text style={{ color: colors.brandBlack.main, fontSize: 16, fontWeight: '900', marginTop: 2 }}>Nâng Cao Tay Nghề & Kỹ Thuật Thi Công</Text>
+          <Text style={{ color: colors.brandGrey[700], fontSize: 12, marginTop: 4 }}>Học tập chuẩn hóa quy trình sản xuất nhôm cửa công nghệ mới.</Text>
         </View>
 
         <Text style={{ fontSize: 16, fontWeight: '900', color: colors.brandBlack.main, marginTop: 4 }}>Bài viết & Cẩm nang mới nhất</Text>
@@ -137,15 +132,19 @@ export default function KnowledgeScreen() {
 }
 
 const styles = StyleSheet.create({
+  categoryBar: { backgroundColor: colors.white, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: '#E2E8F0' },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryButton: { width: '31%', minHeight: 40, paddingHorizontal: 6, borderRadius: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
+  categoryButtonActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange },
+  categoryText: { color: '#475569', fontWeight: '800', fontSize: 12, textAlign: 'center' },
+  categoryTextActive: { color: colors.brandBlack.main },
   container: { padding: 16, gap: 14, paddingBottom: 110 },
   academyBanner: {
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.orangeSoft,
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
   card: {
     backgroundColor: '#fff',

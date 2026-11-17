@@ -33,7 +33,7 @@ export default function PromoScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.white} /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.brandOrangeText} /></Pressable>
         <Text style={styles.topTitle}>Khuyến mãi</Text>
         <View style={{ width: 38 }} />
       </View>
@@ -94,9 +94,9 @@ export default function PromoScreen() {
 }
 
 const styles = StyleSheet.create({
-  topBar: { paddingTop: 50, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: colors.brandBlack.main || '#000', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  topTitle: { color: colors.white, fontWeight: '900', fontSize: 17 },
+  topBar: { paddingTop: 50, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: colors.orangeSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,107,0,0.1)', alignItems: 'center', justifyContent: 'center' },
+  topTitle: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 17 },
   container: { padding: 18, paddingBottom: 40 },
   promoCard: { marginBottom: 30 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 12 },

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { localProjectStorageKey } from './localProjectStorageState';
+import { localProjectStorageKey } from './localProjectStorageState.ts';
 
 test('isolates the local project replica and mutation queue by signed-in account', () => {
   assert.notEqual(

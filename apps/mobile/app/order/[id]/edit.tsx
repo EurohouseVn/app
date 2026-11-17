@@ -123,7 +123,7 @@ export default function EditOrderScreen() {
     });
 
     if (hasGroup2 && !hasGroup1) {
-      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Euroqueen, Preco & Mặt dựng';
+      return 'Màu Café thường / Xám Rita: Chỉ khả dụng Hệ 55 Vát Cạnh, Preco & Mặt dựng';
     }
     if (hasGroup1 && !hasGroup2) {
       return 'Màu Metalic / Vân gỗ / Ngọc trai: Khả dụng tất cả hệ (trừ Preco, Mặt dựng, Nội thất)';
@@ -138,20 +138,19 @@ export default function EditOrderScreen() {
   }, [systems]);
 
   const cart = useMemo(() => {
-    let totalKg = 0; let totalAmount = 0; let lines = 0;
-    const items: { id: string; profileId: string; colorCode: string; code: string; name: string; quantity: number; kg: number; amount: number }[] = [];
+    let totalKg = 0; let lines = 0;
+    const items: { id: string; profileId: string; colorCode: string; code: string; name: string; quantity: number; kg: number }[] = [];
     Object.entries(qty).forEach(([id, q]) => {
       if (!q) return;
       const p = profileById.get(id);
       if (!p) return;
       const kg = theoreticalKgPerBar(p) * q;
-      const amount = kg * p.pricePerKg;
       selectedColors.forEach((colorCode) => {
-        lines += 1; totalKg += kg; totalAmount += amount;
-        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, code: p.code, name: p.name, quantity: q, kg, amount });
+        lines += 1; totalKg += kg;
+        items.push({ id: `${id}:${colorCode}`, profileId: id, colorCode, code: p.code, name: p.name, quantity: q, kg });
       });
     });
-    return { totalKg, totalAmount, lines, items };
+    return { totalKg, lines, items };
   }, [qty, profileById, selectedColors]);
 
   function toggleColor(code: string) {
