@@ -46,6 +46,8 @@ model Organization {
   workshopPieceJobs      WorkshopPieceJob[]       @relation("WorkshopPieceJobOrg")
   workshopPayAdjustments WorkshopPayAdjustment[]  @relation("WorkshopPayAdjustmentOrg")
   workshopPayrollCloses  WorkshopPayrollClose[]   @relation("WorkshopPayrollCloseOrg")
+  workshopTaxProfile     WorkshopTaxProfile?      @relation("WorkshopTaxProfileOrg")
+  workshopSalesInvoices  WorkshopSalesInvoice[]   @relation("WorkshopSalesInvoiceOrg")
   formulaAccessGrant     FormulaAccessGrant?      @relation("FormulaGrantOrganization")
   formulaGrantsAsNpp     FormulaAccessGrant[]     @relation("FormulaGrantNpp")
   formulaInvitesAsNpp    FormulaInvite[]          @relation("FormulaInviteNpp")
@@ -1151,6 +1153,99 @@ model WorkshopPayrollClose {
   closedAt       DateTime     @default(now())
 
   @@unique([organizationId, month])
+}
+
+// Hồ sơ thuế của xưởng (hộ kinh doanh hoặc doanh nghiệp). Không lưu khoá ký, PIN hay mật khẩu chữ ký số.
+model WorkshopTaxProfile {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+  organization         Organization @relation("WorkshopTaxProfileOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  entityType           String       @default("HKD") // HKD | DN
+  taxCode              String       @default("")
+  legalName            String       @default("")
+  legalAddress         String       @default("")
+  locationCode         String       @default("") // mã địa điểm kinh doanh, nếu nhiều địa điểm chung MST
+  businessLine         String       @default("MANUFACTURING") // MANUFACTURING | CONSTRUCTION_WITH_MATERIALS
+  vatRatePct           Float? // để trống = theo bảng quy tắc năm
+  pitRatePct           Float?
+  pitMethod            String       @default("REVENUE_RATE") // REVENUE_RATE | INCOME
+  invoiceSeries        String       @default("") // ký hiệu hoá đơn, ví dụ 1C26TAP
+  provider             String       @default("NONE") // NONE | SANDBOX | MISA
+  einvoiceRegisteredAt DateTime?
+  updatedById          String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+// Hoá đơn bán ra của xưởng. Đã phát hành thì không sửa: huỷ hoặc lập hoá đơn thay thế.
+model WorkshopSalesInvoice {
+  id             String                      @id @default(cuid())
+  organizationId String
+  organization   Organization                @relation("WorkshopSalesInvoiceOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String?
+  projectCode    String                      @default("")
+  customerId     String?
+  buyerName      String                      @default("")
+  buyerTaxCode   String                      @default("")
+  buyerAddress   String                      @default("")
+  buyerEmail     String                      @default("")
+  buyerPhone     String                      @default("")
+  issueDate      DateTime
+  series         String                      @default("")
+  number         String? // cấp khi phát hành
+  status         String                      @default("DRAFT") // DRAFT | ISSUED | CANCELLED | REPLACED
+  source         String                      @default("PROVIDER") // PROVIDER | EXTERNAL
+  provider       String? // SANDBOX | MISA
+  providerRef    String?
+  lookupCode     String?
+  subtotal       Int                         @default(0)
+  vatRatePct     Float                       @default(0) // hộ kinh doanh: 0 (hoá đơn bán hàng)
+  vatAmount      Int                         @default(0)
+  total          Int                         @default(0)
+  note           String                      @default("")
+  replacesId     String?
+  replaces       WorkshopSalesInvoice?       @relation("SalesInvoiceReplacement", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy     WorkshopSalesInvoice[]      @relation("SalesInvoiceReplacement")
+  cancelReason   String                      @default("")
+  createdById    String
+  issuedAt       DateTime?
+  cancelledAt    DateTime?
+  lines          WorkshopSalesInvoiceLine[]
+  events         WorkshopSalesInvoiceEvent[]
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@unique([organizationId, series, number])
+  @@index([organizationId, issueDate])
+  @@index([organizationId, status])
+}
+
+model WorkshopSalesInvoiceLine {
+  id        String               @id @default(cuid())
+  invoiceId String
+  invoice   WorkshopSalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position  Int                  @default(0)
+  name      String
+  unit      String               @default("")
+  quantity  Float                @default(1)
+  unitPrice Int                  @default(0)
+  amount    Int                  @default(0)
+
+  @@index([invoiceId, position])
+}
+
+// Nhật ký thao tác trên hoá đơn: ai, lúc nào, làm gì.
+model WorkshopSalesInvoiceEvent {
+  id        String               @id @default(cuid())
+  invoiceId String
+  invoice   WorkshopSalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  action    String // CREATED | UPDATED | ISSUED | RECORDED_EXTERNAL | CANCELLED | REPLACED
+  actorId   String
+  actorName String               @default("")
+  detail    String               @default("")
+  createdAt DateTime             @default(now())
+
+  @@index([invoiceId, createdAt])
 }
 
 model WorkshopReminder {

@@ -1576,3 +1576,172 @@ export interface AdminWebsiteRevision {
 }
 
 export * from './website-homepage.js';
+
+// ---------------------------------------------------------------------------
+// Hoá đơn & thuế của CSSX (GĐ1: sổ doanh thu, hoá đơn bán ra, khung nhà cung cấp)
+// ---------------------------------------------------------------------------
+
+export type TaxEntityType = 'HKD' | 'DN';
+export type TaxBusinessLine = 'MANUFACTURING' | 'CONSTRUCTION_WITH_MATERIALS';
+export type TaxPitMethod = 'REVENUE_RATE' | 'INCOME';
+export type InvoiceProviderCode = 'NONE' | 'SANDBOX' | 'MISA';
+export type SalesInvoiceStatus = 'DRAFT' | 'ISSUED' | 'CANCELLED' | 'REPLACED';
+export type SalesInvoiceSource = 'PROVIDER' | 'EXTERNAL';
+export type TaxLedgerAlert = 'NONE' | 'NEAR' | 'CROSSED' | 'OVERDUE' | 'REGISTERED';
+
+export interface WorkshopTaxYearRuleView {
+  year: number;
+  exemptThreshold: number;
+  vatPct: number;
+  pitPct: number;
+  confirmed: boolean;
+  source: string;
+}
+
+export interface WorkshopTaxProfile {
+  entityType: TaxEntityType;
+  taxCode: string;
+  legalName: string;
+  legalAddress: string;
+  locationCode: string;
+  businessLine: TaxBusinessLine;
+  vatRatePct: number | null;
+  pitRatePct: number | null;
+  pitMethod: TaxPitMethod;
+  invoiceSeries: string;
+  provider: InvoiceProviderCode;
+  einvoiceRegisteredAt: string | null;
+  updatedAt: string | null;
+  /** Đủ mã số thuế, tên và ký hiệu để phát hành. */
+  isComplete: boolean;
+  /** Tỷ lệ mặc định theo bảng năm hiện tại cho ngành đã chọn. */
+  defaults: WorkshopTaxYearRuleView;
+}
+
+export type UpdateWorkshopTaxProfileInput = Partial<Omit<WorkshopTaxProfile, 'updatedAt' | 'isComplete' | 'defaults'>>;
+
+export interface WorkshopSalesInvoiceLine {
+  id?: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export interface WorkshopSalesInvoiceSummary {
+  id: string;
+  status: SalesInvoiceStatus;
+  source: SalesInvoiceSource;
+  provider: InvoiceProviderCode | null;
+  series: string;
+  number: string | null;
+  issueDate: string;
+  buyerName: string;
+  buyerTaxCode: string;
+  projectId: string | null;
+  projectCode: string;
+  total: number;
+  lineCount: number;
+  cancelReason: string;
+  replacesNumber: string | null;
+  replacedByNumber: string | null;
+}
+
+export interface WorkshopSalesInvoiceEvent {
+  action: string;
+  actorName: string;
+  detail: string;
+  createdAt: string;
+}
+
+export interface WorkshopSalesInvoice extends WorkshopSalesInvoiceSummary {
+  customerId: string | null;
+  buyerAddress: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  subtotal: number;
+  vatRatePct: number;
+  vatAmount: number;
+  note: string;
+  lookupCode: string | null;
+  providerRef: string | null;
+  issuedAt: string | null;
+  cancelledAt: string | null;
+  replacesId: string | null;
+  replacedById: string | null;
+  lines: WorkshopSalesInvoiceLine[];
+  events: WorkshopSalesInvoiceEvent[];
+  /** Tiền đã thu của công trình gắn với hoá đơn (để đối chiếu). */
+  projectCollected: number | null;
+}
+
+export interface SaveWorkshopSalesInvoiceInput {
+  projectId?: string | null;
+  customerId?: string | null;
+  buyerName: string;
+  buyerTaxCode?: string;
+  buyerAddress?: string;
+  buyerEmail?: string;
+  buyerPhone?: string;
+  /** YYYY-MM-DD */
+  issueDate?: string;
+  note?: string;
+  vatRatePct?: number;
+  lines: Array<{ name: string; unit?: string; quantity: number; unitPrice: number }>;
+}
+
+export interface RecordExternalInvoiceInput {
+  series: string;
+  number: string;
+  /** YYYY-MM-DD */
+  issueDate?: string;
+}
+
+export interface WorkshopTaxPeriod {
+  invoiced: number;
+  collected: number;
+  invoiceCount: number;
+  receiptCount: number;
+}
+
+export interface WorkshopTaxEstimate {
+  revenue: number;
+  exempt: boolean;
+  vatRatePct: number;
+  pitRatePct: number;
+  pitMethod: TaxPitMethod;
+  vat: number;
+  pit: number | null;
+  total: number;
+  vatFormula: string;
+  pitFormula: string;
+}
+
+export interface WorkshopTaxLedger {
+  year: number;
+  threshold: number;
+  months: Array<WorkshopTaxPeriod & { month: number }>;
+  quarters: Array<WorkshopTaxPeriod & { quarter: number }>;
+  totalInvoiced: number;
+  totalCollected: number;
+  invoiceCount: number;
+  receiptCount: number;
+  thresholdPct: number;
+  remaining: number;
+  crossedQuarter: number | null;
+  crossedOn: string | null;
+  registrationDeadline: string | null;
+  daysToDeadline: number | null;
+  registrationDeadlineIfCrossedNow: string | null;
+  alert: TaxLedgerAlert;
+  annualNoticeDeadline: string;
+  currentQuarter: number | null;
+  projectedYearRevenue: number | null;
+  draftCount: number;
+  tax: WorkshopTaxEstimate;
+  /** Thuế nếu cả năm giữ nhịp hiện tại và vượt ngưỡng; null nếu không vượt. */
+  projectedTax: WorkshopTaxEstimate | null;
+  rule: WorkshopTaxYearRuleView;
+  profile: { entityType: TaxEntityType; legalName: string; taxCode: string; isComplete: boolean; provider: InvoiceProviderCode };
+}
