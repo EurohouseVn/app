@@ -26,107 +26,110 @@ model Organization {
   email          String?
   fanpage        String?
 
-  users               User[]
-  managedByNppId      String?
-  managedByNpp        Organization?        @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
-  managedFactories    Organization[]       @relation("NppManagesFactory")
-  ordersAsNpp         Order[]              @relation("OrderNppOrg")
-  ordersAsFactory     Order[]              @relation("OrderFactoryOrg")
-  debtsAsNpp          Debt[]               @relation("DebtNppOrg")
-  debtsAsFactory      Debt[]               @relation("DebtFactoryOrg")
-  nppProfileStocks    NppProfileStock[]    @relation("NppProfileStockOrg")
-  nppStockMovements   NppStockMovement[]   @relation("NppStockMovementOrg")
-  nppAccessories      NppAccessory[]       @relation("NppAccessoryOrg")
-  nppGlassSheets      NppGlassSheet[]      @relation("NppGlassSheetOrg")
-  salesTargets        SalesTarget[]        @relation("NppSalesTarget")
-  workshopWorkers     WorkshopWorker[]     @relation("WorkshopWorkerOrg")
-  workshopAttendances WorkshopAttendance[] @relation("WorkshopAttendanceOrg")
-  workshopWorkdays    WorkshopWorkdaySetting[] @relation("WorkshopWorkdayOrg")
-  workshopReminders   WorkshopReminder[]   @relation("WorkshopReminderOrg")
-  formulaAccessGrant  FormulaAccessGrant?   @relation("FormulaGrantOrganization")
-  formulaGrantsAsNpp  FormulaAccessGrant[]  @relation("FormulaGrantNpp")
-  formulaInvitesAsNpp FormulaInvite[]       @relation("FormulaInviteNpp")
-  formulaInvitesTarget FormulaInvite[]      @relation("FormulaInviteTarget")
-  formulaAccessAudits FormulaAccessAudit[]  @relation("FormulaAuditOrganization")
-  formulaAuditsFromNpp FormulaAccessAudit[] @relation("FormulaAuditFromNpp")
-  formulaAuditsToNpp FormulaAccessAudit[]   @relation("FormulaAuditToNpp")
-  eurohouseFeatureGrants EurohouseFeatureGrant[] @relation("EurohouseGrantOrganization")
-  eurohouseGrantsAsNpp EurohouseFeatureGrant[] @relation("EurohouseGrantNpp")
-  eurohouseInvitesAsNpp EurohouseInvite[] @relation("EurohouseInviteNpp")
-  eurohouseInvitesTarget EurohouseInvite[] @relation("EurohouseInviteTarget")
-  eurohouseAccessAudits EurohouseAccessAudit[] @relation("EurohouseAuditOrganization")
-  eurohouseAuditsFromNpp EurohouseAccessAudit[] @relation("EurohouseAuditFromNpp")
-  eurohouseAuditsToNpp EurohouseAccessAudit[] @relation("EurohouseAuditToNpp")
-  tier                String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
-  targetRevenue       Float                @default(0) // Mục tiêu doanh số
-  purchasingPower     String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  users                  User[]
+  managedByNppId         String?
+  managedByNpp           Organization?            @relation("NppManagesFactory", fields: [managedByNppId], references: [id])
+  managedFactories       Organization[]           @relation("NppManagesFactory")
+  ordersAsNpp            Order[]                  @relation("OrderNppOrg")
+  ordersAsFactory        Order[]                  @relation("OrderFactoryOrg")
+  debtsAsNpp             Debt[]                   @relation("DebtNppOrg")
+  debtsAsFactory         Debt[]                   @relation("DebtFactoryOrg")
+  nppProfileStocks       NppProfileStock[]        @relation("NppProfileStockOrg")
+  nppStockMovements      NppStockMovement[]       @relation("NppStockMovementOrg")
+  nppAccessories         NppAccessory[]           @relation("NppAccessoryOrg")
+  nppGlassSheets         NppGlassSheet[]          @relation("NppGlassSheetOrg")
+  salesTargets           SalesTarget[]            @relation("NppSalesTarget")
+  workshopWorkers        WorkshopWorker[]         @relation("WorkshopWorkerOrg")
+  workshopAttendances    WorkshopAttendance[]     @relation("WorkshopAttendanceOrg")
+  workshopWorkdays       WorkshopWorkdaySetting[] @relation("WorkshopWorkdayOrg")
+  workshopReminders      WorkshopReminder[]       @relation("WorkshopReminderOrg")
+  workshopPieceJobs      WorkshopPieceJob[]       @relation("WorkshopPieceJobOrg")
+  workshopPayAdjustments WorkshopPayAdjustment[]  @relation("WorkshopPayAdjustmentOrg")
+  workshopPayrollCloses  WorkshopPayrollClose[]   @relation("WorkshopPayrollCloseOrg")
+  formulaAccessGrant     FormulaAccessGrant?      @relation("FormulaGrantOrganization")
+  formulaGrantsAsNpp     FormulaAccessGrant[]     @relation("FormulaGrantNpp")
+  formulaInvitesAsNpp    FormulaInvite[]          @relation("FormulaInviteNpp")
+  formulaInvitesTarget   FormulaInvite[]          @relation("FormulaInviteTarget")
+  formulaAccessAudits    FormulaAccessAudit[]     @relation("FormulaAuditOrganization")
+  formulaAuditsFromNpp   FormulaAccessAudit[]     @relation("FormulaAuditFromNpp")
+  formulaAuditsToNpp     FormulaAccessAudit[]     @relation("FormulaAuditToNpp")
+  eurohouseFeatureGrants EurohouseFeatureGrant[]  @relation("EurohouseGrantOrganization")
+  eurohouseGrantsAsNpp   EurohouseFeatureGrant[]  @relation("EurohouseGrantNpp")
+  eurohouseInvitesAsNpp  EurohouseInvite[]        @relation("EurohouseInviteNpp")
+  eurohouseInvitesTarget EurohouseInvite[]        @relation("EurohouseInviteTarget")
+  eurohouseAccessAudits  EurohouseAccessAudit[]   @relation("EurohouseAuditOrganization")
+  eurohouseAuditsFromNpp EurohouseAccessAudit[]   @relation("EurohouseAuditFromNpp")
+  eurohouseAuditsToNpp   EurohouseAccessAudit[]   @relation("EurohouseAuditToNpp")
+  tier                   String? // Vàng, Bạc, Đồng (dành cho NPP/Đại lý)
+  targetRevenue          Float                    @default(0) // Mục tiêu doanh số
+  purchasingPower        String? // Sức mua (JSON string, VD: {"Euroqueen": 80, "Ecento": 20})
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
 }
 
 model User {
-  id                    String                 @id @default(cuid())
-  email                 String?                @unique
-  emailNormalized       String?                @unique
-  displayName           String
-  phone                 String?
-  phoneNormalized       String?                @unique
-  verifiedAt            DateTime?
-  verificationChannel   VerificationChannel?
-  passwordHash          String
-  role                  String // ADMIN | STAFF | NPP | DAILY | FACTORY
-  organizationId        String?
-  organization          Organization?          @relation(fields: [organizationId], references: [id])
+  id                       String                     @id @default(cuid())
+  email                    String?                    @unique
+  emailNormalized          String?                    @unique
+  displayName              String
+  phone                    String?
+  phoneNormalized          String?                    @unique
+  verifiedAt               DateTime?
+  verificationChannel      VerificationChannel?
+  passwordHash             String
+  role                     String // ADMIN | STAFF | NPP | DAILY | FACTORY
+  organizationId           String?
+  organization             Organization?              @relation(fields: [organizationId], references: [id])
   // RBAC nội bộ công ty (Web Admin)
-  departmentId          String?
-  department            Department?            @relation(fields: [departmentId], references: [id])
-  jobTitle              String                 @default("") // chức danh: CEO, Kế toán trưởng, Kế toán tạo đơn...
-  isCeo                 Boolean                @default(false) // CEO: toàn quyền, bỏ qua mọi check module
-  moduleAccess          String                 @default("[]") // (Legacy) JSON mảng module key được phép
-  rbacRoleId            String?
-  rbacRole              Role?                  @relation(fields: [rbacRoleId], references: [id])
-  managedProvinces      String                 @default("[]") // JSON mảng Tỉnh/Thành phố mà Sale này quản lý
-  projects              Project[]
-  orders                Order[]
-  stockMovements        StockMovement[]
-  profileStockMovements ProfileStockMovement[]
-  nppStockMovements     NppStockMovement[]     @relation("UserNppStockMovements")
-  cashTransactions      CashTransaction[]
-  quotations            Quotation[]
-  warranties            Warranty[]
-  points                Int                    @default(0) // số dư điểm tích lũy (cache; nguồn sự thật là PointLedger)
-  pointLedgers          PointLedger[]
-  giftRedemptions       GiftRedemption[]
-  leads                 Lead[]                 @relation("LeadManagedBy")
-  saleReports           SaleReport[]           @relation("SaleReportCreatedBy")
-  payrolls              Payroll[]              @relation("UserPayroll")
-  workOrders            WorkOrder[]            @relation("WorkOrderCreator")
-  workerAccessories     WorkerAccessoryPrice[] @relation("WorkerAccessory")
-  scrapKg               Float                  @default(0) // Nhôm phế liệu dự tính (kg)
-  inventoryItems        InventoryItem[]        @relation("UserInventory")
-  profileCutoffs        ProfileCutoff[]
-  workshopReminders     WorkshopReminder[]     @relation("WorkshopReminderCreator")
-  websiteContents       WebsiteContent[]       @relation("WebsiteContentCreatedBy")
-  websiteRevisions      WebsiteContentRevision[] @relation("WebsiteRevisionCreatedBy")
-  websiteReviews        WebsiteContentReview[] @relation("WebsiteReviewReviewer")
-  websiteSeoReviews     WebsiteSeoRecord[]     @relation("WebsiteSeoReviewer")
-  websiteMediaAssets    WebsiteMediaAsset[]    @relation("WebsiteMediaCreatedBy")
-  websiteDocuments      WebsiteTechnicalDocument[] @relation("WebsiteDocumentCreatedBy")
-  websiteRedirects      WebsiteRedirect[]      @relation("WebsiteRedirectCreatedBy")
-  websiteAudits         WebsitePublicationAudit[] @relation("WebsiteAuditActor")
-  verificationChallenges VerificationChallenge[]
-  formulaGrantsActivated FormulaAccessGrant[] @relation("FormulaGrantActivatedBy")
-  formulaGrantsRevoked FormulaAccessGrant[] @relation("FormulaGrantRevokedBy")
-  formulaInvitesCreated FormulaInvite[] @relation("FormulaInviteCreatedBy")
-  formulaInvitesUsed FormulaInvite[] @relation("FormulaInviteUsedBy")
-  formulaAccessAudits FormulaAccessAudit[] @relation("FormulaAuditActor")
-  eurohouseGrantsActivated EurohouseFeatureGrant[] @relation("EurohouseGrantActivatedBy")
-  eurohouseGrantsRevoked EurohouseFeatureGrant[] @relation("EurohouseGrantRevokedBy")
-  eurohouseInvitesCreated EurohouseInvite[] @relation("EurohouseInviteCreatedBy")
-  eurohouseInvitesUsed EurohouseInvite[] @relation("EurohouseInviteUsedBy")
-  eurohouseAccessAudits EurohouseAccessAudit[] @relation("EurohouseAuditActor")
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  departmentId             String?
+  department               Department?                @relation(fields: [departmentId], references: [id])
+  jobTitle                 String                     @default("") // chức danh: CEO, Kế toán trưởng, Kế toán tạo đơn...
+  isCeo                    Boolean                    @default(false) // CEO: toàn quyền, bỏ qua mọi check module
+  moduleAccess             String                     @default("[]") // (Legacy) JSON mảng module key được phép
+  rbacRoleId               String?
+  rbacRole                 Role?                      @relation(fields: [rbacRoleId], references: [id])
+  managedProvinces         String                     @default("[]") // JSON mảng Tỉnh/Thành phố mà Sale này quản lý
+  projects                 Project[]
+  orders                   Order[]
+  stockMovements           StockMovement[]
+  profileStockMovements    ProfileStockMovement[]
+  nppStockMovements        NppStockMovement[]         @relation("UserNppStockMovements")
+  cashTransactions         CashTransaction[]
+  quotations               Quotation[]
+  warranties               Warranty[]
+  points                   Int                        @default(0) // số dư điểm tích lũy (cache; nguồn sự thật là PointLedger)
+  pointLedgers             PointLedger[]
+  giftRedemptions          GiftRedemption[]
+  leads                    Lead[]                     @relation("LeadManagedBy")
+  saleReports              SaleReport[]               @relation("SaleReportCreatedBy")
+  payrolls                 Payroll[]                  @relation("UserPayroll")
+  workOrders               WorkOrder[]                @relation("WorkOrderCreator")
+  workerAccessories        WorkerAccessoryPrice[]     @relation("WorkerAccessory")
+  scrapKg                  Float                      @default(0) // Nhôm phế liệu dự tính (kg)
+  inventoryItems           InventoryItem[]            @relation("UserInventory")
+  profileCutoffs           ProfileCutoff[]
+  workshopReminders        WorkshopReminder[]         @relation("WorkshopReminderCreator")
+  websiteContents          WebsiteContent[]           @relation("WebsiteContentCreatedBy")
+  websiteRevisions         WebsiteContentRevision[]   @relation("WebsiteRevisionCreatedBy")
+  websiteReviews           WebsiteContentReview[]     @relation("WebsiteReviewReviewer")
+  websiteSeoReviews        WebsiteSeoRecord[]         @relation("WebsiteSeoReviewer")
+  websiteMediaAssets       WebsiteMediaAsset[]        @relation("WebsiteMediaCreatedBy")
+  websiteDocuments         WebsiteTechnicalDocument[] @relation("WebsiteDocumentCreatedBy")
+  websiteRedirects         WebsiteRedirect[]          @relation("WebsiteRedirectCreatedBy")
+  websiteAudits            WebsitePublicationAudit[]  @relation("WebsiteAuditActor")
+  verificationChallenges   VerificationChallenge[]
+  formulaGrantsActivated   FormulaAccessGrant[]       @relation("FormulaGrantActivatedBy")
+  formulaGrantsRevoked     FormulaAccessGrant[]       @relation("FormulaGrantRevokedBy")
+  formulaInvitesCreated    FormulaInvite[]            @relation("FormulaInviteCreatedBy")
+  formulaInvitesUsed       FormulaInvite[]            @relation("FormulaInviteUsedBy")
+  formulaAccessAudits      FormulaAccessAudit[]       @relation("FormulaAuditActor")
+  eurohouseGrantsActivated EurohouseFeatureGrant[]    @relation("EurohouseGrantActivatedBy")
+  eurohouseGrantsRevoked   EurohouseFeatureGrant[]    @relation("EurohouseGrantRevokedBy")
+  eurohouseInvitesCreated  EurohouseInvite[]          @relation("EurohouseInviteCreatedBy")
+  eurohouseInvitesUsed     EurohouseInvite[]          @relation("EurohouseInviteUsedBy")
+  eurohouseAccessAudits    EurohouseAccessAudit[]     @relation("EurohouseAuditActor")
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
 
   @@index([departmentId])
 }
@@ -214,43 +217,43 @@ model VerificationChallenge {
 }
 
 model FormulaAccessGrant {
-  id                  String              @id @default(cuid())
-  organizationId      String              @unique
-  organization        Organization        @relation("FormulaGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
-  status              FormulaAccessStatus
-  nppOrganizationId   String?
-  nppOrganization     Organization?       @relation("FormulaGrantNpp", fields: [nppOrganizationId], references: [id])
-  source              FormulaAccessSource
-  activatedByUserId   String
-  activatedBy         User                @relation("FormulaGrantActivatedBy", fields: [activatedByUserId], references: [id])
-  activatedAt         DateTime            @default(now())
-  revokedByUserId     String?
-  revokedBy           User?               @relation("FormulaGrantRevokedBy", fields: [revokedByUserId], references: [id])
-  revokedAt           DateTime?
-  revokeReason        String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  id                String              @id @default(cuid())
+  organizationId    String              @unique
+  organization      Organization        @relation("FormulaGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  status            FormulaAccessStatus
+  nppOrganizationId String?
+  nppOrganization   Organization?       @relation("FormulaGrantNpp", fields: [nppOrganizationId], references: [id])
+  source            FormulaAccessSource
+  activatedByUserId String
+  activatedBy       User                @relation("FormulaGrantActivatedBy", fields: [activatedByUserId], references: [id])
+  activatedAt       DateTime            @default(now())
+  revokedByUserId   String?
+  revokedBy         User?               @relation("FormulaGrantRevokedBy", fields: [revokedByUserId], references: [id])
+  revokedAt         DateTime?
+  revokeReason      String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@index([nppOrganizationId, status])
 }
 
 model FormulaInvite {
-  id                   String              @id @default(cuid())
-  codeHash             String              @unique
+  id                   String               @id @default(cuid())
+  codeHash             String               @unique
   codePrefix           String
   codeLast4            String
   nppOrganizationId    String
-  nppOrganization      Organization        @relation("FormulaInviteNpp", fields: [nppOrganizationId], references: [id])
+  nppOrganization      Organization         @relation("FormulaInviteNpp", fields: [nppOrganizationId], references: [id])
   targetOrganizationId String
-  targetOrganization   Organization        @relation("FormulaInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
+  targetOrganization   Organization         @relation("FormulaInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
   createdByUserId      String
-  createdBy            User                @relation("FormulaInviteCreatedBy", fields: [createdByUserId], references: [id])
-  status               FormulaInviteStatus @default(ACTIVE)
+  createdBy            User                 @relation("FormulaInviteCreatedBy", fields: [createdByUserId], references: [id])
+  status               FormulaInviteStatus  @default(ACTIVE)
   expiresAt            DateTime
   usedAt               DateTime?
   usedByUserId         String?
-  usedBy               User?               @relation("FormulaInviteUsedBy", fields: [usedByUserId], references: [id])
-  createdAt            DateTime            @default(now())
+  usedBy               User?                @relation("FormulaInviteUsedBy", fields: [usedByUserId], references: [id])
+  createdAt            DateTime             @default(now())
   revokedAt            DateTime?
   audits               FormulaAccessAudit[]
 
@@ -262,64 +265,64 @@ model FormulaAccessAudit {
   id                    String              @id @default(cuid())
   organizationId        String
   organization          Organization        @relation("FormulaAuditOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
-  actorUserId            String
-  actor                  User                @relation("FormulaAuditActor", fields: [actorUserId], references: [id])
-  actorRole              String
-  action                 FormulaAccessAction
-  fromNppOrganizationId  String?
-  fromNppOrganization    Organization?       @relation("FormulaAuditFromNpp", fields: [fromNppOrganizationId], references: [id])
-  toNppOrganizationId    String?
-  toNppOrganization      Organization?       @relation("FormulaAuditToNpp", fields: [toNppOrganizationId], references: [id])
-  formulaInviteId        String?
-  formulaInvite          FormulaInvite?      @relation(fields: [formulaInviteId], references: [id])
-  metadata               Json?
-  createdAt              DateTime            @default(now())
+  actorUserId           String
+  actor                 User                @relation("FormulaAuditActor", fields: [actorUserId], references: [id])
+  actorRole             String
+  action                FormulaAccessAction
+  fromNppOrganizationId String?
+  fromNppOrganization   Organization?       @relation("FormulaAuditFromNpp", fields: [fromNppOrganizationId], references: [id])
+  toNppOrganizationId   String?
+  toNppOrganization     Organization?       @relation("FormulaAuditToNpp", fields: [toNppOrganizationId], references: [id])
+  formulaInviteId       String?
+  formulaInvite         FormulaInvite?      @relation(fields: [formulaInviteId], references: [id])
+  metadata              Json?
+  createdAt             DateTime            @default(now())
 
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
 }
 
 model EurohouseFeatureGrant {
-  id                  String                  @id @default(cuid())
-  organizationId      String
-  organization        Organization            @relation("EurohouseGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
-  featureKey          EurohouseFeatureKey
-  status              EurohouseAccessStatus
-  nppOrganizationId   String?
-  nppOrganization     Organization?           @relation("EurohouseGrantNpp", fields: [nppOrganizationId], references: [id], onDelete: SetNull)
-  source              EurohouseAccessSource
-  activatedByUserId   String
-  activatedBy         User                    @relation("EurohouseGrantActivatedBy", fields: [activatedByUserId], references: [id])
-  activatedAt         DateTime                @default(now())
-  revokedByUserId     String?
-  revokedBy           User?                   @relation("EurohouseGrantRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
-  revokedAt           DateTime?
-  revokeReason        String?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  id                String                @id @default(cuid())
+  organizationId    String
+  organization      Organization          @relation("EurohouseGrantOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  featureKey        EurohouseFeatureKey
+  status            EurohouseAccessStatus
+  nppOrganizationId String?
+  nppOrganization   Organization?         @relation("EurohouseGrantNpp", fields: [nppOrganizationId], references: [id], onDelete: SetNull)
+  source            EurohouseAccessSource
+  activatedByUserId String
+  activatedBy       User                  @relation("EurohouseGrantActivatedBy", fields: [activatedByUserId], references: [id])
+  activatedAt       DateTime              @default(now())
+  revokedByUserId   String?
+  revokedBy         User?                 @relation("EurohouseGrantRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  revokedAt         DateTime?
+  revokeReason      String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@unique([organizationId, featureKey])
   @@index([nppOrganizationId, featureKey, status])
 }
 
 model EurohouseInvite {
-  id                   String                  @id @default(cuid())
-  codeHash             String                  @unique
+  id                   String                 @id @default(cuid())
+  codeHash             String                 @unique
   codePrefix           String
   codeLast4            String
   featureKeys          EurohouseFeatureKey[]
   nppOrganizationId    String
-  nppOrganization      Organization            @relation("EurohouseInviteNpp", fields: [nppOrganizationId], references: [id])
+  nppOrganization      Organization           @relation("EurohouseInviteNpp", fields: [nppOrganizationId], references: [id])
   targetOrganizationId String
-  targetOrganization   Organization            @relation("EurohouseInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
+  targetOrganization   Organization           @relation("EurohouseInviteTarget", fields: [targetOrganizationId], references: [id], onDelete: Cascade)
   createdByUserId      String
-  createdBy            User                    @relation("EurohouseInviteCreatedBy", fields: [createdByUserId], references: [id])
-  status               EurohouseInviteStatus   @default(ACTIVE)
+  createdBy            User                   @relation("EurohouseInviteCreatedBy", fields: [createdByUserId], references: [id])
+  status               EurohouseInviteStatus  @default(ACTIVE)
   expiresAt            DateTime
   usedAt               DateTime?
   usedByUserId         String?
-  usedBy               User?                   @relation("EurohouseInviteUsedBy", fields: [usedByUserId], references: [id], onDelete: SetNull)
-  createdAt            DateTime                @default(now())
+  usedBy               User?                  @relation("EurohouseInviteUsedBy", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime               @default(now())
   revokedAt            DateTime?
   audits               EurohouseAccessAudit[]
 
@@ -328,22 +331,22 @@ model EurohouseInvite {
 }
 
 model EurohouseAccessAudit {
-  id                    String                  @id @default(cuid())
+  id                    String                @id @default(cuid())
   organizationId        String
-  organization          Organization            @relation("EurohouseAuditOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
+  organization          Organization          @relation("EurohouseAuditOrganization", fields: [organizationId], references: [id], onDelete: Cascade)
   featureKey            EurohouseFeatureKey?
   actorUserId           String
-  actor                 User                    @relation("EurohouseAuditActor", fields: [actorUserId], references: [id])
+  actor                 User                  @relation("EurohouseAuditActor", fields: [actorUserId], references: [id])
   actorRole             String
   action                EurohouseAccessAction
   fromNppOrganizationId String?
-  fromNppOrganization   Organization?           @relation("EurohouseAuditFromNpp", fields: [fromNppOrganizationId], references: [id], onDelete: SetNull)
+  fromNppOrganization   Organization?         @relation("EurohouseAuditFromNpp", fields: [fromNppOrganizationId], references: [id], onDelete: SetNull)
   toNppOrganizationId   String?
-  toNppOrganization     Organization?           @relation("EurohouseAuditToNpp", fields: [toNppOrganizationId], references: [id], onDelete: SetNull)
+  toNppOrganization     Organization?         @relation("EurohouseAuditToNpp", fields: [toNppOrganizationId], references: [id], onDelete: SetNull)
   eurohouseInviteId     String?
-  eurohouseInvite       EurohouseInvite?        @relation(fields: [eurohouseInviteId], references: [id], onDelete: SetNull)
+  eurohouseInvite       EurohouseInvite?      @relation(fields: [eurohouseInviteId], references: [id], onDelete: SetNull)
   metadata              Json?
-  createdAt             DateTime                @default(now())
+  createdAt             DateTime              @default(now())
 
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
@@ -377,18 +380,18 @@ model Role {
 // ---------- Danh mục hệ nhôm ----------
 
 model AluSystem {
-  id                String             @id @default(cuid())
-  code              String             @unique
+  id                String                     @id @default(cuid())
+  code              String                     @unique
   name              String
   description       String?
-  sortOrder         Int                @default(0)
+  sortOrder         Int                        @default(0)
   profiles          Profile[]
   systemFormulas    SystemFormula[]
   knowledgeArticles KnowledgeArticle[]
   websiteContents   WebsiteContent[]           @relation("WebsiteContentAluSystem")
   websiteDocuments  WebsiteTechnicalDocument[] @relation("WebsiteDocumentAluSystem")
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
 }
 
 model Profile {
@@ -429,49 +432,49 @@ model ColorCode {
 // ---------- Đơn hàng (đặt hàng theo cây nhôm) ----------
 
 model Order {
-  id                    String                 @id @default(cuid())
-  code                  String                 @unique
-  clientRequestId       String?
-  sourceType            String // FACTORY | DEALER | NPP | ADMIN
-  createdById           String?
-  createdBy             User?                  @relation(fields: [createdById], references: [id])
-  factoryName           String                 @default("")
-  factoryOrgId          String?
-  factoryOrg            Organization?          @relation("OrderFactoryOrg", fields: [factoryOrgId], references: [id])
-  dealerName            String                 @default("")
-  nppName               String                 @default("")
-  nppOrgId              String?
-  nppOrg                Organization?          @relation("OrderNppOrg", fields: [nppOrgId], references: [id])
-  customerName          String                 @default("")
-  customerPhone         String                 @default("")
-  deliveryAddress       String                 @default("")
-  colorCode             String                 @default("")
-  status                String                 @default("NEW")
-  note                  String                 @default("")
-  accessoriesNote       String                 @default("")
-  totalKg               Float                  @default(0)
-  theoreticalTotalKg    Float                  @default(0)
-  actualTotalKg         Float?
-  totalAmount           Int                    @default(0)
-  pricingStatus         String                 @default("PENDING_NPP") // PENDING_NPP | FINALIZED | ESTIMATED_COMPANY
-  finalUnitPricePerKg   Int?
-  pricingDiscountAmount Int                   @default(0)
-  pricingSurchargeAmount Int                  @default(0)
-  pricingNote           String                 @default("")
-  priceConfirmedAt      DateTime?
-  priceConfirmedById    String?
-  dueNote               String                 @default("")
-  customerCode          String                 @default("") // Mã khách hàng (admin nhập khi xuất kho)
-  invoiceNo             String                 @default("") // Số hóa đơn
-  poNo                  String                 @default("") // Số đơn đặt hàng
-  items                 OrderItem[]
-  histories             OrderStatusHistory[]
-  profileStockMovements ProfileStockMovement[]
-  nppStockMovements     NppStockMovement[]     @relation("OrderNppStockMovements")
-  debts                 Debt[]
-  workOrders            WorkOrder[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                     String                 @id @default(cuid())
+  code                   String                 @unique
+  clientRequestId        String?
+  sourceType             String // FACTORY | DEALER | NPP | ADMIN
+  createdById            String?
+  createdBy              User?                  @relation(fields: [createdById], references: [id])
+  factoryName            String                 @default("")
+  factoryOrgId           String?
+  factoryOrg             Organization?          @relation("OrderFactoryOrg", fields: [factoryOrgId], references: [id])
+  dealerName             String                 @default("")
+  nppName                String                 @default("")
+  nppOrgId               String?
+  nppOrg                 Organization?          @relation("OrderNppOrg", fields: [nppOrgId], references: [id])
+  customerName           String                 @default("")
+  customerPhone          String                 @default("")
+  deliveryAddress        String                 @default("")
+  colorCode              String                 @default("")
+  status                 String                 @default("NEW")
+  note                   String                 @default("")
+  accessoriesNote        String                 @default("")
+  totalKg                Float                  @default(0)
+  theoreticalTotalKg     Float                  @default(0)
+  actualTotalKg          Float?
+  totalAmount            Int                    @default(0)
+  pricingStatus          String                 @default("PENDING_NPP") // PENDING_NPP | FINALIZED | ESTIMATED_COMPANY
+  finalUnitPricePerKg    Int?
+  pricingDiscountAmount  Int                    @default(0)
+  pricingSurchargeAmount Int                    @default(0)
+  pricingNote            String                 @default("")
+  priceConfirmedAt       DateTime?
+  priceConfirmedById     String?
+  dueNote                String                 @default("")
+  customerCode           String                 @default("") // Mã khách hàng (admin nhập khi xuất kho)
+  invoiceNo              String                 @default("") // Số hóa đơn
+  poNo                   String                 @default("") // Số đơn đặt hàng
+  items                  OrderItem[]
+  histories              OrderStatusHistory[]
+  profileStockMovements  ProfileStockMovement[]
+  nppStockMovements      NppStockMovement[]     @relation("OrderNppStockMovements")
+  debts                  Debt[]
+  workOrders             WorkOrder[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   @@unique([createdById, clientRequestId])
 }
@@ -951,28 +954,28 @@ model GiftRedemption {
 // ---------- CRM & Sales (Mới bổ sung) ----------
 
 model Lead {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String // Tên cơ sở/xưởng
-  address         String   @default("")
-  province        String   @default("") // Tỉnh
-  phone           String   @default("")
-  email           String   @default("")
-  message         String   @default("")
-  source          String   @default("ADMIN") // ADMIN | WEBSITE | MOBILE_SUPPORT
-  leadType        String   @default("GENERAL")
+  address         String    @default("")
+  province        String    @default("") // Tỉnh
+  phone           String    @default("")
+  email           String    @default("")
+  message         String    @default("")
+  source          String    @default("ADMIN") // ADMIN | WEBSITE | MOBILE_SUPPORT
+  leadType        String    @default("GENERAL")
   sourceUrl       String?
   referrer        String?
   utm             Json?
   consentAt       DateTime?
-  imageUrl        String   @default("") // Ảnh chụp cơ sở
-  currentBrand    String   @default("") // Hãng nhôm đang làm
-  scale           String   @default("") // Quy mô
-  potentialRating Int      @default(0) // Đánh giá tiềm năng (1-5 sao)
-  status          String   @default("NEW") // NEW | CONTACTED | CONVERTED | REJECTED
+  imageUrl        String    @default("") // Ảnh chụp cơ sở
+  currentBrand    String    @default("") // Hãng nhôm đang làm
+  scale           String    @default("") // Quy mô
+  potentialRating Int       @default(0) // Đánh giá tiềm năng (1-5 sao)
+  status          String    @default("NEW") // NEW | CONTACTED | CONVERTED | REJECTED
   managedById     String?
-  managedBy       User?    @relation("LeadManagedBy", fields: [managedById], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  managedBy       User?     @relation("LeadManagedBy", fields: [managedById], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([managedById])
   @@index([province])
@@ -1027,24 +1030,29 @@ model Payroll {
 // ---------- Vận hành hằng ngày của Cơ sở sản xuất ----------
 
 model WorkshopWorker {
-  id                  String               @id @default(cuid())
-  organizationId      String
-  organization        Organization         @relation("WorkshopWorkerOrg", fields: [organizationId], references: [id], onDelete: Cascade)
-  name                String
-  phone               String               @default("")
-  roleName            String               @default("Thợ sản xuất")
-  payType             String               @default("DAILY") // DAILY | HOURLY | MONTHLY
-  baseRate            Int                  @default(0)
-  overtimeRate        Int                  @default(0)
-  standardMonthlyDays Int                  @default(26)
-  sundayPayEnabled    Boolean              @default(false)
-  sundayPayPercent    Int                  @default(200)
-  holidayPayEnabled   Boolean              @default(false)
-  holidayPayPercent   Int                  @default(300)
-  active              Boolean              @default(true)
-  attendances         WorkshopAttendance[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id                    String                  @id @default(cuid())
+  organizationId        String
+  organization          Organization            @relation("WorkshopWorkerOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  name                  String
+  phone                 String                  @default("")
+  roleName              String                  @default("Thợ sản xuất")
+  payType               String                  @default("DAILY") // DAILY | HOURLY | MONTHLY
+  baseRate              Int                     @default(0)
+  overtimeRate          Int                     @default(0)
+  standardMonthlyDays   Int                     @default(26)
+  sundayPayEnabled      Boolean                 @default(false)
+  sundayPayPercent      Int                     @default(200)
+  holidayPayEnabled     Boolean                 @default(false)
+  holidayPayPercent     Int                     @default(300)
+  insuranceEnabled      Boolean                 @default(false)
+  insuranceSalary       Int                     @default(0) // Mức lương đóng BHXH
+  paidLeaveDaysPerMonth Int                     @default(1)
+  active                Boolean                 @default(true)
+  attendances           WorkshopAttendance[]
+  pieceShares           WorkshopPieceJobShare[]
+  payAdjustments        WorkshopPayAdjustment[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
   @@index([organizationId, active])
 }
@@ -1074,13 +1082,75 @@ model WorkshopAttendance {
   checkOutAt     DateTime?
   regularHours   Float          @default(0)
   overtimeHours  Float          @default(0)
-  status         String         @default("PRESENT") // PRESENT | ABSENT | LEAVE
+  status         String         @default("PRESENT") // PRESENT | HALF | LEAVE (phép có lương) | UNPAID_LEAVE | ABSENT
   note           String         @default("")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@unique([workerId, workDate])
   @@index([organizationId, workDate])
+}
+
+// Việc khoán: một khoản tiền theo việc (gắn công trình nếu có), chia cho một hoặc nhiều thợ.
+model WorkshopPieceJob {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation("WorkshopPieceJobOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  projectId      String?
+  projectName    String                  @default("") // tên công trình chụp lại lúc ghi
+  workDate       DateTime // tính vào lương tháng của ngày này
+  totalAmount    Int
+  note           String                  @default("")
+  createdById    String
+  shares         WorkshopPieceJobShare[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([organizationId, workDate])
+}
+
+model WorkshopPieceJobShare {
+  id       String           @id @default(cuid())
+  jobId    String
+  job      WorkshopPieceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  workerId String
+  worker   WorkshopWorker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  amount   Int
+
+  @@unique([jobId, workerId])
+  @@index([workerId])
+}
+
+// Tạm ứng, thưởng, phạt ghi vào lương tháng.
+model WorkshopPayAdjustment {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation("WorkshopPayAdjustmentOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  workerId       String
+  worker         WorkshopWorker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  kind           String // ADVANCE | BONUS | PENALTY
+  amount         Int
+  note           String         @default("")
+  workDate       DateTime
+  createdById    String
+  createdAt      DateTime       @default(now())
+
+  @@index([organizationId, workDate])
+  @@index([workerId, workDate])
+}
+
+// Tháng đã chốt lương: chấm công, khoán, tạm ứng của tháng đó bị khoá.
+model WorkshopPayrollClose {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation("WorkshopPayrollCloseOrg", fields: [organizationId], references: [id], onDelete: Cascade)
+  month          String // YYYY-MM
+  totalNet       Int          @default(0)
+  closedById     String
+  closedAt       DateTime     @default(now())
+
+  @@unique([organizationId, month])
 }
 
 model WorkshopReminder {
@@ -2324,23 +2394,23 @@ model StockRemnant {
 }
 
 model StorageObject {
-  id                  String   @id @default(cuid())
+  id                  String                     @id @default(cuid())
   provider            String
-  objectKey           String   @unique
+  objectKey           String                     @unique
   sha256              String
   mime                String
   sizeBytes           Int
-  revision            Int      @default(1)
+  revision            Int                        @default(1)
   ownerOrganizationId String?
   ownerUserId         String?
   purpose             String
   metadata            Json?
   publicUrl           String?
-  websiteMediaAssets  WebsiteMediaAsset[]       @relation("WebsiteMediaStorage")
-  websiteMediaPosters WebsiteMediaAsset[]       @relation("WebsiteMediaPoster")
+  websiteMediaAssets  WebsiteMediaAsset[]        @relation("WebsiteMediaStorage")
+  websiteMediaPosters WebsiteMediaAsset[]        @relation("WebsiteMediaPoster")
   websiteDocuments    WebsiteTechnicalDocument[] @relation("WebsiteDocumentStorage")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
   @@index([sha256])
   @@index([ownerOrganizationId, purpose])
@@ -3006,18 +3076,18 @@ model WorkshopWorkOrderHistory {
 }
 
 model WorkshopPackage {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   code           String
   projectId      String?
   workOrderId    String?
-  status         String   @default("OPEN")
+  status         String    @default("OPEN")
   itemRefs       Json?
   sealedAt       DateTime?
   deliveredAt    DateTime?
   createdById    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([organizationId, code])
   @@index([organizationId, status, createdAt])
@@ -3164,25 +3234,25 @@ model WorkshopWarrantyAsset {
 }
 
 model WorkshopWarrantyTicket {
-  id             String                         @id @default(cuid())
-  organizationId String
-  code           String
-  assetId        String
-  asset          WorkshopWarrantyAsset          @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  status         WorkshopWarrantyTicketStatus   @default(OPEN)
-  issueType      String
-  description    String
-  photoObjectIds String[]                       @default([])
-  requestedById  String
-  assignedTeamId String?
+  id                   String                         @id @default(cuid())
+  organizationId       String
+  code                 String
+  assetId              String
+  asset                WorkshopWarrantyAsset          @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  status               WorkshopWarrantyTicketStatus   @default(OPEN)
+  issueType            String
+  description          String
+  photoObjectIds       String[]                       @default([])
+  requestedById        String
+  assignedTeamId       String?
   assignedTechnicianId String?
-  scheduledAt    DateTime?
-  resolvedAt     DateTime?
-  closedAt       DateTime?
-  resolution     String                         @default("")
-  serviceHistory WorkshopWarrantyServiceEvent[]
-  createdAt      DateTime                       @default(now())
-  updatedAt      DateTime                       @updatedAt
+  scheduledAt          DateTime?
+  resolvedAt           DateTime?
+  closedAt             DateTime?
+  resolution           String                         @default("")
+  serviceHistory       WorkshopWarrantyServiceEvent[]
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
 
   @@unique([organizationId, code])
   @@index([organizationId, status, createdAt])
@@ -3204,24 +3274,24 @@ model WorkshopWarrantyServiceEvent {
 }
 
 model WorkshopDomainEventOutbox {
-  id             String                  @id @default(cuid())
-  organizationId String
-  eventType      String
-  aggregateType  String
-  aggregateId    String
-  payload        Json
-  status         DomainEventOutboxStatus @default(PENDING)
-  attempts       Int                     @default(0)
-  availableAt    DateTime                @default(now())
-  nextAttemptAt  DateTime                @default(now())
-  lockedAt       DateTime?
-  lockToken      String?
-  publishedAt    DateTime?
-  processedAt    DateTime?
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  eventType           String
+  aggregateType       String
+  aggregateId         String
+  payload             Json
+  status              DomainEventOutboxStatus @default(PENDING)
+  attempts            Int                     @default(0)
+  availableAt         DateTime                @default(now())
+  nextAttemptAt       DateTime                @default(now())
+  lockedAt            DateTime?
+  lockToken           String?
+  publishedAt         DateTime?
+  processedAt         DateTime?
   processingLatencyMs Int?
-  lastError      String                  @default("")
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  lastError           String                  @default("")
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   @@index([status, nextAttemptAt])
   @@index([status, availableAt])
@@ -3269,22 +3339,22 @@ model WorkshopAuditEvent {
 }
 
 model WorkshopPilotConfig {
-  id             String   @id @default(cuid())
-  organizationId String   @unique
-  active         Boolean  @default(false)
-  survey         Boolean  @default(false)
-  inventory      Boolean  @default(false)
-  shopFloor      Boolean  @default(false)
-  quality        Boolean  @default(false)
-  installation   Boolean  @default(false)
-  warranty       Boolean  @default(false)
-  version        Int      @default(1)
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  active         Boolean   @default(false)
+  survey         Boolean   @default(false)
+  inventory      Boolean   @default(false)
+  shopFloor      Boolean   @default(false)
+  quality        Boolean   @default(false)
+  installation   Boolean   @default(false)
+  warranty       Boolean   @default(false)
+  version        Int       @default(1)
   previousConfig Json?
   enabledAt      DateTime?
   disabledAt     DateTime?
   updatedById    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([active, updatedAt])
 }
@@ -3425,20 +3495,20 @@ enum WebsiteMediaType {
 }
 
 model WebsiteContent {
-  id                   String                @id @default(cuid())
+  id                   String                   @id @default(cuid())
   kind                 WebsiteContentKind
   family               WebsiteProductFamily?
   slug                 String
-  locale               String                @default("vi")
+  locale               String                   @default("vi")
   aluSystemId          String?
-  aluSystem            AluSystem?            @relation("WebsiteContentAluSystem", fields: [aluSystemId], references: [id], onDelete: SetNull)
+  aluSystem            AluSystem?               @relation("WebsiteContentAluSystem", fields: [aluSystemId], references: [id], onDelete: SetNull)
   operationalProjectId String?
-  operationalProject   Project?              @relation("WebsiteContentOperationalProject", fields: [operationalProjectId], references: [id], onDelete: SetNull)
+  operationalProject   Project?                 @relation("WebsiteContentOperationalProject", fields: [operationalProjectId], references: [id], onDelete: SetNull)
   createdById          String?
-  createdBy            User?                 @relation("WebsiteContentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy            User?                    @relation("WebsiteContentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   revisions            WebsiteContentRevision[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 
   @@unique([locale, slug])
   @@index([kind, family])
@@ -3447,44 +3517,44 @@ model WebsiteContent {
 }
 
 model WebsiteContentRevision {
-  id                 String                   @id @default(cuid())
-  websiteContentId   String
-  websiteContent     WebsiteContent           @relation(fields: [websiteContentId], references: [id], onDelete: Cascade)
-  revision           Int
-  status             WebsitePublicationStatus @default(DRAFT)
-  title              String
-  eyebrow            String?
-  summary            String                   @db.Text
-  body               Json
-  specifications     Json?
-  sourceRefs         Json?
-  hasHighRiskClaims  Boolean                  @default(false)
-  technicalRiskHash  String?                  @db.VarChar(64)
+  id                                String                   @id @default(cuid())
+  websiteContentId                  String
+  websiteContent                    WebsiteContent           @relation(fields: [websiteContentId], references: [id], onDelete: Cascade)
+  revision                          Int
+  status                            WebsitePublicationStatus @default(DRAFT)
+  title                             String
+  eyebrow                           String?
+  summary                           String                   @db.Text
+  body                              Json
+  specifications                    Json?
+  sourceRefs                        Json?
+  hasHighRiskClaims                 Boolean                  @default(false)
+  technicalRiskHash                 String?                  @db.VarChar(64)
   technicalApprovalSourceRevisionId String?
-  createdById        String?
-  createdBy          User?                    @relation("WebsiteRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  publishedAt        DateTime?
-  reviews            WebsiteContentReview[]
-  seo                WebsiteSeoRecord?
-  media              WebsiteContentMedia[]
-  documents          WebsiteContentDocument[]
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
+  createdById                       String?
+  createdBy                         User?                    @relation("WebsiteRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  publishedAt                       DateTime?
+  reviews                           WebsiteContentReview[]
+  seo                               WebsiteSeoRecord?
+  media                             WebsiteContentMedia[]
+  documents                         WebsiteContentDocument[]
+  createdAt                         DateTime                 @default(now())
+  updatedAt                         DateTime                 @updatedAt
 
   @@unique([websiteContentId, revision])
   @@index([status, updatedAt])
 }
 
 model WebsiteContentReview {
-  id         String                @id @default(cuid())
+  id         String                 @id @default(cuid())
   revisionId String
   revision   WebsiteContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
   stage      WebsiteReviewStage
   decision   WebsiteReviewDecision
-  note       String?               @db.Text
+  note       String?                @db.Text
   reviewerId String
-  reviewer   User                  @relation("WebsiteReviewReviewer", fields: [reviewerId], references: [id])
-  createdAt  DateTime              @default(now())
+  reviewer   User                   @relation("WebsiteReviewReviewer", fields: [reviewerId], references: [id])
+  createdAt  DateTime               @default(now())
 
   @@index([revisionId, stage, createdAt])
   @@index([reviewerId, createdAt])

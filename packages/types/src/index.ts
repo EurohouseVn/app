@@ -1127,7 +1127,9 @@ export interface CutRequest {
 }
 
 export type WorkshopPayType = 'DAILY' | 'HOURLY' | 'MONTHLY';
-export type WorkshopAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE';
+/** PRESENT đủ công · HALF nửa công · LEAVE nghỉ phép có lương · UNPAID_LEAVE nghỉ không lương · ABSENT vắng không báo */
+export type WorkshopAttendanceStatus = 'PRESENT' | 'HALF' | 'LEAVE' | 'UNPAID_LEAVE' | 'ABSENT';
+export type WorkshopPayAdjustmentKind = 'ADVANCE' | 'BONUS' | 'PENALTY';
 export type WorkshopReminderPriority = 'LOW' | 'NORMAL' | 'HIGH';
 
 export interface WorkshopWorker {
@@ -1144,6 +1146,9 @@ export interface WorkshopWorker {
   sundayPayPercent: number;
   holidayPayEnabled: boolean;
   holidayPayPercent: number;
+  insuranceEnabled: boolean;
+  insuranceSalary: number;
+  paidLeaveDaysPerMonth: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1178,18 +1183,126 @@ export interface WorkshopReminder {
   updatedAt: string;
 }
 
-export interface WorkshopPayrollRow {
-  worker: WorkshopWorker;
-  daysWorked: number;
-  sundayDays: number;
-  holidayDays: number;
+export interface WorkshopPayslipLine {
+  label: string;
+  projectName?: string;
+  note?: string;
+  date?: string;
+  amount: number;
+}
+
+export interface WorkshopPayslip {
+  fullDays: number;
+  halfDays: number;
+  paidLeaveDays: number;
+  unpaidLeaveDays: number;
+  absentDays: number;
+  workUnits: number;
   regularHours: number;
   overtimeHours: number;
+  overtimeHourlyRate: number;
   basePay: number;
-  sundayPay: number;
-  holidayPay: number;
   overtimePay: number;
+  sundayDays: number;
+  sundayPay: number;
+  holidayDays: number;
+  holidayPay: number;
+  pieces: WorkshopPayslipLine[];
+  pieceTotal: number;
+  bonuses: WorkshopPayslipLine[];
+  bonusTotal: number;
+  gross: number;
+  insuranceSalary: number;
+  insuranceEmployee: number;
+  insuranceEmployer: number;
+  advances: WorkshopPayslipLine[];
+  advanceTotal: number;
+  penalties: WorkshopPayslipLine[];
+  penaltyTotal: number;
+  deductions: number;
+  net: number;
+}
+
+export interface WorkshopPayrollRow {
+  worker: WorkshopWorker;
+  payslip: WorkshopPayslip;
+  /** Kept for older clients: ngày công tính lương */
+  daysWorked: number;
+  /** Kept for older clients: tổng thu nhập trước khấu trừ */
   estimatedPay: number;
+}
+
+export interface WorkshopPayrollMonth {
+  month: string;
+  closed: boolean;
+  closedAt?: string | null;
+  rows: WorkshopPayrollRow[];
+  totals: { gross: number; net: number; advances: number; insuranceEmployer: number; workers: number };
+}
+
+export interface WorkshopPayslipView {
+  month: string;
+  closed: boolean;
+  organizationName: string;
+  worker: WorkshopWorker;
+  payslip: WorkshopPayslip;
+  /** Cách tính lương theo công, ví dụ "9.000.000 ÷ 26 × 24" */
+  basePayFormula: string;
+}
+
+export interface WorkshopPieceJobShare {
+  workerId: string;
+  workerName: string;
+  amount: number;
+}
+
+export interface WorkshopPieceJob {
+  id: string;
+  title: string;
+  projectId?: string | null;
+  projectName: string;
+  workDate: string;
+  totalAmount: number;
+  note: string;
+  shares: WorkshopPieceJobShare[];
+  createdAt: string;
+}
+
+export interface CreateWorkshopPieceJobInput {
+  title: string;
+  projectId?: string;
+  workDate: string;
+  totalAmount: number;
+  note?: string;
+  /** Chia đều cho các thợ này, hoặc dùng `shares` để tự nhập phần từng người */
+  workerIds?: string[];
+  shares?: Array<{ workerId: string; amount: number }>;
+}
+
+export interface WorkshopPayAdjustment {
+  id: string;
+  workerId: string;
+  workerName: string;
+  kind: WorkshopPayAdjustmentKind;
+  amount: number;
+  note: string;
+  workDate: string;
+  createdAt: string;
+}
+
+export interface CreateWorkshopPayAdjustmentInput {
+  workerId: string;
+  kind: WorkshopPayAdjustmentKind;
+  amount: number;
+  note?: string;
+  workDate: string;
+}
+
+export interface SetWorkshopDayStatusInput {
+  workerId: string;
+  date: string;
+  status: WorkshopAttendanceStatus;
+  note?: string;
 }
 
 export interface WorkshopWorkdaySetting {
@@ -1206,6 +1319,7 @@ export interface WorkforceDashboard {
   checkedInCount: number;
   overtimeHours: number;
   estimatedPayroll: number;
+  monthClosed: boolean;
   reminders: WorkshopReminder[];
   attendance: WorkshopAttendance[];
 }
@@ -1222,6 +1336,9 @@ export interface CreateWorkshopWorkerInput {
   sundayPayPercent?: number;
   holidayPayEnabled?: boolean;
   holidayPayPercent?: number;
+  insuranceEnabled?: boolean;
+  insuranceSalary?: number;
+  paidLeaveDaysPerMonth?: number;
 }
 
 export interface CreateWorkshopReminderInput {
