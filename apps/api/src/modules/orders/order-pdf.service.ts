@@ -30,6 +30,10 @@ export interface OrderPdfData {
   poNo: string;
   debtAmount?: number;
   actualTotalKg?: number;
+  finalUnitPricePerKg?: number;
+  discountAmount?: number;
+  surchargeAmount?: number;
+  pricingNote?: string;
   accessoriesNote?: string;
   signatureLabels?: [string, string, string];
   createdAt: Date | string;
@@ -163,9 +167,17 @@ export class OrderPdfService {
     line('Số hóa đơn:', order.invoiceNo, rightX, startY + rowHeight, columnWidth - 10);
     line('Số đơn đặt hàng:', order.poNo, rightX, startY + rowHeight * 2, columnWidth - 10);
     if (order.debtAmount !== undefined) line('Giá trị/Công nợ:', formatMoney(order.debtAmount), rightX, startY + rowHeight * 3, columnWidth - 10);
-    if (order.accessoriesNote) line('Phụ kiện:', order.accessoriesNote, left, startY + rowHeight * 4, width);
+    if (order.accessoriesNote) {
+      const accessoriesWidth = order.finalUnitPricePerKg !== undefined ? columnWidth : width;
+      line('Phụ kiện:', order.accessoriesNote, left, startY + rowHeight * 4, accessoriesWidth);
+    }
+    if (order.finalUnitPricePerKg !== undefined) line('Đơn giá NPP:', `${formatMoney(order.finalUnitPricePerKg)}/kg`, rightX, startY + rowHeight * 4, columnWidth - 10);
+    if (order.discountAmount) line('Giảm giá:', formatMoney(order.discountAmount), rightX, startY + rowHeight * 5, columnWidth - 10);
+    if (order.surchargeAmount) line('Phụ phí:', formatMoney(order.surchargeAmount), rightX, startY + rowHeight * 6, columnWidth - 10);
+    if (order.pricingNote) line('Ghi chú giá:', order.pricingNote, left, startY + rowHeight * 7, width);
 
-    doc.y = startY + rowHeight * (order.accessoriesNote ? 5 : 4) + 5;
+    const rowCount = order.pricingNote ? 8 : order.surchargeAmount ? 7 : order.discountAmount ? 6 : order.finalUnitPricePerKg !== undefined ? 5 : order.accessoriesNote ? 5 : 4;
+    doc.y = startY + rowHeight * rowCount + 5;
     doc.moveTo(left, doc.y).lineTo(right, doc.y).strokeColor('#CCC').stroke();
     doc.moveDown(0.6);
   }
