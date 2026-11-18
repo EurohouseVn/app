@@ -74,6 +74,33 @@ export class SalesService {
     });
   }
 
+  async createPublicWebsiteLead(data: {
+    name: string;
+    phone: string;
+    email?: string;
+    address?: string;
+    interest?: string;
+    message?: string;
+  }) {
+    const clean = (value: unknown, max: number) => String(value ?? '').trim().slice(0, max);
+    const address = clean(data.address, 180);
+    const province = address.split(',').map((item) => item.trim()).filter(Boolean).at(-1) || '';
+    return this.prisma.lead.create({
+      data: {
+        name: clean(data.name, 100),
+        phone: clean(data.phone, 20),
+        email: clean(data.email, 120).toLowerCase(),
+        address,
+        province,
+        currentBrand: '',
+        scale: clean(data.interest, 100),
+        message: clean(data.message, 1000),
+        source: 'WEBSITE',
+        status: 'NEW',
+      },
+    });
+  }
+
   async updateLead(id: string, data: any, user: JwtUser) {
     return this.prisma.lead.update({
       where: { id },

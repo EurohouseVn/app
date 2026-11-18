@@ -1,0 +1,6 @@
+ALTER TABLE "Lead"
+  ADD COLUMN "email" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "message" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "source" TEXT NOT NULL DEFAULT 'ADMIN';
+
+CREATE INDEX "Lead_source_idx" ON "Lead"("source");
