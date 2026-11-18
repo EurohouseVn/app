@@ -98,6 +98,10 @@ function Gate() {
       <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />
       <Tabs.Screen name="workforce" options={{ href: null }} />
       <Tabs.Screen name="payslip/[workerId]" options={{ href: null }} />
+      <Tabs.Screen name="invoices" options={{ href: null }} />
+      <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
+      <Tabs.Screen name="invoice/edit" options={{ href: null }} />
+      <Tabs.Screen name="tax-profile" options={{ href: null }} />
       <Tabs.Screen name="reminders" options={{ href: null }} />
       <Tabs.Screen name="weather" options={{ href: null }} />
       <Tabs.Screen name="survey" options={{ href: null }} />

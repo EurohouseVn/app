@@ -47,6 +47,7 @@ const quickActions: { label: string; icon: IconName; href: Href; color: string; 
   { label: 'Chấm công', icon: 'user-check', href: '/workforce', color: '#047857', bg: '#E5F7EF' },
   { label: 'Nhắc việc', icon: 'calendar', href: '/reminders', color: '#B45309', bg: '#FFF4D8' },
   { label: 'Công nợ', icon: 'credit-card', href: '/debts', color: '#BE123C', bg: '#FDE8EF' },
+  { label: 'Hoá đơn & thuế', icon: 'file-text', href: '/invoices' as Href, color: '#5925DC', bg: '#F4F3FF' },
   {
     label: 'Bảo hành',
     icon: 'maximize',
