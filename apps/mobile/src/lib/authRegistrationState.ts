@@ -1,7 +1,6 @@
 import type { RegisterWorkshopInput } from '@eurohouse/types';
 
 export type RegistrationStatus = 'FORM' | 'VERIFY' | 'SUBMITTING' | 'ERROR';
-export type VerificationChannel = 'EMAIL' | 'PHONE';
 
 export type RegistrationDraft = RegisterWorkshopInput & {
   displayName: string;
@@ -9,7 +8,6 @@ export type RegistrationDraft = RegisterWorkshopInput & {
   email: string;
   phone: string;
   password: string;
-  verificationChannel: VerificationChannel;
 };
 
 export interface RegistrationState {
@@ -41,7 +39,6 @@ const EMPTY_DRAFT: RegistrationDraft = {
   email: '',
   phone: '',
   password: '',
-  verificationChannel: 'EMAIL',
 };
 
 export function createRegistrationState(): RegistrationState {
@@ -57,7 +54,9 @@ export function createRegistrationState(): RegistrationState {
 export function validateRegistrationDraft(draft: RegistrationDraft): string | null {
   if (!draft.displayName.trim()) return 'Vui lòng nhập họ tên.';
   if (!draft.organizationName.trim()) return 'Vui lòng nhập tên cơ sở.';
-  if (!draft.email.trim() && !draft.phone.trim()) return 'Vui lòng nhập email hoặc số điện thoại.';
+  const email = draft.email.trim();
+  if (!email) return 'Vui lòng nhập email để nhận mã xác minh.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email chưa đúng định dạng.';
   if (draft.password.length < 6) return 'Mật khẩu cần tối thiểu 6 ký tự.';
   return null;
 }

@@ -12,17 +12,23 @@ const completeDraft = {
   email: 'an@example.com',
   phone: '0912345678',
   password: 'secret123',
-  verificationChannel: 'EMAIL' as const,
 };
 
-test('accepts email-only, phone-only, and both identities but rejects neither', () => {
+test('requires an email; the phone number is optional', () => {
   assert.equal(validateRegistrationDraft({ ...completeDraft, phone: '' }), null);
-  assert.equal(validateRegistrationDraft({ ...completeDraft, email: '' }), null);
   assert.equal(validateRegistrationDraft(completeDraft), null);
   assert.equal(
-    validateRegistrationDraft({ ...completeDraft, email: '', phone: '' }),
-    'Vui lòng nhập email hoặc số điện thoại.',
+    validateRegistrationDraft({ ...completeDraft, email: '' }),
+    'Vui lòng nhập email để nhận mã xác minh.',
   );
+  assert.equal(
+    validateRegistrationDraft({ ...completeDraft, email: 'an.example.com' }),
+    'Email chưa đúng định dạng.',
+  );
+});
+
+test('the draft carries no verification channel: the code always goes to email', () => {
+  assert.equal('verificationChannel' in createRegistrationState().draft, false);
 });
 
 test('moves from form to verification without discarding the registration draft', () => {

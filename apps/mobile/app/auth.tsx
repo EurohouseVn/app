@@ -84,8 +84,7 @@ export default function AuthScreen() {
       const draft = registration.draft;
       const result = await registerWorkshop({
         displayName: draft.displayName.trim(), organizationName: draft.organizationName.trim(), password: draft.password,
-        email: draft.email.trim() || undefined, phone: draft.phone.trim() || undefined,
-        verificationChannel: draft.email.trim() && draft.phone.trim() ? draft.verificationChannel : undefined,
+        email: draft.email.trim(), phone: draft.phone.trim() || undefined,
       });
       dispatch({ type: 'REGISTRATION_ACCEPTED', ...result, now: Date.now() });
     } catch (error) { dispatch({ type: 'FAILED', message: readableError(error, 'Chưa thể tạo tài khoản.'), recoverTo: 'FORM' }); }
@@ -139,9 +138,8 @@ export default function AuthScreen() {
     </View> : <>
       <Field placeholder="Họ và tên" value={registration.draft.displayName} onChangeText={(value) => updateDraft('displayName', value)} />
       <Field placeholder="Tên cơ sở / xưởng" value={registration.draft.organizationName} onChangeText={(value) => updateDraft('organizationName', value)} />
-      <Field placeholder="Email (không bắt buộc)" value={registration.draft.email} onChangeText={(value) => updateDraft('email', value)} keyboardType="email-address" />
+      <Field placeholder="Email (nhận mã xác minh)" value={registration.draft.email} onChangeText={(value) => updateDraft('email', value)} keyboardType="email-address" />
       <Field placeholder="Số điện thoại (không bắt buộc)" value={registration.draft.phone} onChangeText={(value) => updateDraft('phone', value)} keyboardType="phone-pad" />
-      {registration.draft.email.trim() && registration.draft.phone.trim() ? <View><Text style={styles.fieldLabel}>Nhận mã xác minh qua</Text><View style={styles.channelRow}>{(['EMAIL', 'PHONE'] as const).map((channel) => <Pressable key={channel} onPress={() => updateDraft('verificationChannel', channel)} style={[styles.channelButton, registration.draft.verificationChannel === channel && styles.channelActive]}><Text style={[styles.channelText, registration.draft.verificationChannel === channel && styles.channelTextActive]}>{channel === 'EMAIL' ? 'Email' : 'Điện thoại'}</Text></Pressable>)}</View></View> : null}
       <PasswordInput value={registration.draft.password} onChangeText={(value) => updateDraft('password', value)} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
       {registration.error ? <Text style={styles.error}>{registration.error}</Text> : null}
       <PrimaryButton loading={registrationLoading} label="Tạo tài khoản miễn phí" onPress={submitRegistration} />
@@ -179,5 +177,4 @@ const styles = StyleSheet.create({
   rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 }, checkbox: { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: '#D4BDA8', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white }, checkboxActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange }, checkboxMark: { color: colors.white, fontWeight: '900' }, rememberText: { flex: 1, color: colors.brandGrey[600], fontWeight: '600', fontSize: 13, lineHeight: 18 },
   error: { color: colors.danger, fontWeight: '700', lineHeight: 20 }, primaryButton: { minHeight: 52, backgroundColor: colors.brandOrange, borderRadius: 14, marginTop: 4, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 }, primaryText: { color: colors.white, textAlign: 'center', fontWeight: '900', fontSize: 16 }, disabled: { opacity: 0.6 }, pressed: { opacity: 0.86 }, note: { textAlign: 'center', color: colors.brandGrey[500], marginTop: 4, fontSize: 13, lineHeight: 19 },
   verifyCard: { backgroundColor: colors.white, borderRadius: 20, padding: 20, gap: 14, borderWidth: 1, borderColor: '#F1E4D8' }, fieldLabel: { color: colors.brandGrey[700], fontWeight: '800', fontSize: 13, marginBottom: 8 }, codeInput: { minHeight: 62, borderColor: '#E7D8CA', borderWidth: 1, borderRadius: 14, backgroundColor: '#FFFDFC', color: colors.brandBlack.main, fontSize: 28, fontWeight: '900', letterSpacing: 10, textAlign: 'center' }, secondaryButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' }, secondaryText: { color: colors.brandOrange, fontWeight: '800' }, mutedText: { color: colors.brandGrey[400] }, textAction: { color: colors.brandGrey[600], textAlign: 'center', fontWeight: '700', paddingVertical: 6 },
-  channelRow: { flexDirection: 'row', gap: 10 }, channelButton: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E7D8CA', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white }, channelActive: { borderColor: colors.brandOrange, backgroundColor: '#FFF1E4' }, channelText: { color: colors.brandGrey[600], fontWeight: '700' }, channelTextActive: { color: colors.brandOrange, fontWeight: '900' },
 });
