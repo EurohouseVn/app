@@ -7,6 +7,7 @@ import type {
   WorkshopPayrollRow,
   WorkshopPayType,
   WorkshopReminder as WorkshopReminderDto,
+  WorkshopWorkdaySetting,
   WorkshopWorker as WorkshopWorkerDto,
 } from '@eurohouse/types';
 import type { Prisma, WorkshopReminder as PrismaWorkshopReminder, WorkshopWorker as PrismaWorkshopWorker } from '@prisma/client';
@@ -47,6 +48,11 @@ function parseMonth(value?: string): { month: string; start: Date; end: Date } {
 
 function roundHours(value: number): number {
   return Math.max(0, Math.round(value * 100) / 100);
+}
+
+function payPercent(value: unknown, fallback: number): number {
+  const normalized = Math.round(Number(value));
+  return Number.isFinite(normalized) ? Math.min(1_000, Math.max(100, normalized)) : fallback;
 }
 
 @Injectable()
@@ -123,6 +129,10 @@ export class WorkforceService {
         baseRate,
         overtimeRate: Math.max(0, Math.round(Number(input.overtimeRate) || 0)),
         standardMonthlyDays: Math.min(31, Math.max(1, Math.round(Number(input.standardMonthlyDays) || 26))),
+        sundayPayEnabled: Boolean(input.sundayPayEnabled),
+        sundayPayPercent: payPercent(input.sundayPayPercent, 200),
+        holidayPayEnabled: Boolean(input.holidayPayEnabled),
+        holidayPayPercent: payPercent(input.holidayPayPercent, 300),
       },
     });
   }
@@ -142,9 +152,22 @@ export class WorkforceService {
         ...(input.standardMonthlyDays !== undefined
           ? { standardMonthlyDays: Math.min(31, Math.max(1, Math.round(Number(input.standardMonthlyDays) || 26))) }
           : {}),
+        ...(input.sundayPayEnabled !== undefined ? { sundayPayEnabled: Boolean(input.sundayPayEnabled) } : {}),
+        ...(input.sundayPayPercent !== undefined ? { sundayPayPercent: payPercent(input.sundayPayPercent, 200) } : {}),
+        ...(input.holidayPayEnabled !== undefined ? { holidayPayEnabled: Boolean(input.holidayPayEnabled) } : {}),
+        ...(input.holidayPayPercent !== undefined ? { holidayPayPercent: payPercent(input.holidayPayPercent, 300) } : {}),
         ...(input.active !== undefined ? { active: input.active } : {}),
       },
     });
+  }
+
+  async deleteWorker(user: JwtUser, id: string) {
+    await this.scopedWorker(user, id);
+    await this.prisma.workshopWorker.update({
+      where: { id },
+      data: { active: false },
+    });
+    return { deleted: true };
   }
 
   async attendance(user: JwtUser, date?: string) {
@@ -156,14 +179,52 @@ export class WorkforceService {
     });
   }
 
+  async workdaySetting(user: JwtUser, date?: string): Promise<WorkshopWorkdaySetting> {
+    const organizationId = this.organizationId(user);
+    const workDate = parseDate(date);
+    const setting = await this.prisma.workshopWorkdaySetting.findUnique({
+      where: { organizationId_workDate: { organizationId, workDate } },
+    });
+    return {
+      date: workDate.toISOString().slice(0, 10),
+      isHoliday: setting?.isHoliday ?? false,
+      label: setting?.label || 'Lễ/Tết',
+    };
+  }
+
+  async updateWorkdaySetting(user: JwtUser, date: string, input: { isHoliday: boolean; label?: string }) {
+    const organizationId = this.organizationId(user);
+    const workDate = parseDate(date);
+    if (workDate.toISOString().slice(0, 10) < localDate()) {
+      throw new BadRequestException('Ngày công đã qua được khóa và không thể đổi loại ngày.');
+    }
+    const label = input.label?.trim() || 'Lễ/Tết';
+    const setting = await this.prisma.workshopWorkdaySetting.upsert({
+      where: { organizationId_workDate: { organizationId, workDate } },
+      create: { organizationId, workDate, isHoliday: Boolean(input.isHoliday), label },
+      update: { isHoliday: Boolean(input.isHoliday), label },
+    });
+    return {
+      date: setting.workDate.toISOString().slice(0, 10),
+      isHoliday: setting.isHoliday,
+      label: setting.label,
+    } satisfies WorkshopWorkdaySetting;
+  }
+
   async checkAttendance(
     user: JwtUser,
     input: { workerId: string; action: 'CHECK_IN' | 'CHECK_OUT'; at?: string; overtimeHours?: number; note?: string },
   ) {
+    if (typeof input.workerId !== 'string' || !input.workerId.trim()) {
+      throw new BadRequestException('Mã nhân sự không hợp lệ.');
+    }
     await this.scopedWorker(user, input.workerId);
     if (!['CHECK_IN', 'CHECK_OUT'].includes(input.action)) throw new BadRequestException('Thao tác chấm công không hợp lệ.');
     const at = input.at ? new Date(input.at) : new Date();
     if (Number.isNaN(at.getTime())) throw new BadRequestException('Thời gian chấm công không hợp lệ.');
+    if (localDate(at) !== localDate()) {
+      throw new BadRequestException('Chỉ được chấm công trong ngày hiện tại. Dữ liệu ngày cũ đã được khóa.');
+    }
     const workDate = parseDate(localDate(at));
     const organizationId = this.organizationId(user);
     const existing = await this.prisma.workshopAttendance.findUnique({
@@ -216,6 +277,9 @@ export class WorkforceService {
       where: { id, organizationId: this.organizationId(user) },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy bản chấm công.');
+    if (existing.workDate.toISOString().slice(0, 10) < localDate()) {
+      throw new BadRequestException('Bảng chấm công của ngày đã qua được khóa và không thể chỉnh sửa.');
+    }
     if (input.status && !['PRESENT', 'ABSENT', 'LEAVE'].includes(input.status)) {
       throw new BadRequestException('Trạng thái chấm công không hợp lệ.');
     }
@@ -241,31 +305,54 @@ export class WorkforceService {
   async payroll(user: JwtUser, monthValue?: string): Promise<WorkshopPayrollRow[]> {
     const organizationId = this.organizationId(user);
     const { start, end } = parseMonth(monthValue);
-    const workers = await this.prisma.workshopWorker.findMany({
-      where: { organizationId },
-      orderBy: { name: 'asc' },
-    });
-    const attendance = await this.prisma.workshopAttendance.findMany({
-      where: { organizationId, workDate: { gte: start, lt: end } },
-    });
+    const [workers, attendance, workdaySettings] = await Promise.all([
+      this.prisma.workshopWorker.findMany({
+        where: { organizationId },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.workshopAttendance.findMany({
+        where: { organizationId, workDate: { gte: start, lt: end } },
+      }),
+      this.prisma.workshopWorkdaySetting.findMany({
+        where: { organizationId, workDate: { gte: start, lt: end }, isHoliday: true },
+      }),
+    ]);
+    const holidayDates = new Set(workdaySettings.map((setting) => setting.workDate.toISOString().slice(0, 10)));
     return workers.map((worker) => {
       const rows = attendance.filter((row) => row.workerId === worker.id && row.status === 'PRESENT');
       const daysWorked = rows.filter((row) => row.checkInAt || row.regularHours > 0).length;
       const regularHours = roundHours(rows.reduce((sum, row) => sum + row.regularHours, 0));
       const overtimeHours = roundHours(rows.reduce((sum, row) => sum + row.overtimeHours, 0));
+      const holidayRows = rows.filter((row) => holidayDates.has(row.workDate.toISOString().slice(0, 10)));
+      const sundayRows = rows.filter((row) => row.workDate.getUTCDay() === 0 && !holidayDates.has(row.workDate.toISOString().slice(0, 10)));
       let basePay = 0;
       if (worker.payType === 'HOURLY') basePay = regularHours * worker.baseRate;
       if (worker.payType === 'DAILY') basePay = daysWorked * worker.baseRate;
       if (worker.payType === 'MONTHLY') basePay = worker.baseRate * Math.min(1, daysWorked / worker.standardMonthlyDays);
+      const regularPayForRow = (row: (typeof rows)[number]) => {
+        if (worker.payType === 'HOURLY') return row.regularHours * worker.baseRate;
+        if (worker.payType === 'MONTHLY') return worker.baseRate / worker.standardMonthlyDays;
+        return worker.baseRate;
+      };
+      const sundayPay = worker.sundayPayEnabled
+        ? sundayRows.reduce((sum, row) => sum + regularPayForRow(row), 0) * ((worker.sundayPayPercent - 100) / 100)
+        : 0;
+      const holidayPay = worker.holidayPayEnabled
+        ? holidayRows.reduce((sum, row) => sum + regularPayForRow(row), 0) * ((worker.holidayPayPercent - 100) / 100)
+        : 0;
       const overtimePay = overtimeHours * this.hourlyOvertimeRate(worker);
       return {
         worker: this.toWorker(worker),
         daysWorked,
+        sundayDays: sundayRows.length,
+        holidayDays: holidayRows.length,
         regularHours,
         overtimeHours,
         basePay: Math.round(basePay),
+        sundayPay: Math.round(sundayPay),
+        holidayPay: Math.round(holidayPay),
         overtimePay: Math.round(overtimePay),
-        estimatedPay: Math.round(basePay + overtimePay),
+        estimatedPay: Math.round(basePay + sundayPay + holidayPay + overtimePay),
       };
     });
   }

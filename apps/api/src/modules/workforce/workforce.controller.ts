@@ -32,9 +32,28 @@ export class WorkforceController {
     return this.service.updateWorker(user, id, body);
   }
 
+  @Delete('workers/:id')
+  deleteWorker(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.service.deleteWorker(user, id);
+  }
+
   @Get('attendance')
   attendance(@CurrentUser() user: JwtUser, @Query('date') date?: string) {
     return this.service.attendance(user, date);
+  }
+
+  @Get('attendance/day-setting')
+  workdaySetting(@CurrentUser() user: JwtUser, @Query('date') date?: string) {
+    return this.service.workdaySetting(user, date);
+  }
+
+  @Patch('attendance/day-setting/:date')
+  updateWorkdaySetting(
+    @CurrentUser() user: JwtUser,
+    @Param('date') date: string,
+    @Body() body: { isHoliday: boolean; label?: string },
+  ) {
+    return this.service.updateWorkdaySetting(user, date, body);
   }
 
   @Post('attendance/check')
