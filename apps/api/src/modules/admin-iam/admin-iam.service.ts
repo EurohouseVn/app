@@ -8,17 +8,23 @@ import type {
   Department,
   UpdateUserInput,
   OrgItem,
+  UserRole,
 } from '@eurohouse/types';
-import { ADMIN_MODULE_KEYS } from '@eurohouse/types';
+import {
+  ACCESS_SCOPE_META,
+  allowedModuleKeysForRole,
+  invalidModulesForRole,
+  sanitizeModulesForRole,
+  scopeForRole,
+} from '@eurohouse/types';
 import { PrismaService } from '../../prisma/prisma.service';
 
 function generatedPassword(): string {
   return `Eh@${randomBytes(9).toString('base64url')}`;
 }
 
-function serializeModules(modules: string[] | undefined): string {
-  const valid = (modules ?? []).filter((m) => ADMIN_MODULE_KEYS.includes(m));
-  return JSON.stringify(Array.from(new Set(valid)));
+function serializeModules(modules: readonly string[]): string {
+  return JSON.stringify(Array.from(new Set(modules)));
 }
 
 function parseModules(raw: string | null | undefined): string[] {
@@ -29,6 +35,20 @@ function parseModules(raw: string | null | undefined): string[] {
   } catch {
     return [];
   }
+}
+
+export function assertRoleAccessInput(role: UserRole, modules: readonly string[], isCeo = false): string[] {
+  const scope = scopeForRole(role);
+  if (isCeo && scope !== 'INTERNAL') {
+    throw new BadRequestException('Quyền CEO chỉ dành cho tài khoản nội bộ Eurohouse.');
+  }
+  const invalid = invalidModulesForRole(role, modules);
+  if (invalid.length) {
+    throw new BadRequestException(
+      `Quyền ${invalid.join(', ')} không thuộc khu vực ${ACCESS_SCOPE_META[scope].label}.`,
+    );
+  }
+  return sanitizeModulesForRole(role, modules);
 }
 
 function normalizeCodePart(value: string): string {
@@ -54,7 +74,7 @@ export class AdminIamService {
   }
 
   private toAdminUserItem(u: {
-    id: string; displayName: string; email: string; phone: string | null; role: string;
+    id: string; displayName: string; email: string | null; phone: string | null; role: string;
     organizationId: string | null; organization: { name: string; type: string } | null;
     departmentId: string | null; department: { name: string } | null;
     jobTitle: string; isCeo: boolean; moduleAccess: string; points: number; createdAt: Date;
@@ -62,7 +82,7 @@ export class AdminIamService {
     return {
       id: u.id,
       displayName: u.displayName,
-      email: u.email,
+      email: u.email ?? '',
       phone: u.phone ?? '',
       role: u.role as AdminUserItem['role'],
       organizationId: u.organizationId ?? undefined,
@@ -96,6 +116,7 @@ export class AdminIamService {
   }
 
   async createUser(input: CreateUserInput): Promise<AdminUserItem> {
+    const modules = assertRoleAccessInput(input.role, input.modules ?? [], input.isCeo ?? false);
     const email = input.email.trim().toLowerCase();
     if (!email) throw new BadRequestException('Email không được để trống.');
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -113,7 +134,7 @@ export class AdminIamService {
         departmentId: input.departmentId || null,
         jobTitle: input.jobTitle?.trim() ?? '',
         isCeo: input.isCeo ?? false,
-        moduleAccess: serializeModules(input.modules),
+        moduleAccess: serializeModules(modules),
         passwordHash,
       },
       include: { organization: true, department: true },
@@ -171,7 +192,7 @@ export class AdminIamService {
           role: 'NPP',
           organizationId: organization.id,
           jobTitle: 'Tài khoản NPP',
-          moduleAccess: '[]',
+          moduleAccess: serializeModules(allowedModuleKeysForRole('NPP')),
         },
         include: { organization: true, department: true },
       });
@@ -192,6 +213,14 @@ export class AdminIamService {
   async updateUser(id: string, input: UpdateUserInput): Promise<AdminUserItem> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng.');
+    const nextRole = (input.role ?? user.role) as UserRole;
+    const nextIsCeo = input.isCeo ?? user.isCeo;
+    const explicitModules = input.modules !== undefined;
+    const nextModules = explicitModules
+      ? assertRoleAccessInput(nextRole, input.modules ?? [], nextIsCeo)
+      : sanitizeModulesForRole(nextRole, parseModules(user.moduleAccess));
+    assertRoleAccessInput(nextRole, nextModules, nextIsCeo);
+
     const data: Record<string, unknown> = {};
     if (input.displayName !== undefined) data.displayName = input.displayName.trim();
     if (input.phone !== undefined) data.phone = input.phone.trim() || null;
@@ -200,7 +229,7 @@ export class AdminIamService {
     if (input.departmentId !== undefined) data.departmentId = input.departmentId || null;
     if (input.jobTitle !== undefined) data.jobTitle = input.jobTitle.trim();
     if (input.isCeo !== undefined) data.isCeo = input.isCeo;
-    if (input.modules !== undefined) data.moduleAccess = serializeModules(input.modules);
+    if (explicitModules || input.role !== undefined) data.moduleAccess = serializeModules(nextModules);
     if (input.password && input.password.trim()) {
       data.passwordHash = await bcrypt.hash(input.password.trim(), 10);
     }
@@ -215,9 +244,10 @@ export class AdminIamService {
   async setUserModules(id: string, modules: string[]): Promise<AdminUserItem> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng.');
+    const validModules = assertRoleAccessInput(user.role as UserRole, modules, user.isCeo);
     const updated = await this.prisma.user.update({
       where: { id },
-      data: { moduleAccess: serializeModules(modules) },
+      data: { moduleAccess: serializeModules(validModules) },
       include: { organization: true, department: true },
     });
     return this.toAdminUserItem(updated);
