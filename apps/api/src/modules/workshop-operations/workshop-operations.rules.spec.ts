@@ -23,6 +23,7 @@ import {
   mediaDeduplicationKey,
   nextPriceBookVersion,
   organizationScope,
+  projectCostsFromPayments,
   resolveOfflineMutation,
   workspaceCapabilities,
 } from './workshop-operations.rules';
@@ -76,6 +77,23 @@ test('quick quote calculates commercial area without claiming exact BOM', () => 
   const [line] = calculateQuickQuoteLines([{ lineType: 'AREA', quantity: 1, unitPrice: 1_500_000, widthMm: 1000, heightMm: 2000 }]);
   assert.equal(line.calculatedQuantity, 2);
   assert.equal(line.total, 3_000_000);
+});
+
+test('project payment vouchers are grouped into the project cost summary', () => {
+  assert.deepEqual(projectCostsFromPayments([
+    { category: 'Mua nhôm', amount: 5_000_000 },
+    { category: 'Mua phụ kiện', amount: 800_000 },
+    { category: 'Nhân công', amount: 1_200_000 },
+    { category: 'Chi phí phát sinh', amount: 250_000 },
+  ]), {
+    costAluminum: 5_000_000,
+    costAccessory: 800_000,
+    costGlass: 0,
+    costLabor: 1_200_000,
+    costTransport: 0,
+    costInstallation: 0,
+    costOther: 250_000,
+  });
 });
 
 test('Project and Opening ownership share the same tenant boundary', () => {

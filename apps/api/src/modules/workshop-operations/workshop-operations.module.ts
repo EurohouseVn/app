@@ -7,11 +7,12 @@ import { WorkshopOperationsService } from './workshop-operations.service';
 import { WorkshopPilotGuard } from './workshop-pilot.guard';
 import { WorkshopPilotService } from './workshop-pilot.service';
 import { ProjectFinancialPdfService } from './project-financial-pdf.service';
+import { ProjectAcceptancePdfService } from './project-acceptance-pdf.service';
 
 @Module({
   imports: [InventoryModule],
   controllers: [WorkshopOperationsController],
-  providers: [WorkshopOperationsService, WorkshopAccessService, WorkshopPilotService, WorkshopPilotGuard, WorkshopEventWorkerService, ProjectFinancialPdfService],
+  providers: [WorkshopOperationsService, WorkshopAccessService, WorkshopPilotService, WorkshopPilotGuard, WorkshopEventWorkerService, ProjectFinancialPdfService, ProjectAcceptancePdfService],
   exports: [WorkshopOperationsService, WorkshopPilotService, WorkshopEventWorkerService],
 })
 export class WorkshopOperationsModule {}

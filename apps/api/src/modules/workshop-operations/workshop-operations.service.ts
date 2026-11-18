@@ -21,6 +21,7 @@ import { InventoryCommandService } from '../inventory/inventory-command.service'
 import { assertInventoryMutationAllowed } from '../inventory/inventory-mutation-policy';
 import { workshopOperationsFeatureFlags } from './workshop-operations.feature-flags';
 import { WorkshopAccessService } from './workshop-access.service';
+import { nextProjectCode, type ProjectCodeDatabase } from '../projects/project-code';
 import {
   assertInstallationCanComplete,
   assertInstallationTransition,
@@ -37,6 +38,7 @@ import {
   installationChecklistComplete,
   nextPriceBookVersion,
   organizationScope,
+  projectCostsFromPayments,
   resolveOfflineMutation,
 } from './workshop-operations.rules';
 
@@ -90,7 +92,7 @@ export class WorkshopOperationsService {
   }
 
   private async project(projectId: string, organizationId: string) {
-    const project = await this.prisma.project.findFirst({ where: { id: projectId, organizationId } });
+    const project = await this.prisma.project.findFirst({ where: { id: projectId, organizationId, archivedAt: null } });
     if (!project) throw new NotFoundException('Không tìm thấy công trình trong tổ chức này.');
     return project;
   }
@@ -172,26 +174,38 @@ export class WorkshopOperationsService {
   async projects(user: JwtUser, organizationId?: string) {
     const orgId = this.org(user, organizationId);
     const projects = await this.prisma.project.findMany({
-      where: { organizationId: orgId },
+      where: { organizationId: orgId, archivedAt: null },
       include: {
         customerV2: true,
         sites: { include: { zones: true } },
         openings: true,
-        cashTransactions: { where: { type: 'RECEIPT' }, select: { amount: true } },
+        cashTransactions: { select: { type: true, category: true, amount: true } },
       },
       orderBy: { updatedAt: 'desc' },
     });
-    // Tổng phiếu thu để app tính "còn phải thu" ngay trên danh sách.
-    return projects.map(({ cashTransactions, ...project }) => ({
-      ...project,
-      receivedAmount: cashTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    }));
+    const quotationIds = projects.map((project) => project.quotationId).filter((id): id is string => Boolean(id));
+    const quotations = quotationIds.length
+      ? await this.prisma.quotation.findMany({ where: { id: { in: quotationIds } }, select: { id: true, code: true } })
+      : [];
+    const quotationCodeById = new Map(quotations.map((quotation) => [quotation.id, quotation.code]));
+    return projects.map(({ cashTransactions, ...project }) => {
+      const payments = cashTransactions.filter((item) => item.type === 'PAYMENT');
+      const paymentCosts = payments.length ? projectCostsFromPayments(payments) : {};
+      // Tổng phiếu thu để app tính "còn phải thu" ngay trên danh sách.
+      const receivedAmount = cashTransactions.filter((item) => item.type === 'RECEIPT').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      return {
+        ...project,
+        ...paymentCosts,
+        receivedAmount,
+        quotationCode: project.quotationId ? quotationCodeById.get(project.quotationId) || project.quotationId : '',
+      };
+    });
   }
 
   async projectFinancialPdfData(user: JwtUser, projectId: string, requestedOrganizationId?: string) {
     const organizationId = this.org(user, requestedOrganizationId);
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, organizationId },
+      where: { id: projectId, organizationId, archivedAt: null },
       include: {
         costs: { orderBy: { createdAt: 'asc' } },
         cashTransactions: { orderBy: [{ transDate: 'asc' }, { createdAt: 'asc' }] },
@@ -216,6 +230,53 @@ export class WorkshopOperationsService {
     };
   }
 
+  async projectCashTransactions(user: JwtUser, projectId: string, requestedOrganizationId?: string) {
+    const organizationId = this.org(user, requestedOrganizationId);
+    await this.project(projectId, organizationId);
+    return this.prisma.cashTransaction.findMany({
+      where: { projectId },
+      orderBy: [{ transDate: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async createProjectCashTransaction(user: JwtUser, projectId: string, body: Record<string, unknown>) {
+    const organizationId = this.org(user, body.organizationId as string | undefined);
+    await this.project(projectId, organizationId);
+    const type = String(body.type ?? '').toUpperCase();
+    if (!['RECEIPT', 'PAYMENT'].includes(type)) throw new BadRequestException('Loại giao dịch phải là khoản thu hoặc khoản chi.');
+    const amount = Math.round(Number(body.amount) || 0);
+    if (amount <= 0) throw new BadRequestException('Số tiền giao dịch phải lớn hơn 0.');
+    const method = String(body.method ?? 'CASH').toUpperCase();
+    if (!['CASH', 'BANK_TRANSFER'].includes(method)) throw new BadRequestException('Phương thức thanh toán không hợp lệ.');
+    const date = body.transDate ? new Date(String(body.transDate)) : new Date();
+    if (Number.isNaN(date.getTime())) throw new BadRequestException('Ngày giao dịch không hợp lệ.');
+    const prefix = type === 'RECEIPT' ? 'PT' : 'PC';
+    const ym = date.toISOString().slice(2, 7).replace('-', '');
+    return this.prisma.cashTransaction.create({
+      data: {
+        code: `${prefix}-${ym}-${randomUUID().slice(0, 6).toUpperCase()}`,
+        type,
+        amount,
+        method,
+        category: String(body.category ?? '').trim(),
+        projectId,
+        partnerName: String(body.partnerName ?? '').trim(),
+        note: String(body.note ?? '').trim(),
+        transDate: date,
+        createdById: user.sub,
+      },
+    });
+  }
+
+  async deleteProjectCashTransaction(user: JwtUser, projectId: string, transactionId: string, requestedOrganizationId?: string) {
+    const organizationId = this.org(user, requestedOrganizationId);
+    await this.project(projectId, organizationId);
+    const transaction = await this.prisma.cashTransaction.findFirst({ where: { id: transactionId, projectId } });
+    if (!transaction) throw new NotFoundException('Không tìm thấy giao dịch của công trình này.');
+    await this.prisma.cashTransaction.delete({ where: { id: transactionId } });
+    return { deleted: true };
+  }
+
   async createOperationsProject(user: JwtUser, body: Record<string, unknown>) {
     const organizationId = this.org(user, body.organizationId as string | undefined);
     const name = String(body.name ?? '').trim();
@@ -226,9 +287,10 @@ export class WorkshopOperationsService {
       if (!customer) throw new NotFoundException('Không tìm thấy khách hàng trong tổ chức này.');
     }
     return this.prisma.$transaction(async (tx) => {
+      const code = await nextProjectCode(tx as unknown as ProjectCodeDatabase, organizationId);
       const project = await tx.project.create({
         data: {
-          code: this.code('CT'),
+          code,
           name,
           organizationId,
           customerV2Id: customerId,
@@ -236,6 +298,16 @@ export class WorkshopOperationsService {
           customerName: String(body.customerName ?? '').trim(),
           customerPhone: String(body.customerPhone ?? '').trim(),
           address: String(body.address ?? '').trim(),
+          status: String(body.status ?? 'OPEN'),
+          scale: String(body.scale ?? '').trim(),
+          productsUsed: String(body.productsUsed ?? '').trim(),
+          quotationId: body.quotationId ? String(body.quotationId) : undefined,
+          estimatedValue: Number(body.estimatedValue) || 0,
+          contractValue: Number(body.contractValue ?? body.estimatedValue) || 0,
+          incurredValue: Number(body.incurredValue) || 0,
+          incurredType: String(body.incurredType ?? 'INCREASE'),
+          settledValue: Number(body.settledValue ?? body.estimatedValue) || 0,
+          images: Array.isArray(body.images) ? body.images.map(String).slice(0, 5) : [],
           note: String(body.note ?? '').trim(),
         },
       });
@@ -255,6 +327,7 @@ export class WorkshopOperationsService {
       'estimatedValue', 'incurredValue', 'incurredType', 'settledValue', 'quotationId',
       'costAluminum', 'costAccessory', 'costLockHinge', 'costGlass', 'costGasket',
       'costSilicone', 'costScrew', 'costLabor', 'costPartnerPct', 'costOther',
+      'costConsumables', 'costTransport', 'costInstallation',
       'extraRevenue', 'note', 'images', 'scale', 'productsUsed',
     ];
     const data: Record<string, unknown> = {};
@@ -266,15 +339,32 @@ export class WorkshopOperationsService {
     });
   }
 
+  async completeProject(user: JwtUser, projectId: string, body: Record<string, unknown>) {
+    const organizationId = this.org(user, body.organizationId as string | undefined);
+    const project = await this.project(projectId, organizationId);
+    if (project.status === 'CANCELLED') throw new BadRequestException('Không thể hoàn thành công trình đã hủy.');
+    const settledValue = Math.max(0, Number(body.settledValue ?? project.settledValue ?? project.contractValue ?? project.estimatedValue) || 0);
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.project.update({
+        where: { id: projectId },
+        data: { status: 'DONE', settledValue, contractValue: project.contractValue || settledValue, endDate: new Date() },
+      });
+      if (project.status !== 'DONE') {
+        await tx.workshopActivity.create({
+          data: { organizationId, projectId, activityType: 'PROJECT_COMPLETED', title: 'Hoàn thành và ghi nhận doanh thu công trình', actorId: user.sub },
+        });
+        await tx.workshopDomainEventOutbox.create({
+          data: this.eventData(organizationId, 'PROJECT_COMPLETED', 'Project', projectId, { projectId, settledValue }),
+        });
+      }
+      return updated;
+    });
+  }
+
   async deleteOperationsProject(user: JwtUser, projectId: string, requestedOrganizationId?: string) {
     const organizationId = this.org(user, requestedOrganizationId);
     await this.project(projectId, organizationId);
-    const [installations, warrantyAssets] = await Promise.all([
-      this.prisma.workshopInstallationJob.count({ where: { projectId, organizationId } }),
-      this.prisma.workshopWarrantyAsset.count({ where: { projectId, organizationId } }),
-    ]);
-    if (installations || warrantyAssets) throw new ConflictException('Không thể xóa công trình đã có lắp đặt hoặc tài sản bảo hành.');
-    await this.prisma.project.delete({ where: { id: projectId } });
+    await this.prisma.project.update({ where: { id: projectId }, data: { archivedAt: new Date() } });
     return { deleted: true };
   }
 
@@ -1394,7 +1484,7 @@ export class WorkshopOperationsService {
     if (q.length < 2) return { customers: [], projects: [], openings: [], workOrders: [], stockItems: [], warranties: [] };
     const [customers, projects, openings, workOrders, stockItems, warranties] = await Promise.all([
       this.prisma.workshopCustomer.findMany({ where: { organizationId, OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q } }, { code: { contains: q, mode: 'insensitive' } }] }, take: 10 }),
-      this.prisma.project.findMany({ where: { organizationId, OR: [{ name: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }, { customerPhone: { contains: q } }] }, take: 10 }),
+      this.prisma.project.findMany({ where: { organizationId, archivedAt: null, OR: [{ name: { contains: q, mode: 'insensitive' } }, { code: { contains: q, mode: 'insensitive' } }, { customerPhone: { contains: q } }] }, take: 10 }),
       this.prisma.workshopOpening.findMany({ where: { organizationId, OR: [{ stableCode: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }] }, take: 10 }),
       this.prisma.workshopWorkOrder.findMany({ where: { organizationId, OR: [{ code: { contains: q, mode: 'insensitive' } }, { title: { contains: q, mode: 'insensitive' } }] }, take: 10 }),
       this.prisma.workshopStockItem.findMany({ where: { organizationId, OR: [{ code: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }] }, take: 10 }),
@@ -1454,9 +1544,10 @@ export class WorkshopOperationsService {
         const note = await tx.workshopSiteNote.create({ data: { organizationId, projectId, openingId: payload.openingId ? String(payload.openingId) : undefined, noteType: String(payload.noteType ?? 'TEXT'), content: String(payload.content ?? ''), createdById: user.sub } });
         result = { entityId: note.id };
       } else if (entityType === 'PROJECT' && operation === 'CREATE') {
+        const code = await nextProjectCode(tx as unknown as ProjectCodeDatabase, organizationId);
         const project = await tx.project.create({
           data: {
-            code: this.code('CT'),
+            code,
             name: String(payload.name ?? 'Công trình mới'),
             organizationId,
             ownerId: user.sub,
@@ -1478,11 +1569,9 @@ export class WorkshopOperationsService {
         result = { entityId: projectId };
       } else if (entityType === 'PROJECT' && operation === 'DELETE') {
         const projectId = String(body.entityId ?? '');
-        const project = await tx.project.findFirst({ where: { id: projectId, organizationId } });
+        const project = await tx.project.findFirst({ where: { id: projectId, organizationId, archivedAt: null } });
         if (!project) throw new NotFoundException('Không tìm thấy công trình để đồng bộ.');
-        const dependencies = await tx.workshopInstallationJob.count({ where: { projectId, organizationId } });
-        if (dependencies) throw new ConflictException('Không thể xóa công trình đã có lịch lắp đặt.');
-        await tx.project.delete({ where: { id: projectId } });
+        await tx.project.update({ where: { id: projectId }, data: { archivedAt: new Date() } });
         result = { entityId: projectId, deleted: true };
       } else if (entityType === 'OPENING' && operation === 'CREATE') {
         const projectId = String(payload.projectId ?? '');

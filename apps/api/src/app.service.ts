@@ -55,7 +55,7 @@ export class AppService {
     const newCount = orders.filter((o) => o.status === 'NEW').length;
     const [warrantyCount, projectCount, systemCount, promotionCount, libraryCount] = await Promise.all([
       this.prisma.warranty.count(),
-      this.prisma.project.count(),
+      this.prisma.project.count({ where: { archivedAt: null } }),
       this.prisma.aluSystem.count({ where: { code: { startsWith: 'EU-' } } }),
       this.prisma.promotion.count({ where: { active: true } }),
       this.prisma.libraryItem.count(),

@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ProjectDetail, ProjectSummary } from '@eurohouse/types';
 import type { JwtUser } from '../../auth/current-user.decorator';
+import { nextProjectCode, type ProjectCodeDatabase } from './project-code';
 
 function projectTotalCost(p: {
   costAluminum: number;
@@ -48,7 +49,7 @@ export class ProjectsService {
   async listProjects(user?: JwtUser, mine = false): Promise<ProjectSummary[]> {
     const ownerId = !this.hasGlobalProjectAccess(user) || mine ? user?.sub : undefined;
     const projects = await this.prisma.project.findMany({
-      where: ownerId ? { ownerId } : undefined,
+      where: { archivedAt: null, ...(ownerId ? { ownerId } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return projects.map((p) => this.toProjectSummary(p));
@@ -72,7 +73,7 @@ export class ProjectsService {
   }
 
   async getProject(id: string, user?: JwtUser): Promise<ProjectDetail> {
-    const p = await this.prisma.project.findUnique({ where: { id } });
+    const p = await this.prisma.project.findFirst({ where: { id, archivedAt: null } });
     if (!p) throw new NotFoundException('Khong tim thay cong trinh.');
     this.assertCanAccessProject(p, user);
     const summary = this.toProjectSummary(p);
@@ -102,11 +103,12 @@ export class ProjectsService {
   }
 
   async createProject(data: Partial<ProjectDetail>, ownerId?: string, user?: JwtUser): Promise<ProjectDetail> {
-    const count = await this.prisma.project.count();
+    const code = await nextProjectCode(this.prisma as unknown as ProjectCodeDatabase, user?.organizationId);
     const created = await this.prisma.project.create({
       data: {
-        code: `CT-${String(count + 1).padStart(4, '0')}`,
+        code,
         name: data.name ?? 'Cong trinh moi',
+        organizationId: user?.organizationId ?? null,
         ownerId: ownerId ?? null,
         customerName: data.customerName ?? '',
         customerPhone: data.customerPhone ?? '',
@@ -160,10 +162,10 @@ export class ProjectsService {
   }
 
   async deleteProject(id: string, user?: JwtUser): Promise<boolean> {
-    const existing = await this.prisma.project.findUnique({ where: { id } });
+    const existing = await this.prisma.project.findFirst({ where: { id, archivedAt: null } });
     if (!existing) throw new NotFoundException('Khong tim thay cong trinh.');
     this.assertCanAccessProject(existing, user);
-    await this.prisma.project.delete({ where: { id } });
+    await this.prisma.project.update({ where: { id }, data: { archivedAt: new Date() } });
     return true;
   }
 }

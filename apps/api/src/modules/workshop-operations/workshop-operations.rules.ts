@@ -146,6 +146,30 @@ export function nextPriceBookVersion(existingVersions: number[]): number {
   return (existingVersions.length ? Math.max(...existingVersions) : 0) + 1;
 }
 
+export function projectCostsFromPayments(payments: Array<{ category: string; amount: number }>) {
+  const totals = {
+    costAluminum: 0,
+    costAccessory: 0,
+    costGlass: 0,
+    costLabor: 0,
+    costTransport: 0,
+    costInstallation: 0,
+    costOther: 0,
+  };
+  for (const payment of payments) {
+    const category = (payment.category || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const amount = Math.max(0, Number(payment.amount) || 0);
+    if (category.includes('nhom')) totals.costAluminum += amount;
+    else if (category.includes('phu kien')) totals.costAccessory += amount;
+    else if (category.includes('kinh')) totals.costGlass += amount;
+    else if (category.includes('nhan cong')) totals.costLabor += amount;
+    else if (category.includes('van chuyen')) totals.costTransport += amount;
+    else if (category.includes('lap dat')) totals.costInstallation += amount;
+    else totals.costOther += amount;
+  }
+  return totals;
+}
+
 export function assertPriceBookVersionCanActivate(input: { validFrom?: Date | null; validTo?: Date | null }, now = new Date()) {
   if (input.validFrom && input.validTo && input.validFrom >= input.validTo) {
     throw new BadRequestException('Khoảng hiệu lực bảng giá không hợp lệ.');

@@ -102,7 +102,15 @@ export class ProjectFinancialPdfService {
       );
       const totalRevenue = initialSettlement + (project.extraRevenue || 0);
       const partnerCost = Math.round((totalRevenue * (project.costPartnerPct || 0)) / 100);
-      const expenseRows: AmountRow[] = [
+      const transactions = project.transactions || [];
+      const paymentRows = Array.from(
+        transactions.filter((item) => item.type === 'PAYMENT').reduce((groups, item) => {
+          const label = item.category?.trim() || 'Chi phí khác';
+          groups.set(label, (groups.get(label) || 0) + Number(item.amount || 0));
+          return groups;
+        }, new Map<string, number>()),
+      ).map(([label, amount]) => ({ label, note: 'Tổng hợp từ phiếu chi thực tế', amount }));
+      const legacyExpenseRows: AmountRow[] = [
         { label: 'Nhôm', note: 'Vật tư nhôm chính', amount: project.costAluminum },
         { label: 'Phụ kiện', note: 'Phụ kiện đồng bộ', amount: project.costAccessory },
         { label: 'Khóa và bản lề', note: 'Khóa, bản lề, tay nắm', amount: project.costLockHinge },
@@ -118,10 +126,10 @@ export class ProjectFinancialPdfService {
         { label: 'Chi phí khác', note: 'Chi phí khác đã phân bổ', amount: project.costOther },
         ...(project.customCosts || []).map((cost) => ({ label: cost.label || cost.category, note: cost.note || cost.category, amount: cost.amount })),
       ].filter((row) => Number(row.amount) !== 0);
+      const expenseRows: AmountRow[] = paymentRows.length ? paymentRows : legacyExpenseRows;
       const totalExpense = expenseRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
       const profit = totalRevenue - totalExpense;
       const profitPct = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-      const transactions = project.transactions || [];
       const receiptTotal = transactions.filter((item) => item.type === 'RECEIPT').reduce((sum, item) => sum + item.amount, 0);
       const paymentTotal = transactions.filter((item) => item.type === 'PAYMENT').reduce((sum, item) => sum + item.amount, 0);
       const netCash = receiptTotal - paymentTotal;

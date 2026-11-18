@@ -10,6 +10,7 @@ import { WorkshopEventWorkerService } from './workshop-event-worker.service';
 import { WorkshopPilotGuard } from './workshop-pilot.guard';
 import { WorkshopPilotService } from './workshop-pilot.service';
 import { ProjectFinancialPdfService } from './project-financial-pdf.service';
+import { ProjectAcceptancePdfService } from './project-acceptance-pdf.service';
 
 const ROLES = ['ADMIN', 'STAFF', 'NPP', 'FACTORY', 'DAILY'] as const;
 
@@ -22,6 +23,7 @@ export class WorkshopOperationsController {
     private readonly pilot: WorkshopPilotService,
     private readonly eventWorker: WorkshopEventWorkerService,
     private readonly projectFinancialPdf: ProjectFinancialPdfService,
+    private readonly projectAcceptancePdf: ProjectAcceptancePdfService,
   ) {}
 
   @Get('flags')
@@ -155,6 +157,58 @@ export class WorkshopOperationsController {
       'Content-Length': pdf.length,
     });
     res.end(pdf);
+  }
+
+  @Get('projects/:projectId/cash-transactions')
+  projectCashTransactions(
+    @CurrentUser() user: JwtUser,
+    @Param('projectId') projectId: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    return this.service.projectCashTransactions(user, projectId, organizationId);
+  }
+
+  @Post('projects/:projectId/cash-transactions')
+  createProjectCashTransaction(
+    @CurrentUser() user: JwtUser,
+    @Param('projectId') projectId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.service.createProjectCashTransaction(user, projectId, body);
+  }
+
+  @Delete('projects/:projectId/cash-transactions/:transactionId')
+  deleteProjectCashTransaction(
+    @CurrentUser() user: JwtUser,
+    @Param('projectId') projectId: string,
+    @Param('transactionId') transactionId: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    return this.service.deleteProjectCashTransaction(user, projectId, transactionId, organizationId);
+  }
+
+  @Get('projects/:projectId/acceptance-pdf')
+  async projectAcceptanceReport(
+    @CurrentUser() user: JwtUser,
+    @Param('projectId') projectId: string,
+    @Query('organizationId') organizationId: string | undefined,
+    @Res() res: any,
+  ) {
+    assertWorkshopOperationsFeature('survey');
+    const data = await this.service.projectFinancialPdfData(user, projectId, organizationId);
+    const pdf = await this.projectAcceptancePdf.render(data);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="bien-ban-nghiem-thu-${data.code}.pdf"`,
+      'Content-Length': pdf.length,
+    });
+    res.end(pdf);
+  }
+
+  @Post('projects/:projectId/complete')
+  completeProject(@CurrentUser() user: JwtUser, @Param('projectId') projectId: string, @Body() body: Record<string, unknown>) {
+    assertWorkshopOperationsFeature('survey');
+    return this.service.completeProject(user, projectId, body);
   }
 
   @Get('projects/:projectId/survey')
