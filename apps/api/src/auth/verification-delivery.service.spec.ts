@@ -1,16 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
 import {
   DevelopmentVerificationDelivery,
+  ResendVerificationDelivery,
   resolveVerificationDelivery,
-  WebhookVerificationDelivery,
 } from './verification-delivery.service';
 
-test('production verification delivery fails closed without webhook URL and secret', () => {
+test('production verification delivery fails closed without Resend configuration', () => {
   assert.throws(
     () => resolveVerificationDelivery({ NODE_ENV: 'production' }),
-    /VERIFICATION_DELIVERY_WEBHOOK_URL.*VERIFICATION_DELIVERY_WEBHOOK_SECRET/,
+    /RESEND_API_KEY.*RESEND_FROM_EMAIL/,
   );
   assert.throws(
     () => new DevelopmentVerificationDelivery({ NODE_ENV: 'production' }),
@@ -18,17 +17,9 @@ test('production verification delivery fails closed without webhook URL and secr
   );
 });
 
-test('webhook delivery signs an allowlisted payload without leaking extra credentials', async () => {
-  let request: { url: string; init: RequestInit } | undefined;
-  const fetchImpl = async (url: string | URL | Request, init?: RequestInit) => {
-    request = { url: String(url), init: init ?? {} };
-    return new Response(null, { status: 204 });
-  };
-  const delivery = new WebhookVerificationDelivery(
-    'https://notify.example.test/verify',
-    'signed-secret',
-    fetchImpl,
-  );
+test('Resend delivery sends an email OTP without extra credentials', async () => {
+  let request: Record<string, unknown> | undefined;
+  const delivery = new ResendVerificationDelivery('EUROHOUSE <xacminh@nhomeurohouse.com>', { emails: { send: async (input: Record<string, unknown>) => { request = input; return { data: { id: 'email-1' }, error: null }; } } } as never);
 
   await delivery.send({
     channel: 'EMAIL',
@@ -39,15 +30,8 @@ test('webhook delivery signs an allowlisted payload without leaking extra creden
     token: 'must-not-leak',
   } as never);
 
-  assert.ok(request);
-  const body = String(request.init.body);
-  assert.deepEqual(JSON.parse(body), {
-    channel: 'EMAIL',
-    target: 'user@example.com',
-    code: '123456',
-    expiresMinutes: 10,
-  });
-  assert.equal(request.init.headers?.['x-eurohouse-signature' as never], createHmac('sha256', 'signed-secret').update(body).digest('hex'));
-  assert.equal(body.includes('password'), false);
-  assert.equal(body.includes('token'), false);
+  assert.equal(request?.to, 'user@example.com');
+  assert.equal(String(request?.subject).includes('EUROHOUSE'), true);
+  assert.equal(String(request?.html).includes('123456'), true);
+  assert.equal(JSON.stringify(request).includes('must-not-leak'), false);
 });

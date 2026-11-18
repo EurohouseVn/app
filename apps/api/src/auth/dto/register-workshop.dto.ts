@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterWorkshopDto {
   @IsString()
@@ -13,10 +13,8 @@ export class RegisterWorkshopDto {
   @MinLength(6)
   password!: string;
 
-  @ValidateIf((value) => Boolean(value.email))
   @IsEmail()
-  @IsOptional()
-  email?: string;
+  email!: string;
 
   @IsString()
   @IsOptional()
@@ -26,7 +24,4 @@ export class RegisterWorkshopDto {
   @IsOptional()
   province?: string;
 
-  @IsIn(['EMAIL', 'PHONE'])
-  @IsOptional()
-  verificationChannel?: 'EMAIL' | 'PHONE';
 }

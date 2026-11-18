@@ -106,6 +106,7 @@ export class AuthService {
     const password = input.password.trim();
     if (!displayName || !organizationName) throw new BadRequestException('WORKSHOP_NAME_REQUIRED');
     if (password.length < 6) throw new BadRequestException('PASSWORD_TOO_SHORT');
+    if (!input.email?.trim()) throw new BadRequestException('EMAIL_REQUIRED');
 
     let identities;
     try {
@@ -113,9 +114,7 @@ export class AuthService {
     } catch (error) {
       throw new BadRequestException((error as Error).message);
     }
-    const requestedChannel = input.verificationChannel;
-    if (requestedChannel === 'EMAIL' && !identities.emailNormalized) throw new BadRequestException('EMAIL_REQUIRED_FOR_VERIFICATION');
-    if (requestedChannel === 'PHONE' && !identities.phoneNormalized) throw new BadRequestException('PHONE_REQUIRED_FOR_VERIFICATION');
+    if (!identities.emailNormalized) throw new BadRequestException('EMAIL_REQUIRED');
     const duplicate = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -155,8 +154,8 @@ export class AuthService {
         },
       });
     });
-    const channel = requestedChannel ?? (identities.emailNormalized ? 'EMAIL' : 'PHONE');
-    const target = channel === 'EMAIL' ? identities.emailNormalized! : identities.phoneNormalized!;
+    const channel = 'EMAIL' as const;
+    const target = identities.emailNormalized;
     try {
       await this.verificationService.create(user.id, channel, target);
     } catch (deliveryError) {

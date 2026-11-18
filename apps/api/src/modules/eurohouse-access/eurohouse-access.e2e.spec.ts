@@ -76,7 +76,7 @@ test('guest discovery stays public and registration starts with both Eurohouse f
     undefined,
     access,
   );
-  await auth.registerWorkshop({ displayName: 'Anh Thợ', organizationName: 'Xưởng An', password: 'secret123', phone: '0912345678' });
+  await auth.registerWorkshop({ displayName: 'Anh Thợ', organizationName: 'Xưởng An', password: 'secret123', email: 'tho.an@example.test', phone: '0912345678' });
   db.users[0].verifiedAt = now;
   const me = await auth.me('factory-user');
   assert.equal(me.capabilities.eurohouse.features.FORMULA_CUTTING.status, 'LOCKED');

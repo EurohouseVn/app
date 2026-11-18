@@ -81,10 +81,9 @@ test('/auth/me exposes independent locked Eurohouse capabilities and the legacy 
   assert.equal(result.capabilities.formulas.status, 'LOCKED');
 });
 
-test('registers email-only, phone-only, and dual-identity workshops as unverified atomic tenants', async () => {
+test('registers email and optional phone workshops as unverified atomic tenants', async () => {
   for (const identities of [
     { email: 'owner@example.com' },
-    { phone: '0912345678' },
     { email: 'owner@example.com', phone: '0912345678' },
   ]) {
     const { service, users, organizations, challenges } = fixture();
@@ -103,7 +102,7 @@ test('registers email-only, phone-only, and dual-identity workshops as unverifie
   }
 });
 
-test('uses the selected verification channel when both email and phone are supplied', async () => {
+test('always uses normalized email for new public workshop verification', async () => {
   const { service, challenges } = fixture();
   await service.registerWorkshop({
     displayName: 'Nguyễn An',
@@ -111,19 +110,13 @@ test('uses the selected verification channel when both email and phone are suppl
     password: 'secret123',
     email: 'an@example.com',
     phone: '0912345678',
-    verificationChannel: 'PHONE',
   });
-  assert.deepEqual(challenges[0], { userId: 'u1', channel: 'PHONE', target: '+84912345678' });
+  assert.deepEqual(challenges[0], { userId: 'u1', channel: 'EMAIL', target: 'an@example.com' });
 });
 
-test('rejects an unavailable selected verification channel before creating a tenant', async () => {
-  const emailOnly = fixture();
-  await assert.rejects(() => emailOnly.service.registerWorkshop({ displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', email: 'an@example.com', verificationChannel: 'PHONE' }), /PHONE_REQUIRED_FOR_VERIFICATION/);
-  assert.equal(emailOnly.users.length, 0);
-  assert.equal(emailOnly.organizations.length, 0);
-
+test('rejects phone-only registration before creating a tenant', async () => {
   const phoneOnly = fixture();
-  await assert.rejects(() => phoneOnly.service.registerWorkshop({ displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', phone: '0912345678', verificationChannel: 'EMAIL' }), /EMAIL_REQUIRED_FOR_VERIFICATION/);
+  await assert.rejects(() => phoneOnly.service.registerWorkshop({ displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', phone: '0912345678' } as never), /EMAIL_REQUIRED/);
   assert.equal(phoneOnly.users.length, 0);
   assert.equal(phoneOnly.organizations.length, 0);
 });
@@ -135,19 +128,15 @@ test('delivery failure removes the newly created tenant so the identity can retr
   assert.equal(organizations.length, 0);
 });
 
-test('registration requires at least one identity and blocks normalized duplicates', async () => {
+test('registration requires email and blocks normalized email duplicates', async () => {
   const { service } = fixture([
     { id: 'existing-email', emailNormalized: 'user@example.com' },
     { id: 'existing-phone', phoneNormalized: '+84912345678' },
   ]);
   const base = { displayName: 'User', organizationName: 'Xưởng User', password: 'secret123' };
-  await assert.rejects(() => service.registerWorkshop(base), /IDENTIFIER_REQUIRED/);
+  await assert.rejects(() => service.registerWorkshop(base as never), /EMAIL_REQUIRED/);
   await assert.rejects(
     () => service.registerWorkshop({ ...base, email: ' User@Example.com ' }),
-    /IDENTIFIER_ALREADY_USED/,
-  );
-  await assert.rejects(
-    () => service.registerWorkshop({ ...base, phone: '0912 345 678' }),
     /IDENTIFIER_ALREADY_USED/,
   );
 });
