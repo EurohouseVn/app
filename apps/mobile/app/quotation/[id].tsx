@@ -1,13 +1,29 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
-import { colors } from '@eurohouse/ui';
 import { Icon } from '../../src/components/Icon';
+import { Banner, Button, Card, EmptyState, Kpi, KpiRow, ListRow, Loading, SectionHead, SubHeader, ValueLine, ws, wsStyles } from '../../src/components/ws';
 import { api } from '../../src/lib/api';
 import type { QuotationRecord } from '@eurohouse/types';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { API_URL, authHeaders } from '../../src/lib/api';
+
+type OptimizeRow = {
+  materialCode: string;
+  newBarsNeeded: number;
+  usedDeXeIds: string[];
+  newDeXeGenerated: number[];
+  scrapGeneratedKg: number;
+};
+
+function kgText(value: number, digits: number): string {
+  return `${value.toLocaleString('vi-VN', { minimumFractionDigits: digits, maximumFractionDigits: digits })} kg`;
+}
+
+function money(value: number): string {
+  return `${Math.round(value || 0).toLocaleString('vi-VN')} đ`;
+}
 
 export default function QuotationDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -15,7 +31,8 @@ export default function QuotationDetailScreen() {
   const [q, setQ] = useState<QuotationRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [optimizing, setOptimizing] = useState(false);
-  const [optResult, setOptResult] = useState<any>(null);
+  const [optResult, setOptResult] = useState<OptimizeRow[] | null>(null);
+  const [optError, setOptError] = useState('');
   const [exporting, setExporting] = useState<'quotation' | 'estimate' | null>(null);
 
   const load = useCallback(() => {
@@ -30,28 +47,14 @@ export default function QuotationDetailScreen() {
 
   const onOptimizeCut = async () => {
     setOptimizing(true);
+    setOptError('');
     try {
-      const res = await api.post(`/quotations/${id}/optimize`, {});
-      setOptResult(res);
-    } catch (e: any) {
-      Alert.alert('Lỗi tính toán', e.message);
-      // Fallback
-      setOptResult([
-        {
-          materialCode: 'C3304',
-          newBarsNeeded: 1,
-          usedDeXeIds: ['1'],
-          newDeXeGenerated: [1195],
-          scrapGeneratedKg: 1.2
-        },
-        {
-          materialCode: 'C3328',
-          newBarsNeeded: 2,
-          usedDeXeIds: [],
-          newDeXeGenerated: [2990],
-          scrapGeneratedKg: 0.02
-        }
-      ]);
+      const res = await api.post<OptimizeRow[]>(`/quotations/${id}/optimize`, {});
+      setOptResult(Array.isArray(res) ? res : []);
+    } catch (e) {
+      // Không hiện số liệu thay thế: tối ưu cắt lỗi thì báo lỗi để người dùng thử lại.
+      setOptResult(null);
+      setOptError(e instanceof Error ? e.message : 'Không tính được tối ưu cắt.');
     } finally {
       setOptimizing(false);
     }
@@ -76,96 +79,113 @@ export default function QuotationDetailScreen() {
     }
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={colors.brandOrange} size="large" /></View>;
-  if (!q) return <View style={styles.center}><Text>Không tìm thấy báo giá</Text></View>;
+  const header = <SubHeader title="Chi tiết báo giá" subtitle={q?.code} onBack={() => router.back()} />;
 
-  const totalScrap = optResult ? optResult.reduce((s: number, r: any) => s + r.scrapGeneratedKg, 0) : 0;
-  const newBars = optResult ? optResult.reduce((s: number, r: any) => s + r.newBarsNeeded, 0) : 0;
+  if (loading && !q) return <View style={wsStyles.screen}><Stack.Screen options={{ headerShown: false }} />{header}<Loading /></View>;
+  if (!q) {
+    return (
+      <View style={wsStyles.screen}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {header}
+        <View style={wsStyles.content}><EmptyState icon="file-text" title="Không tìm thấy báo giá" text="Báo giá có thể đã bị xoá." /></View>
+      </View>
+    );
+  }
+
+  const totalScrap = optResult ? optResult.reduce((s, r) => s + (r.scrapGeneratedKg || 0), 0) : 0;
+  const newBars = optResult ? optResult.reduce((s, r) => s + (r.newBarsNeeded || 0), 0) : 0;
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Chi tiết báo giá', headerShadowVisible: false }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        
-        <View style={styles.card}>
-          <Text style={styles.code}>{q.code}</Text>
-          <Text style={styles.meta}>Khách hàng: {q.customerName || 'Khách lẻ'}</Text>
-          <Text style={styles.total}>{q.totalAmount.toLocaleString('vi-VN')} đ</Text>
-        </View>
-
-        <View style={styles.documentRow}>
-          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => exportPdf('quotation')}>
-            <Icon name="download" size={16} color={colors.brandBlack.main} />
-            <Text style={styles.documentButtonText}>{exporting === 'quotation' ? 'Đang xuất...' : 'Báo giá PDF'}</Text>
-          </Pressable>
-          <Pressable style={styles.documentButton} disabled={Boolean(exporting)} onPress={() => router.push({ pathname: '/contract', params: { quotationId: q.id } })}>
-            <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-            <Text style={styles.documentButtonText}>Sinh hợp đồng</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.sectionTitle}>Tính công thức & Tối ưu cắt</Text>
-        <Text style={styles.sectionDesc}>Phân tích nhôm cần cắt và dự trù số lượng lấy từ kho.</Text>
-
-        {!optResult ? (
-          <Pressable style={styles.btnAction} onPress={onOptimizeCut} disabled={optimizing}>
-            {optimizing ? <ActivityIndicator color={colors.brandBlack.main} /> : <Text style={styles.btnText}>Bắt đầu tối ưu cắt</Text>}
-          </Pressable>
-        ) : (
-          <View>
-            <View style={styles.resultSummary}>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiValue}>{newBars} <Text style={{fontSize:12}}>cây</Text></Text>
-                <Text style={styles.kpiLabel}>Cần mua thêm</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiValue}>{totalScrap.toFixed(1)} <Text style={{fontSize:12}}>kg</Text></Text>
-                <Text style={styles.kpiLabel}>Phế liệu sinh ra</Text>
-              </View>
-            </View>
-
-            {optResult.map((res: any, idx: number) => (
-              <View key={idx} style={styles.resCard}>
-                <Text style={styles.resMaterial}>Mã nhôm: {res.materialCode}</Text>
-                <Text style={styles.resDetail}>• Số cây 6m cần cắt mới: {res.newBarsNeeded}</Text>
-                <Text style={styles.resDetail}>• Tận dụng kho (Đề Xê): {res.usedDeXeIds.length} đoạn</Text>
-                {res.newDeXeGenerated.length > 0 && (
-                  <Text style={styles.resDetail}>• Đề xê sinh ra: {res.newDeXeGenerated.map((x:any)=>x/1000+'m').join(', ')}</Text>
-                )}
-              </View>
-            ))}
-
-            <Pressable style={[styles.btnAction, { marginTop: 16, backgroundColor: colors.success }]} onPress={() => Alert.alert('Thành công', 'Đã lưu đơn và trừ tồn kho!')}>
-              <Text style={[styles.btnText, { color: colors.white }]}>Tiến hành xuất cắt & Trừ kho</Text>
-            </Pressable>
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      {header}
+      <ScrollView contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false}>
+        <Card>
+          <Text style={styles.customer}>{q.customerName || 'Khách lẻ'}</Text>
+          <Text style={wsStyles.rowMeta}>{[q.customerPhone, q.customerAddress].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ'}</Text>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+            <Text style={styles.total}>{money(q.totalAmount)}</Text>
           </View>
-        )}
+          <Text style={wsStyles.rowMeta}>{q.items?.length || 0} hạng mục · lập ngày {new Date(q.createdAt).toLocaleDateString('vi-VN')}</Text>
+        </Card>
 
+        <View style={styles.actions}>
+          <Button label="Báo giá PDF" icon="download" variant="secondary" loading={exporting === 'quotation'} disabled={Boolean(exporting)} onPress={() => exportPdf('quotation')} style={wsStyles.half} />
+          <Button label="Dự toán PDF" icon="file-text" variant="secondary" loading={exporting === 'estimate'} disabled={Boolean(exporting)} onPress={() => exportPdf('estimate')} style={wsStyles.half} />
+        </View>
+        <View style={styles.actions}>
+          <Button label="Sửa báo giá" icon="edit-2" variant="soft" onPress={() => router.push({ pathname: '/quote', params: { id: q.id } })} style={wsStyles.half} />
+          <Button label="Sinh hợp đồng" icon="file-text" variant="soft" onPress={() => router.push({ pathname: '/contract', params: { quotationId: q.id } })} style={wsStyles.half} />
+        </View>
+
+        {q.items?.length ? (
+          <>
+            <SectionHead title="Hạng mục" />
+            <Card padded={false}>
+              {q.items.map((item, index) => (
+                <ListRow key={`${item.name}-${index}`} first={index === 0}>
+                  <View style={wsStyles.grow}>
+                    <Text style={wsStyles.rowTitle} numberOfLines={1}>{item.name} · {item.doorType}</Text>
+                    <Text style={wsStyles.rowMeta} numberOfLines={1}>{item.widthMm}×{item.heightMm} mm · SL {item.quantity}{item.system ? ` · ${item.system}` : ''}</Text>
+                  </View>
+                  {typeof (item as { totalPrice?: number }).totalPrice === 'number' ? <Text style={styles.itemTotal}>{money((item as { totalPrice?: number }).totalPrice ?? 0)}</Text> : null}
+                </ListRow>
+              ))}
+            </Card>
+          </>
+        ) : null}
+
+        <SectionHead title="Tối ưu cắt nhôm" sub="Số cây cần cắt mới, đề-xê tận dụng và phế liệu dự kiến" />
+        {optError ? <View style={styles.gapBottom}><Banner tone="error" title="Chưa tính được tối ưu cắt" text={optError} /></View> : null}
+        {!optResult ? (
+          <Button label={optError ? 'Thử lại' : 'Bắt đầu tối ưu cắt'} icon="tool" loading={optimizing} onPress={onOptimizeCut} />
+        ) : (
+          <>
+            {optResult.length === 0 ? (
+              <EmptyState icon="tool" title="Không có thanh nhôm để tối ưu" text="Báo giá cần gắn công thức cắt hoặc hệ nhôm có mã thanh trong danh mục." />
+            ) : (
+              <>
+              <KpiRow>
+                <Kpi label="Cây 6m cần cắt mới" value={`${newBars} cây`} />
+                <Kpi label="Phế liệu dự kiến" value={kgText(totalScrap, 1)} tone={totalScrap > 0 ? 'warning' : undefined} />
+              </KpiRow>
+              <Card padded={false} style={styles.gapTop}>
+                {optResult.map((res, idx) => (
+                  <View key={`${res.materialCode}-${idx}`} style={idx > 0 && styles.divider}>
+                    <ValueLine first label={`Mã nhôm ${res.materialCode}`} value={`${res.newBarsNeeded} cây`} strong />
+                    <ValueLine label="Tận dụng đề-xê trong kho" value={`${res.usedDeXeIds?.length ?? 0} đoạn`} />
+                    {res.newDeXeGenerated?.length ? <ValueLine label="Đề-xê sinh ra" value={res.newDeXeGenerated.map((x) => `${x / 1000}m`).join(', ')} /> : null}
+                    <ValueLine label="Phế liệu" value={kgText(res.scrapGeneratedKg || 0, 2)} tone={res.scrapGeneratedKg > 0 ? 'minus' : undefined} />
+                  </View>
+                ))}
+              </Card>
+              </>
+            )}
+            <View style={styles.gapTop}>
+              <Button label="Tính lại" icon="refresh-cw" variant="secondary" loading={optimizing} onPress={onOptimizeCut} />
+            </View>
+            <View style={styles.note}>
+              <Icon name="info" size={14} color={ws.muted} />
+              <Text style={styles.noteText}>Đây là phương án tham khảo, chưa trừ kho. Lưu đề-xê vào kho ở màn Công thức sau khi cắt xong.</Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F8FA' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16 },
-  card: { backgroundColor: colors.white, padding: 16, borderRadius: 16, marginBottom: 24, elevation: 2, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  code: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 18 },
-  meta: { color: colors.brandGrey[500], marginTop: 4 },
-  total: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 24, marginTop: 12 },
-  documentRow: { flexDirection: 'row', gap: 10, marginTop: -12, marginBottom: 24 },
-  documentButton: { flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: colors.orangeSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  documentButtonText: { color: colors.brandBlack.main, fontSize: 12, fontWeight: '900' },
-  sectionTitle: { color: colors.brandBlack.main, fontSize: 18, fontWeight: '800' },
-  sectionDesc: { color: colors.brandGrey[500], fontSize: 13, marginTop: 4, marginBottom: 16 },
-  btnAction: { backgroundColor: colors.brandOrange, padding: 16, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 16 },
-  resultSummary: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  kpiCard: { flex: 1, backgroundColor: colors.white, padding: 14, borderRadius: 12, elevation: 1 },
-  kpiValue: { color: colors.brandBlack.main, fontSize: 22, fontWeight: '900' },
-  kpiLabel: { color: colors.brandGrey[500], fontSize: 12, marginTop: 4 },
-  resCard: { backgroundColor: colors.orangeSoft, padding: 16, borderRadius: 12, marginBottom: 12 },
-  resMaterial: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 16, marginBottom: 8 },
-  resDetail: { color: colors.brandBlack.main, fontSize: 13, marginBottom: 4 },
+  customer: { color: ws.ink, fontSize: 17, fontWeight: '900' },
+  totalRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  totalLabel: { color: ws.body, fontSize: 13, fontWeight: '800' },
+  total: { color: ws.ink, fontSize: 22, fontWeight: '900' },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  itemTotal: { color: ws.ink, fontSize: 13, fontWeight: '800' },
+  divider: { borderTopWidth: 1, borderTopColor: ws.line },
+  gapTop: { marginTop: 10 },
+  gapBottom: { marginBottom: 10 },
+  note: { flexDirection: 'row', gap: 8, marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: ws.line },
+  noteText: { flex: 1, color: ws.muted, fontSize: 11.5, lineHeight: 16 },
 });

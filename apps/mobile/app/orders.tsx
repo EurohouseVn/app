@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useRef } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { colors } from '@eurohouse/ui';
 import type { CatalogProfile, CatalogSystem, ColorCode, CreateOrderResult, EurohouseFeatureCapability, FormulaCapability, QuotationRecord } from '@eurohouse/types';
 import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { ProfileThumb } from '../src/components/ProfileThumb';
+import {
+  Banner, Button, Card, EmptyState, Field, FieldLabel, IconButton, Input, Kpi, KpiRow, ListRow,
+  OptionSheet, QtyStepper, SearchBox, SectionHead, SelectBox, ValueLine, ws, wsStyles,
+} from '../src/components/ws';
 import { api, API_URL, authHeaders } from '../src/lib/api';
 import { resetScrollToTop, useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import { reconcileOpenCatalogSystem, shouldShowOrderSummary } from '../src/lib/orderCatalogState.js';
@@ -17,6 +20,16 @@ import { canCallFormulaApi, guardFormulaCall } from '../src/lib/formulaAccess';
 import { featureUiState, guardEurohouseMutation, orderingCta, orderingScreenPolicy } from '../src/lib/eurohouseFeatureAccess';
 
 const STD_BAR_M = 6;
+
+/** 4,2 kg — số kiểu Việt Nam. */
+function kg(value: number, digits = 1): string {
+  return `${value.toLocaleString('vi-VN', { minimumFractionDigits: digits, maximumFractionDigits: digits })} kg`;
+}
+
+function colorLabel(name: string): string {
+  const label = name.replace(/^Màu\s+/i, '');
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 function theoreticalKgPerBar(profile: Pick<CatalogProfile, 'kgPerMeter' | 'barLengthMm'>) {
   const fallback = profile.kgPerMeter * ((profile.barLengthMm ?? STD_BAR_M * 1000) / 1000);
@@ -181,16 +194,14 @@ function OrderingLockedScreen({
   const appRouter = useRouter();
   const ui = featureUiState(capability);
   return (
-    <View style={styles.lockedScreen}>
+    <View style={wsStyles.screen}>
       <AppHeader title="Đặt hàng Eurohouse" subtitle={ui.statusLabel} />
-      <View style={styles.lockedCard}>
-        <View style={styles.lockedIcon}><Icon name="lock" size={26} color={colors.brandOrangeText} /></View>
+      <Card style={styles.lockedCard}>
+        <View style={styles.lockedIcon}><Icon name="lock" size={26} color={ws.orangeText} /></View>
         <Text style={styles.lockedTitle}>Đặt hàng Nhôm Eurohouse</Text>
         <Text style={styles.lockedCopy}>{ui.message}</Text>
-        <Pressable style={styles.lockedButton} onPress={() => appRouter.push(cta.href)}>
-          <Text style={styles.lockedButtonText}>{cta.label}</Text>
-        </Pressable>
-      </View>
+        <Button label={cta.label} onPress={() => appRouter.push(cta.href)} />
+      </Card>
     </View>
   );
 }
@@ -267,11 +278,11 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
     setCustomerName(String(draftParams.customerName || ''));
     setCustomerPhone(String(draftParams.customerPhone || ''));
     setDeliveryAddress(String(draftParams.deliveryAddress || ''));
-    setNote(`Don tu cong trinh ${draftParams.projectName || draftParams.projectCode || draftParams.projectId}`);
+    setNote(`Đơn từ công trình ${draftParams.projectName || draftParams.projectCode || draftParams.projectId}`);
     setStep('browse');
 
     if (!draftParams.quotationCode) {
-      setMessage('Da mo don hang tu cong trinh. Cong trinh chua lien ket bao gia nen vui long chon thanh nhom thu cong.');
+      setMessage('Đã mở đơn hàng từ công trình. Công trình chưa liên kết báo giá nên vui lòng chọn thanh nhôm thủ công.');
       return;
     }
 
@@ -285,7 +296,7 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
         if (Object.keys(draft.quantities).length > 0) {
           setQty(draft.quantities);
           setOpenSystem(draft.firstSystemId ?? systems[0]?.id ?? null);
-          setMessage(`Da boc tach tam tinh ${draft.lines} dong thanh nhom tu bao gia ${quotation.code}. Vui long ra soat so cay truoc khi gui.`);
+          setMessage(`Đã bóc tách tạm tính ${draft.lines} dòng thanh nhôm từ báo giá ${quotation.code}. Vui lòng rà soát số cây trước khi gửi.`);
         } else {
           setMessage(`Chưa ánh xạ được hệ nhôm trong báo giá ${quotation.code}. Vui lòng chọn thanh nhôm thủ công.`);
         }
@@ -459,7 +470,7 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Phiếu đặt hàng ${order.code}` });
       } else {
-        Alert.alert('Da tai PDF', `Da luu file tai: ${uri}`);
+        Alert.alert('Đã tải PDF', `Đã lưu file tại: ${uri}`);
       }
     } catch (e) {
       Alert.alert('Lỗi', e instanceof Error ? e.message : 'Không xuất được PDF.');
@@ -468,35 +479,28 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
     }
   }
 
+  const glassOptions = openGlassPicker?.field === 'color' ? GLASS_COLORS : GLASS_TYPES;
+  const pickerLine = openGlassPicker ? glassLines.find((line) => line.id === openGlassPicker.id) : undefined;
+
   if (result) {
     const hasWarnings = Boolean(result.nppWarning);
     return (
-      <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
+      <View style={wsStyles.screen}>
         <AppHeader title="Đặt hàng nhôm" subtitle="Đơn đã được tạo" />
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <View style={styles.successBox}>
-            <Icon name="check-circle" size={32} color={colors.success} />
+        <ScrollView ref={scrollRef} contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false}>
+          <Card style={styles.successCard}>
+            <View style={styles.successIcon}><Icon name="check-circle" size={28} color={ws.success} /></View>
             <Text style={styles.successTitle}>Đã tạo đơn {result.code}</Text>
-            <Text style={styles.successSub}>{result.status === 'NEW' && result.nppName ? `Đã gửi tới ${result.nppName}` : 'Đơn đang được lưu nháp; cần gán NPP trước khi gửi'}</Text>
+            <Text style={styles.successSub}>{result.status === 'NEW' && result.nppName ? `Đã gửi tới ${result.nppName}` : 'Đơn đang lưu nháp; cần gán NPP trước khi gửi'}</Text>
+          </Card>
+
+          {hasWarnings ? <View style={styles.gapTop}><Banner tone="warning" title="Lưu ý" text={result.nppWarning ?? ''} /></View> : null}
+
+          <View style={styles.stack}>
+            <Button label="Xem chi tiết đơn" icon="file-text" onPress={() => router.push(`/order/${result.id}` as Href)} />
+            <Button label={exportingPdf ? 'Đang xuất PDF...' : 'Xuất phiếu đặt hàng PDF'} icon="download" variant="secondary" loading={exportingPdf} onPress={() => exportOrderPdf(result)} />
+            <Button label="Đặt thêm đơn khác" icon="plus" variant="soft" onPress={resetAfterSuccess} />
           </View>
-
-          {hasWarnings ? (
-            <View style={styles.warningBox}>
-              <Text style={styles.warningTitle}>Lưu ý</Text>
-              {result.nppWarning ? <Text style={styles.warningText}>• {result.nppWarning}</Text> : null}
-            </View>
-          ) : null}
-
-          <Pressable style={styles.primaryBtn} onPress={() => router.push(`/order/${result.id}` as Href)}>
-            <Text style={styles.primaryBtnText}>Xem chi tiết đơn</Text>
-          </Pressable>
-          <Pressable style={[styles.pdfBtn, exportingPdf && { opacity: 0.6 }]} disabled={exportingPdf} onPress={() => exportOrderPdf(result)}>
-            <Icon name="file-text" size={15} color={colors.brandBlack.main} />
-            <Text style={styles.pdfBtnText}>{exportingPdf ? 'Dang xuat PDF...' : 'Xuat phieu dat hang PDF'}</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryBtn} onPress={resetAfterSuccess}>
-            <Text style={styles.secondaryBtnText}>Đặt thêm đơn khác</Text>
-          </Pressable>
         </ScrollView>
       </View>
     );
@@ -504,245 +508,186 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
 
   if (step === 'confirm') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-        <AppHeader title="Xác nhận đơn hàng" subtitle="Kiểm tra lại trước khi gửi" />
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <Text style={styles.label}>Danh sách thanh nhôm</Text>
-          {cart.items.map((item) => (
-            <View key={item.id} style={styles.confirmRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.confirmCode}>{item.code}</Text>
-                <Text style={styles.confirmName} numberOfLines={1}>{item.name} · {item.colorName}</Text>
-              </View>
-              <Text style={styles.confirmQty}>×{item.quantity}</Text>
-              <Text style={styles.confirmAmount}>{item.kg.toFixed(2)} kg</Text>
-            </View>
-          ))}
+      <View style={wsStyles.screen}>
+        <AppHeader title="Xác nhận đơn hàng" subtitle="Kiểm tra lại trước khi gửi NPP" onBack={() => setStep('browse')} />
+        <ScrollView ref={scrollRef} contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KpiRow>
+            <Kpi label="Loại thanh × màu" value={String(cart.lines)} />
+            <Kpi label="Dự tính" value={kg(cart.totalKg)} />
+            <Kpi label="Màu" value={String(selectedColors.length)} />
+          </KpiRow>
 
-          <View style={styles.totalRow}>
-            <View>
-              <Text style={styles.totalLabel}>Tổng dự tính: {cart.totalKg.toFixed(2)} kg</Text>
-              <Text style={styles.pendingPriceText}>NPP sẽ cân hàng và xác nhận giá trị chính thức khi giao.</Text>
-            </View>
-          </View>
-
-          <Text style={[styles.label, { marginTop: 20 }]}>Ghi chú đơn hàng</Text>
-          <TextInput style={[styles.input, { height: 80 }]} placeholder="Ghi chú giao hàng, thời gian nhận hoặc yêu cầu riêng" value={note} onChangeText={setNote} multiline placeholderTextColor="#94A3B8" />
-
-          <Text style={[styles.label, { marginTop: 16 }]}>Phụ kiện đi kèm (không bắt buộc)</Text>
-          <TextInput
-            style={[styles.input, { height: 120 }]}
-            placeholder={"- Khoá Severnday hệ 55 = 5 bộ\n- Keo silicon A500 = 1 thùng\n- Ron EPDM 8mm = 20m"}
-            value={accessoriesNote}
-            onChangeText={setAccessoriesNote}
-            multiline placeholderTextColor="#94A3B8" />
-
-          <View style={styles.glassHeader}>
-            <Text style={styles.label}>Đặt kính</Text>
-            <Pressable style={styles.addGlassBtn} onPress={addGlassLine}>
-              <Icon name="plus" size={14} color={colors.brandBlack.main} />
-              <Text style={styles.addGlassText}>Thêm kích thước</Text>
-            </Pressable>
-          </View>
-          {glassLines.map((line, index) => (
-            <View key={line.id} style={styles.glassCard}>
-              <View style={styles.glassTitleRow}>
-                <Text style={styles.glassTitle}>Kính #{index + 1}</Text>
-                <Pressable style={styles.glassRemoveBtn} onPress={() => removeGlassLine(line.id)}>
-                  <Icon name="trash-2" size={14} color={colors.danger} />
-                </Pressable>
-              </View>
-              <View style={styles.glassSelectRow}>
-                <View style={styles.glassSelectWrap}>
-                  <Pressable style={styles.glassSelect} onPress={() => toggleGlassPicker(line.id, 'color')}>
-                    <Text style={styles.glassSelectLabel}>Màu kính</Text>
-                    <View style={styles.glassSelectValueRow}>
-                      <Text style={styles.glassSelectValue} numberOfLines={1}>{line.glassColor}</Text>
-                      <Icon name={openGlassPicker?.id === line.id && openGlassPicker.field === 'color' ? 'chevron-up' : 'chevron-down'} size={15} color={colors.brandGrey[500]} />
-                    </View>
-                  </Pressable>
-                  {openGlassPicker?.id === line.id && openGlassPicker.field === 'color' ? (
-                    <View style={styles.glassOptions}>
-                      {GLASS_COLORS.map((option) => (
-                        <Pressable key={option} style={[styles.glassOption, line.glassColor === option && styles.glassOptionActive]} onPress={() => selectGlassOption(line.id, 'color', option)}>
-                          <Text style={[styles.glassOptionText, line.glassColor === option && styles.glassOptionTextActive]}>{option}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
+          <SectionHead title="Danh sách thanh nhôm" sub="NPP cân hàng và xác nhận giá chính thức khi giao" />
+          <Card padded={false}>
+            {cart.items.map((item, index) => (
+              <ListRow key={item.id} first={index === 0}>
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle}>{item.code}</Text>
+                  <Text style={wsStyles.rowMeta} numberOfLines={1}>{item.name} · {item.colorName}</Text>
                 </View>
-                <View style={styles.glassSelectWrap}>
-                  <Pressable style={styles.glassSelect} onPress={() => toggleGlassPicker(line.id, 'type')}>
-                    <Text style={styles.glassSelectLabel}>Loại kính</Text>
-                    <View style={styles.glassSelectValueRow}>
-                      <Text style={styles.glassSelectValue} numberOfLines={1}>{line.glassType === 'Loại khác' && line.customGlassType ? line.customGlassType : line.glassType}</Text>
-                      <Icon name={openGlassPicker?.id === line.id && openGlassPicker.field === 'type' ? 'chevron-up' : 'chevron-down'} size={15} color={colors.brandGrey[500]} />
-                    </View>
-                  </Pressable>
-                  {openGlassPicker?.id === line.id && openGlassPicker.field === 'type' ? (
-                    <View style={styles.glassOptions}>
-                      {GLASS_TYPES.map((option) => (
-                        <Pressable key={option} style={[styles.glassOption, line.glassType === option && styles.glassOptionActive]} onPress={() => selectGlassOption(line.id, 'type', option)}>
-                          <Text style={[styles.glassOptionText, line.glassType === option && styles.glassOptionTextActive]}>{option}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
+                <Text style={styles.qtyText}>×{item.quantity}</Text>
+                <Text style={styles.kgText}>{kg(item.kg, 2)}</Text>
+              </ListRow>
+            ))}
+            <ValueLine label="Tổng dự tính" value={kg(cart.totalKg, 2)} strong />
+          </Card>
+
+          <SectionHead title="Ghi chú & phụ kiện" />
+          <Card>
+            <FieldLabel>Ghi chú đơn hàng</FieldLabel>
+            <Input value={note} onChangeText={setNote} multiline placeholder="Thời gian nhận, địa điểm giao hoặc yêu cầu riêng" />
+            <Field label="Phụ kiện đi kèm (không bắt buộc)">
+              <Input
+                value={accessoriesNote}
+                onChangeText={setAccessoriesNote}
+                multiline
+                style={styles.tallInput}
+                placeholder={'- Khoá Severnday hệ 55 = 5 bộ\n- Keo silicon A500 = 1 thùng\n- Ron EPDM 8mm = 20m'}
+              />
+            </Field>
+          </Card>
+
+          <SectionHead
+            title="Đặt kính"
+            sub="Kích thước tính bằng mm"
+            action={<Button label="Thêm kính" icon="plus" variant="soft" onPress={addGlassLine} style={styles.smallButton} />}
+          />
+          {glassLines.map((line, index) => (
+            <Card key={line.id} style={styles.glassCard}>
+              <View style={styles.glassHead}>
+                <Text style={wsStyles.rowTitle}>Kính #{index + 1}</Text>
+                <IconButton icon="trash-2" tone="danger" label={`Xoá kính ${index + 1}`} onPress={() => removeGlassLine(line.id)} />
+              </View>
+              <View style={wsStyles.row}>
+                <View style={wsStyles.half}>
+                  <FieldLabel>Màu kính</FieldLabel>
+                  <SelectBox value={line.glassColor} placeholder="Chọn màu" onPress={() => toggleGlassPicker(line.id, 'color')} />
+                </View>
+                <View style={wsStyles.half}>
+                  <FieldLabel>Loại kính</FieldLabel>
+                  <SelectBox value={line.glassType === 'Loại khác' && line.customGlassType ? line.customGlassType : line.glassType} placeholder="Chọn loại" onPress={() => toggleGlassPicker(line.id, 'type')} />
                 </View>
               </View>
               {line.glassType === 'Loại khác' ? (
-                <TextInput style={styles.glassInput} placeholder="Nhập loại kính khác" value={line.customGlassType} onChangeText={(value) => updateGlassLine(line.id, { customGlassType: value })} placeholderTextColor="#94A3B8" />
+                <Field label="Loại kính khác">
+                  <Input value={line.customGlassType} onChangeText={(value) => updateGlassLine(line.id, { customGlassType: value })} placeholder="Nhập loại kính" />
+                </Field>
               ) : null}
-              <View style={styles.glassSizeRow}>
-                <TextInput style={styles.glassSizeInput} placeholder="Rộng" value={line.widthMm} onChangeText={(value) => updateGlassLine(line.id, { widthMm: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholderTextColor="#94A3B8" />
-                <TextInput style={styles.glassSizeInput} placeholder="Dài" value={line.heightMm} onChangeText={(value) => updateGlassLine(line.id, { heightMm: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholderTextColor="#94A3B8" />
-                <TextInput style={[styles.glassSizeInput, styles.glassQtyInput]} placeholder="SL" value={line.quantity} onChangeText={(value) => updateGlassLine(line.id, { quantity: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholderTextColor="#94A3B8" />
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Rộng</FieldLabel><Input value={line.widthMm} onChangeText={(value) => updateGlassLine(line.id, { widthMm: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholder="mm" /></View>
+                <View style={wsStyles.half}><FieldLabel>Dài</FieldLabel><Input value={line.heightMm} onChangeText={(value) => updateGlassLine(line.id, { heightMm: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholder="mm" /></View>
+                <View style={styles.qtyCol}><FieldLabel>SL</FieldLabel><Input value={line.quantity} onChangeText={(value) => updateGlassLine(line.id, { quantity: value.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholder="1" /></View>
               </View>
-              <Text style={styles.glassUnitHint}>Đơn vị kích thước: mm</Text>
-            </View>
+            </Card>
           ))}
 
-          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+          {message ? <View style={styles.gapTop}><Banner tone="error" text={message} /></View> : null}
 
-          <Pressable style={[styles.primaryBtn, submitting && { opacity: 0.6 }]} disabled={submitting} onPress={submit}>
-            <Text style={styles.primaryBtnText}>{submitting ? 'Đang gửi...' : 'Xác nhận gửi đơn'}</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryBtn} onPress={() => setStep('browse')}>
-            <Text style={styles.secondaryBtnText}>Quay lại chọn thêm</Text>
-          </Pressable>
+          <View style={styles.stack}>
+            <Button label={submitting ? 'Đang gửi...' : 'Xác nhận gửi đơn'} icon="send" loading={submitting} onPress={submit} />
+            <Button label="Quay lại chọn thêm" icon="arrow-left" variant="secondary" onPress={() => setStep('browse')} />
+          </View>
         </ScrollView>
+
+        <OptionSheet
+          visible={Boolean(openGlassPicker)}
+          title={openGlassPicker?.field === 'color' ? 'Chọn màu kính' : 'Chọn loại kính'}
+          options={glassOptions}
+          value={openGlassPicker?.field === 'color' ? pickerLine?.glassColor : pickerLine?.glassType}
+          onSelect={(value) => openGlassPicker && selectGlassOption(openGlassPicker.id, openGlassPicker.field, value)}
+          onClose={() => setOpenGlassPicker(null)}
+        />
       </View>
     );
   }
 
+  const renderProfile = (p: CatalogProfile, index: number, systemName?: string) => (
+    <ListRow key={p.id} first={index === 0}>
+      <ProfileThumb imageUrl={p.imageUrl} size={44} />
+      <View style={wsStyles.grow}>
+        <Text style={wsStyles.rowTitle}>{p.code}</Text>
+        <Text style={wsStyles.rowMeta} numberOfLines={1}>{p.name}</Text>
+        <Text style={styles.metaFaint} numberOfLines={1}>{systemName ? `${systemName} · ` : ''}{kg(theoreticalKgPerBar(p), 2)}/cây</Text>
+      </View>
+      <QtyStepper value={qty[p.id] ?? 0} onChange={(value) => setQuantity(p.id, value)} />
+    </ListRow>
+  );
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
+    <View style={wsStyles.screen}>
       <AppHeader title="Đặt hàng nhôm" subtitle="Chọn màu → hệ → thanh → số lượng" />
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Mã màu</Text>
-          <Text style={styles.labelHint}>Chọn 1 hoặc nhiều màu · đã chọn {selectedColors.length}</Text>
-        </View>
+      <ScrollView ref={scrollRef} contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <SectionHead title="Mã màu" sub={`Chọn một hoặc nhiều màu · đã chọn ${selectedColors.length}`} />
         <View style={styles.colorGrid}>
           {colorList.map((c) => {
             const active = selectedColors.includes(c.code);
             return (
-              <Pressable key={c.code} onPress={() => toggleColor(c.code)} style={[styles.colorChip, active && styles.colorChipActive]}>
+              <Pressable
+                key={c.code}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: active }}
+                onPress={() => toggleColor(c.code)}
+                style={[styles.colorCard, active && styles.colorCardOn]}
+              >
                 <View style={[styles.colorDot, { backgroundColor: c.hex ?? '#ccc' }]} />
-                <Text style={[styles.colorText, active && { color: colors.brandBlack.main }]} numberOfLines={1}>{c.name}</Text>
-                <View style={[styles.checkBox, active && styles.checkBoxActive]}>
-                  {active ? <Icon name="check" size={11} color={colors.brandBlack.main} /> : null}
-                </View>
+                <Text style={[styles.colorText, active && styles.colorTextOn]} numberOfLines={2}>{colorLabel(c.name)}</Text>
+                <View style={[styles.checkBox, active && styles.checkBoxOn]}>{active ? <Icon name="check" size={11} color={ws.surface} /> : null}</View>
               </Pressable>
             );
           })}
         </View>
 
-        {colorRuleHint ? (
-          <View style={styles.colorRuleBox}>
-            <Icon name="sliders" size={13} color={colors.brandOrangeText} />
-            <Text style={styles.colorRuleText}>{colorRuleHint}</Text>
-          </View>
-        ) : null}
+        {colorRuleHint ? <View style={styles.gapTop}><Banner tone="orange" text={colorRuleHint} /></View> : null}
 
-        {/* THANH TÌM KIẾM THANH NHÔM ĐẶT TAY */}
-        <View style={styles.searchWrap}>
-          <Icon name="search" size={18} color={colors.brandOrangeText} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm nhanh mã thanh (VD: DAK55, DAD91, E70...)"
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }}>
-              <Icon name="x" size={16} color={colors.brandGrey[500]} />
-            </Pressable>
-          ) : null}
+        <View style={styles.gapTop}>
+          <SearchBox value={searchQuery} onChangeText={setSearchQuery} placeholder="Tìm nhanh mã thanh (DAK55, DAD91, E70...)" />
         </View>
 
-        {/* KẾT QUẢ TÌM KIẾM */}
         {searchQuery.trim() ? (
-          <View style={styles.searchResultsBox}>
-            <Text style={styles.searchResultTitle}>
-              Tìm thấy {filteredProfiles.length} thanh nhôm khớp "{searchQuery}"
-            </Text>
+          <>
+            <SectionHead title="Kết quả tìm" sub={`${filteredProfiles.length} thanh khớp "${searchQuery.trim()}"`} />
             {filteredProfiles.length === 0 ? (
-              <Text style={{ color: colors.brandGrey[500], padding: 14, textAlign: 'center' }}>Không tìm thấy thanh nhôm phù hợp.</Text>
+              <EmptyState icon="search" title="Không tìm thấy thanh nhôm" text="Thử mã khác, hoặc đổi màu để mở thêm hệ nhôm." />
             ) : (
-              filteredProfiles.map(({ profile: p, systemName }) => (
-                <View key={p.id} style={styles.leaf}>
-                  <ProfileThumb imageUrl={p.imageUrl} size={48} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.leafCode}>{p.code}</Text>
-                    <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                    <Text style={styles.leafMeta}>{systemName} · {theoreticalKgPerBar(p).toFixed(2)} kg dự tính/cây</Text>
-                  </View>
-                  <View style={styles.stepper}>
-                    <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
-                    <Text style={styles.stepVal}>{qty[p.id] ?? 0}</Text>
-                    <Pressable style={[styles.stepBtn, styles.stepBtnAdd]} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) + 1)}><Icon name="plus" size={14} color={colors.brandBlack.main} /></Pressable>
-                  </View>
-                </View>
-              ))
+              <Card padded={false}>{filteredProfiles.map(({ profile, systemName }, index) => renderProfile(profile, index, systemName))}</Card>
             )}
-          </View>
+          </>
         ) : (
-          /* DANH MỤC THEO HỆ NHÔM KHẢ DỤNG */
-          visibleSystems.map((system) => {
-            const open = openSystem === system.id;
-            const sysQty = system.profiles.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0);
-            return (
-              <View key={system.id} style={styles.treeNode}>
-                <Pressable onPress={() => setOpenSystem(open ? null : system.id)} style={styles.treeHead}>
-                  <View style={styles.treeIcon}><Icon name="layers" size={16} color={colors.brandOrangeText} /></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.treeTitle}>{system.name}</Text>
-                    <Text style={styles.treeSub}>{system.profiles.length} thanh · {system.code}</Text>
-                  </View>
-                  {sysQty > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{sysQty}</Text></View> : null}
-                  <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.brandGrey[500]} />
-                </Pressable>
-
-                {open ? (
-                  <View style={styles.leafWrap}>
-                    {system.profiles.map((p) => (
-                      <View key={p.id} style={styles.leaf}>
-                        <ProfileThumb imageUrl={p.imageUrl} size={48} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.leafCode}>{p.code}</Text>
-                          <Text style={styles.leafName} numberOfLines={1}>{p.name}</Text>
-                          <Text style={styles.leafMeta}>{theoreticalKgPerBar(p).toFixed(2)} kg dự tính/cây</Text>
-                        </View>
-                        <View style={styles.stepper}>
-                          <Pressable style={styles.stepBtn} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) - 1)}><Icon name="minus" size={14} color={colors.brandBlack.main} /></Pressable>
-                          <Text style={styles.stepVal}>{qty[p.id] ?? 0}</Text>
-                          <Pressable style={[styles.stepBtn, styles.stepBtnAdd]} onPress={() => setQuantity(p.id, (qty[p.id] ?? 0) + 1)}><Icon name="plus" size={14} color={colors.brandBlack.main} /></Pressable>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })
+          <>
+            <SectionHead title="Hệ nhôm" sub={`${visibleSystems.length} hệ phù hợp với màu đã chọn`} />
+            {visibleSystems.length === 0 ? <EmptyState icon="layers" title="Chưa có hệ nhôm" text="Danh mục đang tải hoặc không có hệ phù hợp với màu đã chọn." /> : null}
+            {visibleSystems.map((system) => {
+              const open = openSystem === system.id;
+              const sysQty = system.profiles.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0);
+              return (
+                <Card key={system.id} padded={false} style={styles.systemCard}>
+                  <ListRow first onPress={() => setOpenSystem(open ? null : system.id)} label={`${open ? 'Thu gọn' : 'Mở'} ${system.name}`}>
+                    <View style={wsStyles.avatar}><Icon name="layers" size={17} color={ws.orangeText} /></View>
+                    <View style={wsStyles.grow}>
+                      <Text style={wsStyles.rowTitle}>{system.name}</Text>
+                      <Text style={wsStyles.rowMeta}>{system.profiles.length} thanh · {system.code}</Text>
+                    </View>
+                    {sysQty > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{sysQty}</Text></View> : null}
+                    <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={ws.muted} />
+                  </ListRow>
+                  {open ? <View style={styles.profileList}>{system.profiles.map((p, index) => renderProfile(p, index))}</View> : null}
+                </Card>
+              );
+            })}
+          </>
         )}
 
-        {message ? <Text style={styles.errorText}>{message}</Text> : null}
-        <View style={{ height: 150 }} />
+        {message ? <View style={styles.gapTop}><Banner tone="warning" text={message} /></View> : null}
+        <View style={{ height: 90 }} />
       </ScrollView>
 
       {shouldShowOrderSummary(cart.lines) ? (
-        <View style={styles.summary}>
-          <View style={styles.summaryCopy}>
-            <Text style={styles.sumLabel}>{cart.lines} loại · {cart.totalKg.toFixed(1)} kg · {selectedColors.length} màu</Text>
-            <Text style={styles.sumValue} numberOfLines={1}>NPP xác nhận giá sau khi cân</Text>
+        <View style={styles.summaryBar}>
+          <View style={wsStyles.grow}>
+            <Text style={styles.summaryTitle}>{cart.lines} loại · {kg(cart.totalKg)}</Text>
+            <Text style={styles.summarySub} numberOfLines={1}>{selectedColors.length} màu · NPP xác nhận giá sau khi cân</Text>
           </View>
-          <Pressable style={styles.submit} onPress={goToConfirm}>
-            <Icon name="send" size={14} color={colors.brandBlack.main} />
-            <Text style={styles.submitText}>Xem lại đơn</Text>
-          </Pressable>
+          <Button label="Xem lại đơn" icon="send" onPress={goToConfirm} style={styles.summaryButton} />
         </View>
       ) : null}
     </View>
@@ -750,95 +695,38 @@ function ActiveOrderingScreen({ orderingCapability }: { orderingCapability: Euro
 }
 
 const styles = StyleSheet.create({
-  lockedScreen: { flex: 1, backgroundColor: '#F7F8FA' },
-  lockedCard: { margin: 18, padding: 24, borderRadius: 24, backgroundColor: colors.white, borderWidth: 1, borderColor: '#F0DFD0', alignItems: 'center', gap: 12 },
-  lockedIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  lockedTitle: { color: colors.brandBlack.main, fontSize: 19, fontWeight: '900', textAlign: 'center' },
-  lockedCopy: { color: colors.brandGrey[600], fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 420 },
-  lockedButton: { minHeight: 48, marginTop: 4, borderRadius: 999, backgroundColor: colors.brandOrange, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
-  lockedButtonText: { color: colors.white, fontSize: 14, fontWeight: '900' },
-  container: { padding: 18, paddingBottom: 20 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
-  label: { color: colors.brandBlack.main, fontWeight: '800' },
-  labelHint: { color: colors.brandOrangeText, fontWeight: '700', fontSize: 12 },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  colorChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: colors.white, width: '48%', shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  colorChipActive: { borderWidth: 1.5, borderColor: colors.brandOrange },
-  colorDot: { width: 18, height: 18, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
-  colorText: { flex: 1, color: colors.brandGrey[500], fontWeight: '700', fontSize: 12 },
-  checkBox: { width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, borderColor: '#D5D8DC', alignItems: 'center', justifyContent: 'center' },
-  checkBoxActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange },
-  colorRuleBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
-  colorRuleText: { flex: 1, color: colors.brandOrangeText, fontSize: 11.5, fontWeight: '700', lineHeight: 16 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 4, marginBottom: 14, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  searchInput: { flex: 1, height: 44, paddingHorizontal: 10, color: colors.brandBlack.main, fontSize: 13, fontWeight: '600' },
-  searchResultsBox: { backgroundColor: colors.white, borderRadius: 18, padding: 14, marginBottom: 14, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  searchResultTitle: { fontSize: 12, fontWeight: '800', color: colors.brandOrangeText, marginBottom: 8, paddingHorizontal: 4 },
-  treeNode: { borderRadius: 18, marginBottom: 12, overflow: 'hidden', backgroundColor: colors.white, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  treeHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: colors.white },
-  treeIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  treeTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 15 },
-  treeSub: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
-  countBadge: { backgroundColor: colors.brandOrange, borderRadius: 999, minWidth: 24, height: 24, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  countText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 12 },
-  leafWrap: { backgroundColor: '#FBFBFC', paddingHorizontal: 14, paddingBottom: 8 },
-  leaf: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#EEF0F3' },
-  leafCode: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
-  leafName: { color: colors.brandBlack.main, fontSize: 12 },
-  leafMeta: { color: colors.brandGrey[500], fontSize: 11, marginTop: 2 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  stepBtn: { width: 30, height: 30, borderRadius: 999, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
-  stepBtnAdd: { backgroundColor: colors.brandOrange },
-  stepVal: { minWidth: 22, textAlign: 'center', color: colors.brandBlack.main, fontWeight: '900' },
-  errorText: { color: colors.danger, fontWeight: '700', marginTop: 12 },
-  summary: { position: 'absolute', left: 18, right: 18, bottom: 92, minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 9, shadowColor: colors.brandOrange, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  summaryCopy: { flex: 1, minWidth: 0, paddingLeft: 2 },
-  sumLabel: { color: colors.brandOrangeText, fontWeight: '700', fontSize: 11 },
-  sumValue: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 11, marginTop: 2 },
-  submit: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
-  submitText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
-  input: { backgroundColor: colors.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10, color: colors.brandBlack.main, fontSize: 14 },
-  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderRadius: 14, padding: 12, marginBottom: 8 },
-  confirmCode: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
-  confirmName: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
-  confirmQty: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 13 },
-  confirmAmount: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 13, minWidth: 90, textAlign: 'right' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 16, padding: 16, marginTop: 6 },
-  totalLabel: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 13 },
-  pendingPriceText: { color: colors.brandGrey[700], fontWeight: '700', fontSize: 12, lineHeight: 17, marginTop: 4 },
-  glassHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 10 },
-  addGlassBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.orangeSoft, borderRadius: 999, paddingHorizontal: 12 },
-  addGlassText: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 12 },
-  glassCard: { backgroundColor: colors.white, borderRadius: 16, padding: 12, marginBottom: 10 },
-  glassTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  glassTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13 },
-  glassRemoveBtn: { width: 36, height: 36, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.brandRed.soft },
-  glassSelectRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginBottom: 8 },
-  glassSelectWrap: { flex: 1 },
-  glassSelect: { minHeight: 50, backgroundColor: colors.brandGrey[50], borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center' },
-  glassSelectLabel: { color: colors.brandGrey[500], fontSize: 11, fontWeight: '800', marginBottom: 3 },
-  glassSelectValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
-  glassSelectValue: { flex: 1, color: colors.brandBlack.main, fontSize: 13, fontWeight: '900' },
-  glassOptions: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.brandGrey[200], borderRadius: 12, marginTop: 6, padding: 4, shadowColor: colors.brandBlack.main, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  glassOption: { minHeight: 40, borderRadius: 10, justifyContent: 'center', paddingHorizontal: 10 },
-  glassOptionActive: { backgroundColor: colors.orangeSoft },
-  glassOptionText: { color: colors.brandGrey[600], fontWeight: '700', fontSize: 12 },
-  glassOptionTextActive: { color: colors.brandOrangeText, fontWeight: '900' },
-  glassInput: { minHeight: 44, backgroundColor: colors.brandGrey[50], borderRadius: 12, paddingHorizontal: 12, color: colors.brandBlack.main, fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  glassSizeRow: { flexDirection: 'row', gap: 8 },
-  glassSizeInput: { flex: 1, minWidth: 0, minHeight: 44, backgroundColor: colors.brandGrey[50], borderRadius: 12, paddingHorizontal: 10, color: colors.brandBlack.main, fontSize: 13, fontWeight: '700' },
-  glassQtyInput: { flex: 0.72 },
-  glassUnitHint: { color: colors.brandGrey[500], fontWeight: '700', fontSize: 11, marginTop: 6 },
-  primaryBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 16, paddingVertical: 15, marginTop: 20 },
-  primaryBtnText: { color: colors.brandBlack.main, fontWeight: '900' },
-  pdfBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.brandOrange, borderRadius: 16, paddingVertical: 15, marginTop: 10 },
-  pdfBtnText: { color: colors.brandBlack.main, fontWeight: '900' },
-  secondaryBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 8 },
-  secondaryBtnText: { color: colors.brandGrey[500], fontWeight: '700' },
-  successBox: { alignItems: 'center', gap: 8, backgroundColor: colors.white, borderRadius: 20, padding: 24, marginTop: 8 },
-  successTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 17, marginTop: 4 },
-  successSub: { color: colors.brandGrey[500], fontSize: 13 },
-  warningBox: { backgroundColor: '#FFF8E5', borderRadius: 16, padding: 16, marginTop: 16, gap: 4 },
-  warningTitle: { color: colors.warning, fontWeight: '900', fontSize: 13 },
-  warningText: { color: colors.brandBlack.main, fontSize: 12.5, lineHeight: 18 },
+  lockedCard: { margin: 16, alignItems: 'center', gap: 10, paddingVertical: 24 },
+  lockedIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: ws.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  lockedTitle: { color: ws.ink, fontSize: 18, fontWeight: '900', textAlign: 'center' },
+  lockedCopy: { color: ws.muted, fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 420, marginBottom: 6 },
+  gapTop: { marginTop: 10 },
+  stack: { gap: 10, marginTop: 16 },
+  successCard: { alignItems: 'center', gap: 6, paddingVertical: 22 },
+  successIcon: { width: 52, height: 52, borderRadius: 16, backgroundColor: ws.successBg, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  successTitle: { color: ws.ink, fontSize: 17, fontWeight: '900', textAlign: 'center' },
+  successSub: { color: ws.muted, fontSize: 13, textAlign: 'center' },
+  qtyText: { color: ws.orangeText, fontSize: 13, fontWeight: '800' },
+  kgText: { minWidth: 78, textAlign: 'right', color: ws.ink, fontSize: 13, fontWeight: '800' },
+  tallInput: { minHeight: 110 },
+  smallButton: { minHeight: 38, paddingHorizontal: 12 },
+  glassCard: { marginBottom: 10 },
+  glassHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  qtyCol: { width: 70 },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  colorCard: { width: '48.5%', minHeight: 50, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, borderRadius: 12, borderWidth: 1, borderColor: ws.line, backgroundColor: ws.surface },
+  colorCardOn: { borderColor: ws.orange, backgroundColor: ws.orangeSoft },
+  colorDot: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: 'rgba(0,0,0,0.12)' },
+  colorText: { flex: 1, color: ws.body, fontSize: 12.5, lineHeight: 16, fontWeight: '700' },
+  colorTextOn: { color: ws.orangeText, fontWeight: '800' },
+  checkBox: { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, borderColor: ws.field, alignItems: 'center', justifyContent: 'center', backgroundColor: ws.surface },
+  checkBoxOn: { backgroundColor: ws.orange, borderColor: ws.orange },
+  systemCard: { marginBottom: 10 },
+  profileList: { borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  metaFaint: { color: ws.faint, fontSize: 11, marginTop: 1 },
+  countBadge: { minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 6, backgroundColor: ws.orange, alignItems: 'center', justifyContent: 'center' },
+  countText: { color: ws.surface, fontSize: 12, fontWeight: '900' },
+  summaryBar: { position: 'absolute', left: 14, right: 14, bottom: 96, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 14, paddingRight: 10, borderRadius: 16, backgroundColor: ws.surface, borderWidth: 1, borderColor: ws.line, shadowColor: '#101828', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  summaryTitle: { color: ws.ink, fontSize: 14, fontWeight: '900' },
+  summarySub: { color: ws.muted, fontSize: 11.5, marginTop: 1 },
+  summaryButton: { minHeight: 42 },
 });

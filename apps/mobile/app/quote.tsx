@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Modal, FlatList, ActivityIndicator, Image, Platform, Switch } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, Image, Platform, Switch } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '@eurohouse/ui';
 import type { QuotationInput, QuotationRecord, QuotationResult, QuotationItemInput } from '@eurohouse/types';
-import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
+import {
+  Button, Card, Chip, EmptyState, Field, FieldLabel, IconButton, Input, ListRow, Loading, OptionSheet,
+  SectionHead, SelectBox, Sheet, SubHeader, ValueLine, ws, wsStyles,
+} from '../src/components/ws';
 import { api, API_URL, authHeaders } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth';
 import { canCallFormulaApi, guardFormulaCall } from '../src/lib/formulaAccess';
@@ -60,20 +62,29 @@ function GuestQuoteScreen() {
     setSavedMessage('Đã lưu báo giá trên thiết bị này.');
   }
 
-  return <ScrollView style={{ flex: 1, backgroundColor: '#F6F7F9' }} contentContainerStyle={{ width: '100%', maxWidth: 680, alignSelf: 'center', padding: 20, paddingBottom: 80 }}>
-    <Pressable onPress={() => router.back()} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon name="arrow-left" size={20} color="#344054" /><Text style={{ color: '#344054', fontWeight: '800' }}>Trang chủ</Text></Pressable>
-    <Text style={{ color: colors.brandOrangeText, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 18 }}>BÁO GIÁ THỦ CÔNG</Text>
-    <Text style={{ color: '#172033', fontSize: 28, lineHeight: 35, fontWeight: '900', marginTop: 8 }}>Lập nhanh một báo giá ngay trên thiết bị</Text>
-    <Text style={{ color: '#667085', fontSize: 14, lineHeight: 21, marginTop: 8 }}>Bản miễn phí không dùng công thức cắt và không gửi dữ liệu nghiệp vụ lên máy chủ.</Text>
-    <View style={{ marginTop: 22, padding: 18, borderRadius: 20, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E4E7EC', gap: 12 }}>
-      <TextInput value={customerName} onChangeText={setCustomerName} placeholder="Tên khách hàng (không bắt buộc)" placeholderTextColor="#98A2B3" style={styles.input} />
-      <TextInput value={description} onChangeText={setDescription} placeholder="Hạng mục" placeholderTextColor="#98A2B3" style={styles.input} />
-      <View style={{ flexDirection: 'row', gap: 10 }}><TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" placeholder="Số lượng" placeholderTextColor="#98A2B3" style={[styles.input, { flex: 1 }]} /><TextInput value={unitPrice} onChangeText={setUnitPrice} keyboardType="numeric" placeholder="Đơn giá" placeholderTextColor="#98A2B3" style={[styles.input, { flex: 1 }]} /></View>
-      <View style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#EAECF0', flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ color: '#475467', fontWeight: '800' }}>Tạm tính</Text><Text style={{ color: '#172033', fontSize: 20, fontWeight: '900' }}>{calculation.total.toLocaleString('vi-VN')} đ</Text></View>
-      <Pressable onPress={() => void saveLocalQuote()} style={{ minHeight: 50, borderRadius: 14, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.white, fontWeight: '900' }}>Lưu trên thiết bị</Text></Pressable>
-      {savedMessage ? <Text style={{ color: '#087A5B', textAlign: 'center', fontSize: 12, fontWeight: '800' }}>{savedMessage}</Text> : null}
+  return (
+    <View style={wsStyles.screen}>
+      <SubHeader title="Báo giá thủ công" subtitle="Lưu trên thiết bị, không cần tài khoản" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={styles.guestPage} keyboardShouldPersistTaps="handled">
+        <Text style={wsStyles.hint}>Bản miễn phí không dùng công thức cắt và không gửi dữ liệu nghiệp vụ lên máy chủ.</Text>
+        <Card style={styles.gapTop}>
+          <FieldLabel>Khách hàng (không bắt buộc)</FieldLabel>
+          <Input value={customerName} onChangeText={setCustomerName} placeholder="Tên khách hàng" />
+          <Field label="Hạng mục"><Input value={description} onChangeText={setDescription} placeholder="Hạng mục" /></Field>
+          <View style={[wsStyles.row, styles.gapTop]}>
+            <View style={wsStyles.half}><FieldLabel>Số lượng</FieldLabel><Input value={quantity} onChangeText={setQuantity} keyboardType="numeric" placeholder="1" /></View>
+            <View style={wsStyles.half}><FieldLabel>Đơn giá</FieldLabel><Input value={unitPrice} onChangeText={setUnitPrice} keyboardType="numeric" placeholder="0" /></View>
+          </View>
+          <View style={styles.guestTotal}>
+            <Text style={wsStyles.rowTitle}>Tạm tính</Text>
+            <Text style={styles.guestTotalValue}>{calculation.total.toLocaleString('vi-VN')} đ</Text>
+          </View>
+          <Button label="Lưu trên thiết bị" icon="save" onPress={() => void saveLocalQuote()} style={styles.gapTop} />
+          {savedMessage ? <Text style={styles.savedMsg}>{savedMessage}</Text> : null}
+        </Card>
+      </ScrollView>
     </View>
-  </ScrollView>;
+  );
 }
 
 function AuthenticatedQuoteScreen() {
@@ -560,767 +571,455 @@ function AuthenticatedQuoteScreen() {
     }
   }
 
+  function applySelect(item: string) {
+    if (selectModal.field === 'phaoDinhDirect') {
+      setPhaoDinh(p => ({ ...p, name: item }));
+    } else if (selectModal.field === 'chanSongSystem') {
+      if (selectModal.index !== null) {
+        const curDyn = (items[selectModal.index]?.dynamicInputs as any) || {};
+        updateItem(selectModal.index, 'dynamicInputs', {
+          ...curDyn,
+          chanSongSystem: item,
+          chanSongType: item === 'Không' ? '' : (curDyn.chanSongType || 'Song tròn D28')
+        });
+      }
+    } else if (selectModal.field === 'chanSongType') {
+      if (selectModal.index !== null) {
+        const curDyn = (items[selectModal.index]?.dynamicInputs as any) || {};
+        updateItem(selectModal.index, 'dynamicInputs', {
+          ...curDyn,
+          chanSongType: item
+        });
+      }
+    } else if (selectModal.index !== null) {
+      updateItem(selectModal.index, selectModal.field, item);
+    }
+    setSelectModal({ ...selectModal, visible: false });
+  }
+
+  const selectedValue = (() => {
+    if (selectModal.field === 'phaoDinhDirect') return phaoDinh.name || 'Không';
+    if (selectModal.index === null) return undefined;
+    const current = items[selectModal.index] as any;
+    if (!current) return undefined;
+    if (selectModal.field === 'chanSongSystem' || selectModal.field === 'chanSongType') return current.dynamicInputs?.[selectModal.field];
+    return current[selectModal.field];
+  })();
+
+  const openSelect = (title: string, options: string[], field: string, index: number | null) => setSelectModal({ visible: true, title, options, field, index });
+
+  const updateExtraList = (
+    list: typeof accessoriesList,
+    setList: typeof setAccessoriesList,
+    idx: number,
+    field: 'name' | 'description' | 'unit' | 'quantity' | 'unitPrice',
+    value: string,
+  ) => {
+    const clone = [...list];
+    clone[idx] = { ...clone[idx], [field]: value };
+    setList(clone);
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Tạo Báo Giá" subtitle="Tính chi tiết đa hạng mục cửa" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.savedLink} onPress={() => router.push('/quotations' as Href)}>
-          <Icon name="file-text" size={16} color={colors.brandOrangeText} />
-          <Text style={styles.savedLinkText}>Xem báo giá đã lưu</Text>
-          <Icon name="chevron-right" size={18} color={colors.brandGrey[500]} />
-        </Pressable>
-
-        <View style={styles.panel}>
-          <Text style={styles.sectionTitle}>Thông tin khách hàng</Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>Họ tên</Text>
-              <TextInput value={customerName} onChangeText={setCustomerName} style={styles.input} placeholder="Nguyễn Văn A" placeholderTextColor="#94a3b8" />
-            </View>
-            <View style={[styles.field, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>Số điện thoại</Text>
-              <TextInput value={customerPhone} onChangeText={setCustomerPhone} style={styles.input} placeholder="09..." keyboardType="phone-pad" placeholderTextColor="#94a3b8" />
-            </View>
+    <View style={wsStyles.screen}>
+      <SubHeader
+        title={isEditing ? 'Sửa báo giá' : 'Lập báo giá'}
+        subtitle={saved ? `Đã lưu ${saved.code}` : 'Tính chi tiết nhiều hạng mục cửa'}
+        onBack={() => router.back()}
+        right={<IconButton icon="file-text" tone="orange" label="Xem báo giá đã lưu" onPress={() => router.push('/quotations' as Href)} />}
+      />
+      <ScrollView contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <SectionHead title="Khách hàng" />
+        <Card>
+          <View style={wsStyles.row}>
+            <View style={wsStyles.half}><FieldLabel>Họ tên</FieldLabel><Input value={customerName} onChangeText={setCustomerName} placeholder="Nguyễn Văn A" /></View>
+            <View style={wsStyles.half}><FieldLabel>Số điện thoại</FieldLabel><Input value={customerPhone} onChangeText={setCustomerPhone} placeholder="09..." keyboardType="phone-pad" /></View>
           </View>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Địa chỉ</Text>
-            <TextInput value={customerAddress} onChangeText={setCustomerAddress} style={styles.input} placeholder="Số nhà, đường..." placeholderTextColor="#94a3b8" />
-          </View>
-        </View>
+          <Field label="Địa chỉ"><Input value={customerAddress} onChangeText={setCustomerAddress} placeholder="Số nhà, đường..." /></Field>
+        </Card>
 
-        <View style={[styles.panel, { marginTop: 16 }]}>
-          <Text style={styles.sectionTitle}>Danh sách hạng mục</Text>
-          {items.map((item, index) => (
-            <View key={index} style={styles.itemBox}>
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemTitle}>Hạng mục {index + 1}</Text>
-                {items.length > 1 && (
-                  <Pressable onPress={() => removeItem(index)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 }}>
-                    <Icon name="trash-2" size={16} color={colors.danger} />
-                    <Text style={{ color: colors.danger, fontSize: 13, fontWeight: '600' }}>Xoá</Text>
-                  </Pressable>
-                )}
-              </View>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Ký hiệu</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn ký hiệu', options: ['D1-Cửa chính', 'D2', 'D3', 'CS1', 'CS2', 'CS3', 'VK1', 'VK2', 'VK3', 'OFix 1', 'OFix 2', 'Other'], field: 'name', index })}>
-                    <Text style={{ flex: 1, color: item.name ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.name || 'Ký hiệu...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
+        <SectionHead title="Hạng mục cửa" sub={`${items.length} hạng mục`} />
+        {items.map((item, index) => {
+          const dyn = (item.dynamicInputs as any) || {};
+          const isWindow = (item.name || '').trim().toUpperCase().startsWith('CS');
+          return (
+            <Card key={index} style={styles.itemCard}>
+              <View style={styles.itemHead}>
+                <View style={styles.itemBadge}><Text style={styles.itemBadgeText}>{index + 1}</Text></View>
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle} numberOfLines={1}>{item.name || `Hạng mục ${index + 1}`}</Text>
+                  <Text style={wsStyles.rowMeta} numberOfLines={1}>{[item.system, item.doorType].filter(Boolean).join(' · ') || 'Chưa chọn hệ và loại cửa'}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Màu sắc</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn màu sắc', options: COLORS, field: 'color', index })}>
-                    <Text style={{ flex: 1, color: item.color ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.color || 'Màu...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
-                </View>
-              </View>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Hệ nhôm</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn hệ nhôm', options: getSystemOptions(item.name, item.color), field: 'system', index })}>
-                    <Text style={{ flex: 1, color: item.system ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.system || 'Hệ nhôm...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Loại cửa (Mẫu)</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn kiểu', options: getDoorTypeOptions(item.name || '', item.system || ''), field: 'doorType', index })}>
-                    <Text style={{ flex: 1, color: item.doorType ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.doorType || 'Loại cửa...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
-                </View>
+                {items.length > 1 ? <IconButton icon="trash-2" tone="danger" label={`Xoá hạng mục ${index + 1}`} onPress={() => removeItem(index)} /> : null}
               </View>
 
-              {formulaEnabled ? <Pressable style={styles.formulaPicker} onPress={() => openTemplateModal(index)}>
-                <Icon name={item.templateId ? 'check-circle' : 'tool'} size={17} color={item.templateId ? colors.success : colors.brandOrangeText} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formulaPickerLabel}>Công thức cắt dùng để bóc tách nhôm</Text>
-                  <Text style={[styles.formulaPickerValue, item.templateId && { color: colors.success }]} numberOfLines={1}>
-                    {item.templateId ? `Đã gắn: ${item.doorType}` : 'Chọn công thức WebAdmin đã phát hành'}
-                  </Text>
-                </View>
-                <Icon name="chevron-right" size={17} color={colors.brandGrey[500]} />
-              </Pressable> : null}
-
-              {/* Extra toggles based on system/doorType */}
-
-              {/* Glass & Wall Hugging */}
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Ôm tường</Text>
-                  <Pressable style={styles.inputSmall} onPress={() => setSelectModal({ visible: true, title: 'Chọn ôm tường', options: ['Tường 200', 'Tường 150', 'Tường 250', 'Non'], field: 'wallHugging', index })}>
-                    <Text numberOfLines={1}>{item.wallHugging || 'Non'}</Text>
-                  </Pressable>
-                </View>
+              <View style={wsStyles.row}>
+                <View style={wsStyles.half}><FieldLabel>Ký hiệu</FieldLabel><SelectBox value={item.name} placeholder="Ký hiệu" onPress={() => openSelect('Chọn ký hiệu', ['D1-Cửa chính', 'D2', 'D3', 'CS1', 'CS2', 'CS3', 'VK1', 'VK2', 'VK3', 'OFix 1', 'OFix 2', 'Other'], 'name', index)} /></View>
+                <View style={wsStyles.half}><FieldLabel>Màu sắc</FieldLabel><SelectBox value={item.color} placeholder="Màu" onPress={() => openSelect('Chọn màu sắc', COLORS, 'color', index)} /></View>
+              </View>
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Hệ nhôm</FieldLabel><SelectBox value={item.system} placeholder="Hệ nhôm" onPress={() => openSelect('Chọn hệ nhôm', getSystemOptions(item.name, item.color), 'system', index)} /></View>
+                <View style={wsStyles.half}><FieldLabel>Loại cửa (mẫu)</FieldLabel><SelectBox value={item.doorType} placeholder="Loại cửa" onPress={() => openSelect('Chọn kiểu cửa', getDoorTypeOptions(item.name || '', item.system || ''), 'doorType', index)} /></View>
               </View>
 
-              {/* Special Protected Grille (Chấn Song) for Cửa Sổ (CS) */}
-              {(item.name || '').trim().toUpperCase().startsWith('CS') && (
-                <View style={{ backgroundColor: '#f1f5f9', padding: 10, borderRadius: 8, marginTop: 4, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: colors.brandBlack.main, marginBottom: 6 }}>Hệ chấn song bảo vệ (Cửa sổ)</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.fieldLabel}>Hệ chấn song</Text>
-                      <Pressable 
-                        style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center' }]} 
-                        onPress={() => setSelectModal({ 
-                          visible: true, 
-                          title: 'Chọn hệ chấn song', 
-                          options: ['Không', 'Hệ chấn song khung độc lập', 'Hệ chấn song tích hợp'], 
-                          field: 'chanSongSystem', 
-                          index 
-                        })}>
-                        <Text style={{ flex: 1, fontSize: 12 }} numberOfLines={1}>{(item.dynamicInputs as any)?.chanSongSystem || 'Không'}</Text>
-                        <Icon name="chevron-down" size={14} color={colors.brandGrey[500]} />
-                      </Pressable>
-                    </View>
-                  {(Boolean((item.dynamicInputs as any)?.chanSongSystem) && (item.dynamicInputs as any)?.chanSongSystem !== 'Không') && (
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.fieldLabel}>Loại song</Text>
-                        <Pressable 
-                          style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center' }]} 
-                          onPress={() => setSelectModal({ 
-                            visible: true, 
-                            title: 'Chọn loại song', 
-                            options: ['Song tròn D28', 'Song lục giác 31x35mm', 'Song chữ nhật 25x40mm'], 
-                            field: 'chanSongType', 
-                            index 
-                          })}>
-                          <Text style={{ flex: 1, fontSize: 12 }} numberOfLines={1}>{(item.dynamicInputs as any)?.chanSongType || 'Song tròn D28'}</Text>
-                          <Icon name="chevron-down" size={14} color={colors.brandGrey[500]} />
-                        </Pressable>
-                      </View>
-                    )}
+              {formulaEnabled ? (
+                <Pressable style={[styles.formulaPicker, item.templateId && styles.formulaPickerOn]} onPress={() => openTemplateModal(index)}>
+                  <Icon name={item.templateId ? 'check-circle' : 'tool'} size={17} color={item.templateId ? ws.success : ws.orangeText} />
+                  <View style={wsStyles.grow}>
+                    <Text style={styles.formulaLabel}>Công thức cắt để bóc tách nhôm</Text>
+                    <Text style={[styles.formulaValue, item.templateId && { color: ws.success }]} numberOfLines={1}>{item.templateId ? `Đã gắn: ${item.doorType}` : 'Chọn công thức đã phát hành'}</Text>
+                  </View>
+                  <Icon name="chevron-right" size={17} color={ws.muted} />
+                </Pressable>
+              ) : null}
+
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Loại kính</FieldLabel><SelectBox value={item.glassType} placeholder="Loại kính" onPress={() => openSelect('Chọn loại kính', KINH_LOAI, 'glassType', index)} /></View>
+                <View style={wsStyles.half}><FieldLabel>Màu kính</FieldLabel><SelectBox value={item.glassColor} placeholder="Màu kính" onPress={() => openSelect('Chọn màu kính', KINH_MAU, 'glassColor', index)} /></View>
+              </View>
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Ôm tường</FieldLabel><SelectBox value={item.wallHugging || 'Non'} placeholder="Ôm tường" onPress={() => openSelect('Chọn ôm tường', ['Tường 200', 'Tường 150', 'Tường 250', 'Non'], 'wallHugging', index)} /></View>
+                <View style={wsStyles.half} />
+              </View>
+
+              {isWindow ? (
+                <View style={styles.subBox}>
+                  <Text style={styles.subTitle}>Chấn song bảo vệ (cửa sổ)</Text>
+                  <View style={wsStyles.row}>
+                    <View style={wsStyles.half}><FieldLabel>Hệ chấn song</FieldLabel><SelectBox value={dyn.chanSongSystem || 'Không'} placeholder="Không" onPress={() => openSelect('Chọn hệ chấn song', ['Không', 'Hệ chấn song khung độc lập', 'Hệ chấn song tích hợp'], 'chanSongSystem', index)} /></View>
+                    {dyn.chanSongSystem && dyn.chanSongSystem !== 'Không' ? (
+                      <View style={wsStyles.half}><FieldLabel>Loại song</FieldLabel><SelectBox value={dyn.chanSongType || 'Song tròn D28'} placeholder="Loại song" onPress={() => openSelect('Chọn loại song', ['Song tròn D28', 'Song lục giác 31x35mm', 'Song chữ nhật 25x40mm'], 'chanSongType', index)} /></View>
+                    ) : <View style={wsStyles.half} />}
                   </View>
                 </View>
-              )}
+              ) : null}
 
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Loại Kính</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn loại kính', options: KINH_LOAI, field: 'glassType', index })}>
-                    <Text style={{ flex: 1, color: item.glassType ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.glassType || 'Loại kính...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Màu Kính</Text>
-                  <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn màu kính', options: KINH_MAU, field: 'glassColor', index })}>
-                    <Text style={{ flex: 1, color: item.glassColor ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{item.glassColor || 'Màu kính...'}</Text>
-                    <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-                  </Pressable>
-                </View>
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Rộng (mm)</FieldLabel><Input value={String(item.widthMm || '')} onChangeText={(v) => updateItem(index, 'widthMm', v)} keyboardType="numeric" /></View>
+                <View style={wsStyles.half}><FieldLabel>Cao (mm)</FieldLabel><Input value={String(item.heightMm || '')} onChangeText={(v) => updateItem(index, 'heightMm', v)} keyboardType="numeric" /></View>
+                <View style={styles.qtyCol}><FieldLabel>SL</FieldLabel><Input value={String(item.quantity || '')} onChangeText={(v) => updateItem(index, 'quantity', v)} keyboardType="numeric" /></View>
               </View>
+              <Field label="Đơn giá / m² (đ)"><Input value={String(item.pricePerM2)} onChangeText={(v) => updateItem(index, 'pricePerM2', v)} keyboardType="numeric" /></Field>
 
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Rộng(mm)</Text>
-                  <TextInput value={String(item.widthMm || '')} onChangeText={(v) => updateItem(index, 'widthMm', v)} style={styles.inputSmall} keyboardType="numeric" placeholderTextColor="#94A3B8" />
+              <Field label="Phụ kiện">
+                <View style={styles.choiceRow}>
+                  <Chip label="Đã gồm trong đơn giá" active={item.includesAccessories !== false} onPress={() => updateItem(index, 'includesAccessories', 'true')} />
+                  <Chip label="Chưa gồm" active={item.includesAccessories === false} onPress={() => updateItem(index, 'includesAccessories', 'false')} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Cao(mm)</Text>
-                  <TextInput value={String(item.heightMm || '')} onChangeText={(v) => updateItem(index, 'heightMm', v)} style={styles.inputSmall} keyboardType="numeric" placeholderTextColor="#94A3B8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Số lượng</Text>
-                  <TextInput value={String(item.quantity || '')} onChangeText={(v) => updateItem(index, 'quantity', v)} style={styles.inputSmall} keyboardType="numeric" placeholderTextColor="#94A3B8" />
-                </View>
-              </View>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Đơn giá / m² (đ)</Text>
-                  <TextInput value={String(item.pricePerM2)} onChangeText={(v) => updateItem(index, 'pricePerM2', v)} style={styles.inputSmall} keyboardType="numeric" placeholderTextColor="#94A3B8" />
-                </View>
-              </View>
-              
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Phụ kiện</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                  <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => updateItem(index, 'includesAccessories', 'true')}>
-                    <Icon name={item.includesAccessories !== false ? 'check-circle' : 'circle'} size={16} color={item.includesAccessories !== false ? colors.brandOrange : colors.brandGrey[500]} />
-                    <Text style={{ fontSize: 13, color: colors.brandBlack.main }}>Đã gồm (vào đơn giá/m²)</Text>
-                  </Pressable>
-                  <Pressable style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => updateItem(index, 'includesAccessories', 'false')}>
-                    <Icon name={item.includesAccessories === false ? 'check-circle' : 'circle'} size={16} color={item.includesAccessories === false ? colors.brandOrange : colors.brandGrey[500]} />
-                    <Text style={{ fontSize: 13, color: colors.brandBlack.main }}>Chưa gồm</Text>
-                  </Pressable>
-                </View>
-              </View>
-              {item.includesAccessories === false && (
-                <View style={[styles.field, { marginTop: 8 }]}>
-                  <Text style={styles.fieldLabel}>Giá bộ phụ kiện (đ) (Sẽ tính thêm vào tổng)</Text>
-                  <TextInput value={String(item.accessoriesPrice || '')} onChangeText={(v) => updateItem(index, 'accessoriesPrice', v)} style={styles.inputSmall} keyboardType="numeric" placeholderTextColor="#94A3B8" />
-                </View>
-              )}
+              </Field>
+              {item.includesAccessories === false ? (
+                <Field label="Giá bộ phụ kiện (đ) — cộng thêm vào tổng">
+                  <Input value={String(item.accessoriesPrice || '')} onChangeText={(v) => updateItem(index, 'accessoriesPrice', v)} keyboardType="numeric" />
+                </Field>
+              ) : null}
+            </Card>
+          );
+        })}
+        <Button label="Thêm hạng mục cửa" icon="plus" variant="soft" onPress={addItem} />
+
+        <SectionHead title="Sản phẩm gia tăng" sub="Phào đỉnh, phụ kiện, sản phẩm khác" />
+        <Card>
+          <FieldLabel>Phào đỉnh</FieldLabel>
+          <SelectBox value={phaoDinh.name || 'Không'} placeholder="Không" onPress={() => openSelect('Chọn phào đỉnh', ['Không', 'Phào đơn 75mm', 'Phào kép 220mm', 'Phào kép 280mm'], 'phaoDinhDirect', null)} />
+          {Boolean(phaoDinh.name) && phaoDinh.name !== 'Không' ? (
+            <View style={[wsStyles.row, styles.gapTop]}>
+              <View style={wsStyles.half}><FieldLabel>Mét dài (md)</FieldLabel><Input value={phaoDinh.length} onChangeText={(v) => setPhaoDinh(p => ({ ...p, length: v }))} keyboardType="numeric" placeholder="10" /></View>
+              <View style={wsStyles.half}><FieldLabel>Đơn giá (đ/m)</FieldLabel><Input value={phaoDinh.price} onChangeText={(v) => setPhaoDinh(p => ({ ...p, price: v }))} keyboardType="numeric" placeholder="900000" /></View>
             </View>
-          ))}
-          <Pressable style={styles.addBtn} onPress={addItem}>
-            <Icon name="plus" size={16} color={colors.brandOrange} />
-            <Text style={styles.addBtnText}>Thêm hạng mục cửa</Text>
-          </Pressable>
-        </View>
+          ) : null}
 
-        {/* Dedicated Extra Products Panel */}
-        <View style={[styles.panel, { marginTop: 16 }]}>
-          <Text style={styles.sectionTitle}>Sản phẩm gia tăng (Phụ kiện & Phào đỉnh)</Text>
-          
-          {/* Sub A: Phào đỉnh */}
-          <Text style={[styles.fieldLabel, { fontWeight: '700', color: colors.brandBlack.main, marginTop: 4 }]}>+ Thêm Phào đỉnh</Text>
-          <View style={styles.rowInputs}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Loại phào đỉnh</Text>
-              <Pressable style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setSelectModal({ visible: true, title: 'Chọn phào đỉnh', options: ['Không', 'Phào đơn 75mm', 'Phào kép 220mm', 'Phào kép 280mm'], field: 'phaoDinhDirect', index: null })}>
-                <Text style={{ flex: 1, color: phaoDinh.name ? colors.brandBlack.main : colors.brandGrey[500] }} numberOfLines={1}>{phaoDinh.name || 'Không'}</Text>
-                <Icon name="chevron-down" size={16} color={colors.brandGrey[500]} />
-              </Pressable>
-            </View>
-          </View>
-
-          {Boolean(phaoDinh.name) && phaoDinh.name !== 'Không' && (
-            <View style={[styles.rowInputs, { backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, marginTop: 4 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Mét dài (md)</Text>
-                <TextInput value={phaoDinh.length} onChangeText={(v) => setPhaoDinh(p => ({ ...p, length: v }))} style={styles.inputSmall} keyboardType="numeric" placeholder="10" placeholderTextColor="#94a3b8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Đơn giá (đ/m)</Text>
-                <TextInput value={phaoDinh.price} onChangeText={(v) => setPhaoDinh(p => ({ ...p, price: v }))} style={styles.inputSmall} keyboardType="numeric" placeholder="900000" placeholderTextColor="#94a3b8" />
-              </View>
-            </View>
-          )}
-
-          {/* Sub B: Accessories (Tay nắm, Khóa điện tử...) */}
-          <Text style={[styles.fieldLabel, { fontWeight: '700', color: colors.brandBlack.main, marginTop: 14 }]}>+ Thêm Phụ kiện (Tay nắm, Khóa điện tử, Khóa từ...)</Text>
+          <Text style={styles.groupTitle}>Phụ kiện (tay nắm, khoá điện tử, khoá từ...)</Text>
           {accessoriesList.map((acc, idx) => (
-            <View key={idx} style={{ backgroundColor: '#f8fafc', padding: 10, borderRadius: 8, marginTop: 6, gap: 6 }}>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 2 }}>
-                  <Text style={styles.fieldLabel}>Tên phụ kiện</Text>
-                  <TextInput value={acc.name} onChangeText={(v) => {
-                    const clone = [...accessoriesList];
-                    clone[idx].name = v;
-                    setAccessoriesList(clone);
-                  }} style={styles.inputSmall} placeholder="VD: Tay nắm Juai, Khóa từ Kaadas..." placeholderTextColor="#94a3b8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Đơn vị tính</Text>
-                  <TextInput value={acc.unit} onChangeText={(v) => {
-                    const clone = [...accessoriesList];
-                    clone[idx].unit = v;
-                    setAccessoriesList(clone);
-                  }} style={styles.inputSmall} placeholder="bộ" placeholderTextColor="#94a3b8" />
-                </View>
+            <View key={idx} style={styles.subBox}>
+              <View style={wsStyles.row}>
+                <View style={styles.wide}><FieldLabel>Tên phụ kiện</FieldLabel><Input value={acc.name} onChangeText={(v) => updateExtraList(accessoriesList, setAccessoriesList, idx, 'name', v)} placeholder="VD: Tay nắm Juai" /></View>
+                <View style={wsStyles.half}><FieldLabel>Đơn vị</FieldLabel><Input value={acc.unit} onChangeText={(v) => updateExtraList(accessoriesList, setAccessoriesList, idx, 'unit', v)} placeholder="bộ" /></View>
               </View>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Số lượng</Text>
-                  <TextInput value={acc.quantity} onChangeText={(v) => {
-                    const clone = [...accessoriesList];
-                    clone[idx].quantity = v;
-                    setAccessoriesList(clone);
-                  }} style={styles.inputSmall} keyboardType="numeric" placeholder="1" placeholderTextColor="#94a3b8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Đơn giá (đ)</Text>
-                  <TextInput value={acc.unitPrice} onChangeText={(v) => {
-                    const clone = [...accessoriesList];
-                    clone[idx].unitPrice = v;
-                    setAccessoriesList(clone);
-                  }} style={styles.inputSmall} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
-                </View>
-                {accessoriesList.length > 1 && (
-                  <Pressable onPress={() => setAccessoriesList(prev => prev.filter((_, i) => i !== idx))} style={{ justifyContent: 'center', paddingHorizontal: 4 }}>
-                    <Icon name="trash-2" size={18} color={colors.danger} />
-                  </Pressable>
-                )}
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Số lượng</FieldLabel><Input value={acc.quantity} onChangeText={(v) => updateExtraList(accessoriesList, setAccessoriesList, idx, 'quantity', v)} keyboardType="numeric" placeholder="1" /></View>
+                <View style={wsStyles.half}><FieldLabel>Đơn giá (đ)</FieldLabel><Input value={acc.unitPrice} onChangeText={(v) => updateExtraList(accessoriesList, setAccessoriesList, idx, 'unitPrice', v)} keyboardType="numeric" placeholder="0" /></View>
+                {accessoriesList.length > 1 ? <View style={styles.trashCol}><IconButton icon="trash-2" tone="danger" label="Xoá phụ kiện" onPress={() => setAccessoriesList(prev => prev.filter((_, i) => i !== idx))} /></View> : null}
               </View>
             </View>
           ))}
-          <Pressable style={[styles.addBtn, { marginTop: 8 }]} onPress={() => setAccessoriesList(prev => [...prev, { name: '', description: '', unit: 'bộ', quantity: '', unitPrice: '' }])}>
-            <Icon name="plus" size={14} color={colors.brandOrange} />
-            <Text style={[styles.addBtnText, { fontSize: 13 }]}>Thêm Phụ kiện</Text>
-          </Pressable>
+          <Button label="Thêm phụ kiện" icon="plus" variant="secondary" onPress={() => setAccessoriesList(prev => [...prev, { name: '', description: '', unit: 'bộ', quantity: '', unitPrice: '' }])} style={styles.gapTop} />
 
-          {/* Sub C: Custom Extra Products */}
-          <Text style={[styles.fieldLabel, { fontWeight: '700', color: colors.brandBlack.main, marginTop: 14 }]}>+ Sản phẩm gia tăng khác (Mái tôn, lan can, cửa cổng...)</Text>
+          <Text style={styles.groupTitle}>Sản phẩm khác (mái tôn, lan can, cửa cổng...)</Text>
           {customExtras.map((ext, idx) => (
-            <View key={idx} style={{ backgroundColor: '#f8fafc', padding: 10, borderRadius: 8, marginTop: 6, gap: 6 }}>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 2 }}>
-                  <Text style={styles.fieldLabel}>Tên sản phẩm gia tăng</Text>
-                  <TextInput value={ext.name} onChangeText={(v) => {
-                    const clone = [...customExtras];
-                    clone[idx].name = v;
-                    setCustomExtras(clone);
-                  }} style={styles.inputSmall} placeholder="VD: Mái tôn, Lan can, Cửa cổng..." placeholderTextColor="#94a3b8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Đơn vị tính</Text>
-                  <TextInput value={ext.unit} onChangeText={(v) => {
-                    const clone = [...customExtras];
-                    clone[idx].unit = v;
-                    setCustomExtras(clone);
-                  }} style={styles.inputSmall} placeholder="bộ" placeholderTextColor="#94a3b8" />
-                </View>
+            <View key={idx} style={styles.subBox}>
+              <View style={wsStyles.row}>
+                <View style={styles.wide}><FieldLabel>Tên sản phẩm</FieldLabel><Input value={ext.name} onChangeText={(v) => updateExtraList(customExtras, setCustomExtras, idx, 'name', v)} placeholder="VD: Mái tôn, lan can" /></View>
+                <View style={wsStyles.half}><FieldLabel>Đơn vị</FieldLabel><Input value={ext.unit} onChangeText={(v) => updateExtraList(customExtras, setCustomExtras, idx, 'unit', v)} placeholder="bộ" /></View>
               </View>
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Mô tả chi tiết</Text>
-                <TextInput value={ext.description} onChangeText={(v) => {
-                  const clone = [...customExtras];
-                  clone[idx].description = v;
-                  setCustomExtras(clone);
-                }} style={styles.inputSmall} placeholder="VD: Mái tôn 0.45mm chống nóng, Khóa từ cao cấp..." placeholderTextColor="#94a3b8" />
-              </View>
-              <View style={styles.rowInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Số lượng / Mét</Text>
-                  <TextInput value={ext.quantity} onChangeText={(v) => {
-                    const clone = [...customExtras];
-                    clone[idx].quantity = v;
-                    setCustomExtras(clone);
-                  }} style={styles.inputSmall} keyboardType="numeric" placeholder="1" placeholderTextColor="#94a3b8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Đơn giá (đ)</Text>
-                  <TextInput value={ext.unitPrice} onChangeText={(v) => {
-                    const clone = [...customExtras];
-                    clone[idx].unitPrice = v;
-                    setCustomExtras(clone);
-                  }} style={styles.inputSmall} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
-                </View>
-                {customExtras.length > 1 && (
-                  <Pressable onPress={() => setCustomExtras(prev => prev.filter((_, i) => i !== idx))} style={{ justifyContent: 'center', paddingHorizontal: 4 }}>
-                    <Icon name="trash-2" size={18} color={colors.danger} />
-                  </Pressable>
-                )}
+              <Field label="Mô tả"><Input value={ext.description} onChangeText={(v) => updateExtraList(customExtras, setCustomExtras, idx, 'description', v)} placeholder="VD: Mái tôn 0.45mm chống nóng" /></Field>
+              <View style={[wsStyles.row, styles.gapTop]}>
+                <View style={wsStyles.half}><FieldLabel>Số lượng / mét</FieldLabel><Input value={ext.quantity} onChangeText={(v) => updateExtraList(customExtras, setCustomExtras, idx, 'quantity', v)} keyboardType="numeric" placeholder="1" /></View>
+                <View style={wsStyles.half}><FieldLabel>Đơn giá (đ)</FieldLabel><Input value={ext.unitPrice} onChangeText={(v) => updateExtraList(customExtras, setCustomExtras, idx, 'unitPrice', v)} keyboardType="numeric" placeholder="0" /></View>
+                {customExtras.length > 1 ? <View style={styles.trashCol}><IconButton icon="trash-2" tone="danger" label="Xoá sản phẩm" onPress={() => setCustomExtras(prev => prev.filter((_, i) => i !== idx))} /></View> : null}
               </View>
             </View>
           ))}
-          <Pressable style={[styles.addBtn, { marginTop: 8 }]} onPress={() => setCustomExtras(prev => [...prev, { name: '', description: '', unit: 'bộ', quantity: '', unitPrice: '' }])}>
-            <Icon name="plus" size={14} color={colors.brandOrange} />
-            <Text style={[styles.addBtnText, { fontSize: 13 }]}>Thêm sản phẩm gia tăng khác</Text>
-          </Pressable>
-        </View>
+          <Button label="Thêm sản phẩm khác" icon="plus" variant="secondary" onPress={() => setCustomExtras(prev => [...prev, { name: '', description: '', unit: 'bộ', quantity: '', unitPrice: '' }])} style={styles.gapTop} />
+        </Card>
 
-        <View style={[styles.panel, { marginTop: 16 }]}>
-          <Text style={styles.sectionTitle}>Tùy chọn Báo Giá / Quyết Toán</Text>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Thuế VAT (%)</Text>
-            <TextInput value={globalCosts.vatPct} onChangeText={(v) => updateCost('vatPct', v)} style={styles.inputSmall} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
-          </View>
-          {isEditing && (
-            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEF0F3' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={{ fontWeight: '800', color: colors.brandBlack.main, fontSize: 14 }}>Chuyển sang Chức năng Quyết Toán</Text>
-                  <Text style={{ fontSize: 12, color: colors.brandGrey[500] }}>Tự động bật khi chỉnh sửa báo giá để xuất BẢNG QUYẾT TOÁN</Text>
+        <SectionHead title="Tuỳ chọn báo giá / quyết toán" />
+        <Card>
+          <FieldLabel>Thuế VAT (%)</FieldLabel>
+          <Input value={globalCosts.vatPct} onChangeText={(v) => updateCost('vatPct', v)} keyboardType="numeric" placeholder="0" />
+          {isEditing ? (
+            <View style={styles.settleBox}>
+              <View style={styles.settleRow}>
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle}>Chuyển sang quyết toán</Text>
+                  <Text style={wsStyles.rowMeta}>Bật khi sửa báo giá để xuất bảng quyết toán</Text>
                 </View>
-                <Switch
-                  value={isFinalSettlement}
-                  onValueChange={setIsFinalSettlement}
-                  trackColor={{ true: colors.brandOrange, false: '#EEF0F3' }}
-                />
+                <Switch value={isFinalSettlement} onValueChange={setIsFinalSettlement} trackColor={{ true: ws.orange, false: ws.lineSoft }} />
               </View>
-
-              {isFinalSettlement && (
-                <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEF0F3' }}>
-                  <Text style={styles.fieldLabel}>Giá trị tạm ứng (VNĐ)</Text>
-                  <TextInput
-                    value={depositAmount}
-                    onChangeText={setDepositAmount}
-                    style={styles.inputSmall}
-                    keyboardType="numeric"
-                    placeholder="Nhập số tiền đã tạm ứng / đặt cọc"
-                    placeholderTextColor="#94a3b8"
-                  />
-                </View>
-              )}
+              {isFinalSettlement ? (
+                <Field label="Giá trị tạm ứng (VNĐ)">
+                  <Input value={depositAmount} onChangeText={setDepositAmount} keyboardType="numeric" placeholder="Số tiền khách đã tạm ứng / đặt cọc" />
+                </Field>
+              ) : null}
             </View>
-          )}
-        </View>
+          ) : null}
+        </Card>
 
-        <Pressable style={styles.calcBtn} onPress={calc} disabled={busy}>
-          <Icon name="zap" size={18} color={colors.brandOrange} />
-          <Text style={styles.calcText}>TÍNH TOÁN BÁO GIÁ</Text>
-        </Pressable>
+        <Button label="Tính báo giá" icon="zap" loading={busy && !result} onPress={calc} disabled={busy} style={styles.calcButton} />
 
         {result ? (
-          <View style={styles.result}>
-            
-            <Text style={styles.resultTitle}>Xem Trước Dự Toán</Text>
-            <ScrollView horizontal style={{ marginTop: 12, marginBottom: 12 }}>
-              <View style={{ minWidth: 800 }}>
-                {/* Table Header */}
-                <View style={{ flexDirection: 'row', backgroundColor: '#e2e8f0', borderTopWidth: 1, borderLeftWidth: 1, borderColor: '#cbd5e1' }}>
-                  <Text style={{ width: 40, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>STT</Text>
-                  <Text style={{ width: 80, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Ký hiệu</Text>
-                  <Text style={{ width: 200, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Loại cửa - Quy cách</Text>
-                  <Text style={{ width: 60, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Rộng</Text>
-                  <Text style={{ width: 60, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Cao</Text>
-                  <Text style={{ width: 80, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Diện tích</Text>
-                  <Text style={{ width: 50, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>SL</Text>
-                  <Text style={{ width: 100, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Đơn giá</Text>
-                  <Text style={{ width: 120, padding: 8, fontWeight: '700', fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>Thành tiền</Text>
-                </View>
-                {/* Table Body */}
-                {result.items.map((it, idx) => {
-                  let quyCach = it.doorType;
-                  if (it.system) quyCach += `\n- Hệ: ${it.system.replace(/^Hệ\s+/i, '')}`;
-                  if (it.color) quyCach += `\n- Màu: ${it.color.replace(/^Màu\s+/i, '')}`;
-                  if (it.glassType) quyCach += `\n- Kính: ${it.glassType.replace(/^Kính\s+/i, '')}`;
-                  if (it.wallHugging && it.wallHugging !== 'Non') quyCach += `\n- Ôm tường: ${it.wallHugging}`;
-                  const dyn = (it.dynamicInputs as any) || {};
-                  if (dyn.chanSongSystem && dyn.chanSongSystem !== 'Không') {
-                    let csStr = dyn.chanSongSystem.replace(/^Hệ\s+/i, '');
-                    if (dyn.chanSongType) csStr += ` (${dyn.chanSongType})`;
-                    quyCach += `\n- Chấn song: ${csStr}`;
-                  }
-                  
-                  return (
-                    <View key={idx} style={{ flexDirection: 'row', borderLeftWidth: 1, borderColor: '#cbd5e1' }}>
-                      <Text style={{ width: 40, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{idx + 1}</Text>
-                      <Text style={{ width: 80, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{it.name}</Text>
-                      <Text style={{ width: 200, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1' }}>{quyCach}</Text>
-                      <Text style={{ width: 60, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{it.widthMm}</Text>
-                      <Text style={{ width: 60, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{it.heightMm}</Text>
-                      <Text style={{ width: 80, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{it.areaM2}</Text>
-                      <Text style={{ width: 50, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{it.quantity}</Text>
-                      <Text style={{ width: 100, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'right' }}>{it.pricePerM2.toLocaleString('vi-VN')}</Text>
-                      <Text style={{ width: 120, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'right' }}>{it.totalPrice.toLocaleString('vi-VN')}</Text>
-                    </View>
-                  );
-                })}
-
-                    {/* Extra Products Rows */}
-                    {result.extraProducts && result.extraProducts.length > 0 && (
-                      <View>
-                        <View style={{ backgroundColor: '#e2e8f0', borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', padding: 6 }}>
-                          <Text style={{ textAlign: 'center', fontWeight: '700', fontSize: 12, color: colors.brandBlack.main }}>SẢN PHẨM GIA TĂNG & PHỤ KIỆN</Text>
-                        </View>
-                        {result.extraProducts.map((ep, eIdx) => (
-                          <View key={eIdx} style={{ flexDirection: 'row', borderLeftWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff7ed' }}>
-                            <Text style={{ width: 40, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{eIdx + 1}</Text>
-                            <Text style={{ width: 80, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', fontWeight: '600' }}>{ep.name}</Text>
-                            <Text style={{ width: 200, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', color: colors.brandOrangeText }}>{ep.description || ep.name}</Text>
-                            <Text style={{ width: 60, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}></Text>
-                            <Text style={{ width: 60, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}></Text>
-                            <Text style={{ width: 80, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}>{ep.quantity} {ep.unit || 'md'}</Text>
-                            <Text style={{ width: 50, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'center' }}></Text>
-                            <Text style={{ width: 100, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'right' }}>{(ep.unitPrice || 0).toLocaleString('vi-VN')}</Text>
-                            <Text style={{ width: 120, padding: 8, fontSize: 12, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', textAlign: 'right', color: colors.brandOrangeText, fontWeight: '700' }}>{(ep.totalPrice || (ep.quantity * ep.unitPrice)).toLocaleString('vi-VN')}</Text>
-                          </View>
-                        ))}
+          <>
+            <SectionHead title="Xem trước dự toán" sub="Kéo ngang để xem đủ các cột" />
+            <Card padded={false}>
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <View style={styles.table}>
+                  <View style={[styles.tr, styles.thRow]}>
+                    {TABLE_COLUMNS.map(([label, width]) => <Text key={label} style={[styles.th, { width }]}>{label}</Text>)}
+                  </View>
+                  {result.items.map((it, idx) => {
+                    let quyCach = it.doorType;
+                    if (it.system) quyCach += `\n- Hệ: ${it.system.replace(/^Hệ\s+/i, '')}`;
+                    if (it.color) quyCach += `\n- Màu: ${it.color.replace(/^Màu\s+/i, '')}`;
+                    if (it.glassType) quyCach += `\n- Kính: ${it.glassType.replace(/^Kính\s+/i, '')}`;
+                    if (it.wallHugging && it.wallHugging !== 'Non') quyCach += `\n- Ôm tường: ${it.wallHugging}`;
+                    const rowDyn = (it.dynamicInputs as any) || {};
+                    if (rowDyn.chanSongSystem && rowDyn.chanSongSystem !== 'Không') {
+                      let csStr = rowDyn.chanSongSystem.replace(/^Hệ\s+/i, '');
+                      if (rowDyn.chanSongType) csStr += ` (${rowDyn.chanSongType})`;
+                      quyCach += `\n- Chấn song: ${csStr}`;
+                    }
+                    return (
+                      <View key={idx} style={styles.tr}>
+                        <Text style={[styles.td, styles.center, { width: 40 }]}>{idx + 1}</Text>
+                        <Text style={[styles.td, styles.center, { width: 80 }]}>{it.name}</Text>
+                        <Text style={[styles.td, { width: 200 }]}>{quyCach}</Text>
+                        <Text style={[styles.td, styles.center, { width: 60 }]}>{it.widthMm}</Text>
+                        <Text style={[styles.td, styles.center, { width: 60 }]}>{it.heightMm}</Text>
+                        <Text style={[styles.td, styles.center, { width: 80 }]}>{it.areaM2}</Text>
+                        <Text style={[styles.td, styles.center, { width: 50 }]}>{it.quantity}</Text>
+                        <Text style={[styles.td, styles.right, { width: 100 }]}>{it.pricePerM2.toLocaleString('vi-VN')}</Text>
+                        <Text style={[styles.td, styles.right, styles.tdStrong, { width: 120 }]}>{it.totalPrice.toLocaleString('vi-VN')}</Text>
                       </View>
-                    )}
-                  </View>
-                </ScrollView>
-                
-                <View style={{ backgroundColor: '#fff7ed', padding: 12, borderRadius: 8, marginTop: 8 }}>
-                  <Row label={`Tổng diện tích`} value={`${result.areaM2} m²`} />
-                  <Row label={`Giá trị cửa`} value={result.baseAmount - (result.extraProductsAmount || 0)} />
-                  {result.extraProductsAmount ? (
-                    <Row label="Sản phẩm gia tăng & Phụ kiện" value={result.extraProductsAmount} />
+                    );
+                  })}
+                  {result.extraProducts && result.extraProducts.length > 0 ? (
+                    <>
+                      <View style={[styles.tr, styles.groupRow]}><Text style={styles.groupRowText}>Sản phẩm gia tăng & phụ kiện</Text></View>
+                      {result.extraProducts.map((ep, eIdx) => (
+                        <View key={eIdx} style={styles.tr}>
+                          <Text style={[styles.td, styles.center, { width: 40 }]}>{eIdx + 1}</Text>
+                          <Text style={[styles.td, styles.tdStrong, { width: 80 }]}>{ep.name}</Text>
+                          <Text style={[styles.td, { width: 200 }]}>{ep.description || ep.name}</Text>
+                          <Text style={[styles.td, { width: 60 }]} />
+                          <Text style={[styles.td, { width: 60 }]} />
+                          <Text style={[styles.td, styles.center, { width: 80 }]}>{ep.quantity} {ep.unit || 'md'}</Text>
+                          <Text style={[styles.td, { width: 50 }]} />
+                          <Text style={[styles.td, styles.right, { width: 100 }]}>{(ep.unitPrice || 0).toLocaleString('vi-VN')}</Text>
+                          <Text style={[styles.td, styles.right, styles.tdStrong, { width: 120 }]}>{(ep.totalPrice || (ep.quantity * ep.unitPrice)).toLocaleString('vi-VN')}</Text>
+                        </View>
+                      ))}
+                    </>
                   ) : null}
-                  {result.vatAmount ? (
-                    <Row label={`Thuế VAT (${globalCosts.vatPct}%)`} value={result.vatAmount} />
-                  ) : null}
-                  <View style={styles.divider} />
-                  <Row label="TỔNG THANH TOÁN" value={result.totalAmount} bold />
                 </View>
-                
-                <View style={styles.actionRow}>
-                  <Pressable style={styles.darkButton} onPress={save} disabled={busy}>
-                    <Icon name="save" size={16} color={colors.brandOrangeText} />
-                    <Text style={styles.darkButtonText}>{isEditing ? 'Cập nhật' : 'Lưu dự toán'}</Text>
-                  </Pressable>
-                  <Pressable style={[styles.orangeButton, !saved && { opacity: 0.5 }]} onPress={() => exportPdf('quotation')} disabled={busy || !saved}>
-                    <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-                    <Text style={styles.orangeButtonText}>Báo giá PDF</Text>
-                  </Pressable>
-                </View>
-                <Pressable style={[styles.orangeButton, { marginTop: 10 }, !saved && { opacity: 0.5 }]} onPress={() => saved && router.push({ pathname: '/contract', params: { quotationId: saved.id } })} disabled={busy || !saved}>
-                  <Icon name="file-text" size={16} color={colors.brandBlack.main} />
-                  <Text style={styles.orangeButtonText}>Sinh hợp đồng từ báo giá này</Text>
-                </Pressable>
+              </ScrollView>
+            </Card>
 
-                {/* NÚT TỐI ƯU CẮT & SƠ ĐỒ THANH NHÔM */}
-                {formulaEnabled ? <Pressable
-                  style={[styles.purpleButton, { marginTop: 10 }]}
-                  onPress={runCuttingOptimizer}
-                  disabled={busy}
-                >
-                  <Icon name="zap" size={16} color="#ffffff" />
-                  <Text style={styles.purpleButtonText}>TỐI ƯU CẮT & SƠ ĐỒ THANH (TIẾT KIỆM PHẾ)</Text>
-                </Pressable> : null}
-
-                {saved ? (
-                  <View style={{ marginTop: 10, gap: 10 }}>
-                    {/* NÚT TẠO ĐƠN ĐẶT HÀNG GỬI NPP */}
-                    <Pressable
-                      style={{ backgroundColor: colors.brandOrange, padding: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                      onPress={convertToOrder}
-                      disabled={busy}
-                    >
-                      <Icon name="truck" size={18} color={colors.brandBlack.main} />
-                      <Text style={{ color: colors.brandBlack.main, fontWeight: '900', fontSize: 14 }}>ĐẶT NHÔM GỬI NPP THEO BÁO GIÁ NÀY</Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={{ backgroundColor: '#0284c7', padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                      onPress={async () => {
-                        setBusy(true);
-                        try {
-                          const project = await api.post<any>(`/quotations/${saved.id}/convert-to-project`);
-                          Alert.alert('Thành công', `Đã chuyển Báo giá ${saved.code} thành Công trình ${project.code}!`);
-                          router.push('/projects');
-                        } catch (e) {
-                          Alert.alert('Lỗi', 'Không thể chuyển thành công trình.');
-                        } finally {
-                          setBusy(false);
-                        }
-                      }}
-                      disabled={busy}
-                    >
-                      <Icon name="layers" size={16} color="#ffffff" />
-                      <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }}>TẠO CÔNG TRÌNH TỪ BÁO GIÁ NÀY</Text>
-                    </Pressable>
-                    <Text style={styles.savedNote}>Đã lưu {saved.code}. Bấm "Đặt nhôm gửi NPP" hoặc "Xuất PDF".</Text>
-                  </View>
-                ) : null}
+            <Card padded={false} style={styles.gapTop}>
+              <ValueLine first label="Tổng diện tích" value={`${result.areaM2} m²`} />
+              <ValueLine label="Giá trị cửa" value={vnd(result.baseAmount - (result.extraProductsAmount || 0))} />
+              {result.extraProductsAmount ? <ValueLine label="Sản phẩm gia tăng & phụ kiện" value={vnd(result.extraProductsAmount)} /> : null}
+              {result.vatAmount ? <ValueLine label={`Thuế VAT (${globalCosts.vatPct}%)`} value={vnd(result.vatAmount)} /> : null}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>TỔNG THANH TOÁN</Text>
+                <Text style={styles.totalValue}>{vnd(result.totalAmount)}</Text>
               </View>
+            </Card>
+
+            <View style={styles.actionGrid}>
+              <Button label={isEditing ? 'Cập nhật' : 'Lưu dự toán'} icon="save" onPress={save} disabled={busy} style={wsStyles.half} />
+              <Button label="Báo giá PDF" icon="download" variant="secondary" onPress={() => exportPdf('quotation')} disabled={busy || !saved} style={wsStyles.half} />
+            </View>
+            <View style={styles.actionGrid}>
+              <Button label="Sinh hợp đồng" icon="file-text" variant="secondary" onPress={() => saved && router.push({ pathname: '/contract', params: { quotationId: saved.id } })} disabled={busy || !saved} style={wsStyles.half} />
+              {formulaEnabled ? <Button label="Tối ưu cắt" icon="tool" variant="secondary" onPress={runCuttingOptimizer} disabled={busy} style={wsStyles.half} /> : <View style={wsStyles.half} />}
+            </View>
+            {!saved ? <Text style={wsStyles.hint}>Lưu dự toán trước để xuất PDF, sinh hợp đồng, đặt nhôm hoặc tạo công trình.</Text> : null}
+
+            {saved ? (
+              <>
+                <SectionHead title="Bước tiếp theo" sub={`Báo giá ${saved.code} đã lưu`} />
+                <View style={styles.stack}>
+                  <Button label="Đặt nhôm gửi NPP theo báo giá này" icon="truck" variant="soft" onPress={convertToOrder} disabled={busy} />
+                  <Button
+                    label="Tạo công trình từ báo giá này"
+                    icon="briefcase"
+                    variant="secondary"
+                    disabled={busy}
+                    onPress={async () => {
+                      setBusy(true);
+                      try {
+                        const project = await api.post<any>(`/quotations/${saved.id}/convert-to-project`);
+                        Alert.alert('Thành công', `Đã chuyển Báo giá ${saved.code} thành Công trình ${project.code}!`);
+                        router.push('/projects');
+                      } catch (e) {
+                        Alert.alert('Lỗi', 'Không thể chuyển thành công trình.');
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  />
+                </View>
+              </>
             ) : null}
-        <View style={{ height: 110 }} />
+          </>
+        ) : null}
       </ScrollView>
 
-      {/* MODAL SƠ ĐỒ CẮT TRỰC QUAN (VISUAL CUTTING BLUEPRINT) */}
-      <Modal visible={optModalOpen} animationType="slide" transparent onRequestClose={() => setOptModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: '85%' }]}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Sơ Đồ Cắt & Tối Ưu Phế Liệu</Text>
-                <Text style={{ fontSize: 12, color: colors.brandGrey[500] }}>Thuật toán Best-Fit xếp nhôm + Tận dụng Đề-xê</Text>
-              </View>
-              <Pressable onPress={() => setOptModalOpen(false)} style={{ padding: 4 }}>
-                <Icon name="x" size={24} color={colors.brandBlack.main} />
-              </Pressable>
-            </View>
-
-            {optLoading ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={colors.brandOrange} />
-                <Text style={{ marginTop: 12, color: colors.brandBlack.main, fontWeight: '700' }}>Đang tính toán sơ đồ cắt tối ưu...</Text>
-              </View>
-            ) : (
-              <ScrollView contentContainerStyle={{ padding: 16 }}>
-                {optResults.length === 0 ? (
-                  <Text style={{ textAlign: 'center', padding: 20, color: colors.brandGrey[500] }}>Không có dữ liệu thanh nhôm để tối ưu.</Text>
-                ) : (
-                  optResults.map((opt, oIdx) => (
-                    <View key={oIdx} style={styles.optCard}>
-                      <View style={styles.optCardHeader}>
-                        <Text style={styles.optCardTitle}>Hệ nhôm: {opt.materialCode}</Text>
-                        <Text style={styles.optCardDesc}>
-                          Cần <Text style={{ fontWeight: '900', color: colors.brandOrange }}>{opt.newBarsNeeded} cây 6m</Text> • Sinh {opt.newDeXeGenerated?.length || 0} đoạn Đề-xê • Phế nhôm: <Text style={{ fontWeight: '900', color: colors.danger }}>{opt.scrapGeneratedKg} kg</Text>
-                        </Text>
+      <Sheet visible={optModalOpen} onClose={() => setOptModalOpen(false)} title="Sơ đồ cắt & tối ưu phế liệu" sub="Xếp nhôm best-fit, tận dụng đề-xê" tall>
+        {optLoading ? (
+          <Loading text="Đang tính sơ đồ cắt tối ưu..." />
+        ) : optResults.length === 0 ? (
+          <EmptyState icon="tool" title="Không có dữ liệu để tối ưu" />
+        ) : (
+          optResults.map((opt, oIdx) => (
+            <Card key={oIdx} style={styles.optCard}>
+              <Text style={wsStyles.rowTitle}>Hệ nhôm: {opt.materialCode}</Text>
+              <Text style={wsStyles.rowMeta}>
+                Cần <Text style={styles.optStrong}>{opt.newBarsNeeded} cây 6m</Text> · sinh {opt.newDeXeGenerated?.length || 0} đoạn đề-xê · phế <Text style={styles.optScrap}>{opt.scrapGeneratedKg} kg</Text>
+              </Text>
+              {opt.barLayouts && opt.barLayouts.length > 0 ? opt.barLayouts.map((bar: any, bIdx: number) => (
+                <View key={bIdx} style={styles.barBox}>
+                  <View style={styles.barHead}>
+                    <Text style={styles.barTitle}>{bar.isDeXe ? `Cây đề-xê (${bar.barLengthMm}mm)` : `Cây nguyên #${bar.barIndex} (${bar.barLengthMm}mm)`}</Text>
+                    <Text style={wsStyles.rowMeta}>Dùng {bar.usedLengthMm} · thừa {bar.remainingLengthMm}mm</Text>
+                  </View>
+                  <View style={styles.barTrack}>
+                    {bar.cuts?.map((cut: any, cIdx: number) => (
+                      <View key={cIdx} style={[styles.cutSegment, { width: `${Math.max(8, (cut.lengthMm / bar.barLengthMm) * 100)}%`, backgroundColor: cIdx % 2 === 0 ? '#F79009' : '#DC6803' }]}>
+                        <Text style={styles.cutText} numberOfLines={1}>{cut.lengthMm}</Text>
                       </View>
+                    ))}
+                    {bar.remainingLengthMm > 0 ? (
+                      <View style={[styles.cutSegment, { width: `${Math.max(5, (bar.remainingLengthMm / bar.barLengthMm) * 100)}%`, backgroundColor: bar.isNewDeXe ? ws.success : ws.faint }]}>
+                        <Text style={styles.cutText} numberOfLines={1}>{bar.remainingLengthMm} {bar.isNewDeXe ? 'ĐX' : 'Phế'}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View style={styles.cutList}>
+                    {bar.cuts?.map((c: any, ci: number) => (
+                      <View key={ci} style={styles.cutPill}><Text style={styles.cutPillText}>{c.doorName ? `${c.doorName}: ` : ''}{c.lengthMm}mm ({c.cutAngle || '45°'})</Text></View>
+                    ))}
+                  </View>
+                </View>
+              )) : <Text style={wsStyles.hint}>Chưa có sơ đồ chi tiết.</Text>}
+            </Card>
+          ))
+        )}
+      </Sheet>
 
-                      {opt.barLayouts && opt.barLayouts.length > 0 ? (
-                        opt.barLayouts.map((bar: any, bIdx: number) => (
-                          <View key={bIdx} style={styles.barItemBox}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                              <Text style={{ fontSize: 13, fontWeight: '800', color: colors.brandBlack.main }}>
-                                {bar.isDeXe ? `🔄 CÂY ĐỀ-XÊ (${bar.barLengthMm}mm)` : `🌲 CÂY NGUYÊN #${bar.barIndex} (${bar.barLengthMm}mm)`}
-                              </Text>
-                              <Text style={{ fontSize: 12, color: colors.brandGrey[500] }}>
-                                Dùng: {bar.usedLengthMm}mm | Thừa: {bar.remainingLengthMm}mm
-                              </Text>
-                            </View>
-
-                            {/* Thanh trực quan */}
-                            <View style={styles.barVisualTrack}>
-                              {bar.cuts?.map((cut: any, cIdx: number) => {
-                                const pct = Math.max(8, (cut.lengthMm / bar.barLengthMm) * 100);
-                                return (
-                                  <View key={cIdx} style={[styles.cutSegment, { width: `${pct}%`, backgroundColor: cIdx % 2 === 0 ? '#FDA720' : '#ea580c' }]}>
-                                    <Text style={styles.cutSegmentText} numberOfLines={1}>{cut.lengthMm}</Text>
-                                  </View>
-                                );
-                              })}
-                              {bar.remainingLengthMm > 0 && (
-                                <View style={[styles.remainingSegment, { width: `${Math.max(5, (bar.remainingLengthMm / bar.barLengthMm) * 100)}%`, backgroundColor: bar.isNewDeXe ? '#10b981' : '#94a3b8' }]}>
-                                  <Text style={styles.remainingSegmentText} numberOfLines={1}>{bar.remainingLengthMm} {bar.isNewDeXe ? 'ĐX' : 'Phế'}</Text>
-                                </View>
-                              )}
-                            </View>
-
-                            {/* Chi tiết đoạn cắt */}
-                            <View style={{ marginTop: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                              {bar.cuts?.map((c: any, ci: number) => (
-                                <View key={ci} style={{ backgroundColor: '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                                  <Text style={{ fontSize: 11, color: colors.brandBlack.main }}>
-                                    {c.doorName ? `${c.doorName}: ` : ''}<Text style={{ fontWeight: '700' }}>{c.lengthMm}mm</Text> ({c.cutAngle || '45°'})
-                                  </Text>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={{ fontSize: 12, color: colors.brandGrey[500], padding: 8 }}>Chưa có sơ đồ chi tiết</Text>
-                      )}
-                    </View>
-                  ))
-                )}
-              </ScrollView>
+      <Sheet visible={modalVisible} onClose={() => setModalVisible(false)} title="Chọn công thức cửa" sub="Công thức do Eurohouse phát hành">
+        {templates.length === 0 ? <EmptyState icon="file" title="Chưa có công thức" /> : templates.map((t, index) => (
+          <ListRow key={t.templateId} first={index === 0} onPress={() => selectTemplate(t)} label={`Chọn ${t.templateName}`}>
+            {t.imageUrl ? (
+              <Image source={{ uri: t.imageUrl.startsWith('http') ? t.imageUrl : `${API_URL.replace('/api', '')}${t.imageUrl}` }} style={styles.templateImage} resizeMode="contain" />
+            ) : (
+              <View style={wsStyles.avatar}><Icon name="file" size={18} color={ws.orangeText} /></View>
             )}
-          </View>
-        </View>
-      </Modal>
+            <Text style={[wsStyles.rowTitle, wsStyles.grow]}>{t.templateName}</Text>
+            <Icon name="chevron-right" size={17} color={ws.muted} />
+          </ListRow>
+        ))}
+      </Sheet>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn Kiểu Cửa</Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <Icon name="x" size={24} color={colors.brandBlack.main} />
-              </Pressable>
-            </View>
-            <FlatList
-              data={templates}
-              keyExtractor={(item) => item.templateId}
-              contentContainerStyle={{ padding: 18, paddingBottom: 40 }}
-              renderItem={({ item }) => (
-                <Pressable style={styles.templateItem} onPress={() => selectTemplate(item)}>
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl.startsWith('http') ? item.imageUrl : `${API_URL.replace('/api', '')}${item.imageUrl}` }} style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: '#f1f5f9', marginRight: 12 }} resizeMode="contain" />
-                  ) : (
-                    <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff7ed', borderRadius: 6, marginRight: 12 }}>
-                      <Icon name="file" size={20} color={colors.brandOrange} />
-                    </View>
-                  )}
-                  <Text style={styles.templateName}>{item.templateName}</Text>
-                </Pressable>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-      <Modal visible={selectModal.visible} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: 'auto', maxHeight: '60%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectModal.title}</Text>
-              <Pressable onPress={() => setSelectModal({ ...selectModal, visible: false })}>
-                <Icon name="x" size={24} color={colors.brandBlack.main} />
-              </Pressable>
-            </View>
-            <FlatList
-              data={selectModal.options}
-              keyExtractor={(item) => item}
-              contentContainerStyle={{ padding: 18 }}
-              renderItem={({ item }) => (
-                <Pressable style={styles.templateItem} onPress={() => {
-                  if (selectModal.field === 'phaoDinhDirect') {
-                    setPhaoDinh(p => ({ ...p, name: item }));
-                  } else if (selectModal.field === 'chanSongSystem') {
-                    if (selectModal.index !== null) {
-                      const curDyn = (items[selectModal.index]?.dynamicInputs as any) || {};
-                      updateItem(selectModal.index, 'dynamicInputs', {
-                        ...curDyn,
-                        chanSongSystem: item,
-                        chanSongType: item === 'Không' ? '' : (curDyn.chanSongType || 'Song tròn D28')
-                      });
-                    }
-                  } else if (selectModal.field === 'chanSongType') {
-                    if (selectModal.index !== null) {
-                      const curDyn = (items[selectModal.index]?.dynamicInputs as any) || {};
-                      updateItem(selectModal.index, 'dynamicInputs', {
-                        ...curDyn,
-                        chanSongType: item
-                      });
-                    }
-                  } else if (selectModal.index !== null) {
-                    updateItem(selectModal.index, selectModal.field, item);
-                  }
-                  setSelectModal({ ...selectModal, visible: false });
-                }}>
-                  <Text style={styles.templateName}>{item}</Text>
-                </Pressable>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
+      <OptionSheet
+        visible={selectModal.visible}
+        title={selectModal.title}
+        options={selectModal.options}
+        value={selectedValue}
+        onSelect={applySelect}
+        onClose={() => setSelectModal({ ...selectModal, visible: false })}
+      />
     </View>
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string | number; bold?: boolean }) {
-  const displayValue = typeof value === 'number' ? `${value.toLocaleString('vi-VN')} đ` : value;
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && { fontWeight: '900', color: colors.brandBlack.main }]}>{label}</Text>
-      <Text style={[styles.rowValue, bold && { fontSize: 20, color: colors.brandOrange }]}>{displayValue}</Text>
-    </View>
-  );
+const TABLE_COLUMNS: Array<[string, number]> = [
+  ['STT', 40], ['Ký hiệu', 80], ['Loại cửa - Quy cách', 200], ['Rộng', 60], ['Cao', 60], ['Diện tích', 80], ['SL', 50], ['Đơn giá', 100], ['Thành tiền', 120],
+];
+
+function vnd(value: number): string {
+  return `${Math.round(value || 0).toLocaleString('vi-VN')} đ`;
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18 },
-  savedLink: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 14, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  savedLinkText: { flex: 1, color: colors.brandBlack.main, fontWeight: '800' },
-  panel: { backgroundColor: colors.white, borderRadius: 20, padding: 18, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: '900', color: colors.brandBlack.main, marginBottom: 14 },
-  itemBox: { backgroundColor: '#F0F2F5', borderRadius: 12, padding: 12, marginBottom: 12 },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  itemTitle: { fontWeight: '700', color: colors.brandBlack.main },
-  rowInputs: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  formulaPicker: { minHeight: 58, borderRadius: 12, borderWidth: 1, borderColor: colors.brandOrange, backgroundColor: colors.orangeSoft, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  formulaPickerLabel: { color: colors.brandBlack.main, fontSize: 11, fontWeight: '800' },
-  formulaPickerValue: { color: colors.brandOrangeText, fontSize: 12, fontWeight: '900', marginTop: 3 },
-  field: { marginBottom: 12 },
-  fieldLabel: { color: colors.brandBlack.main, fontWeight: '700', marginBottom: 6, fontSize: 12 },
-  input: { backgroundColor: '#F7F8FA', borderRadius: 12, padding: 14, color: colors.brandBlack.main },
-  inputSmall: { backgroundColor: '#FFF', borderRadius: 8, padding: 10, color: colors.brandBlack.main, borderWidth: 1, borderColor: '#EEE' },
-  addBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255, 107, 0, 0.1)', borderWidth: 1, borderColor: colors.brandOrange },
-  addBtnText: { color: colors.brandOrange, fontWeight: '700' },
-  calcBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 999, paddingVertical: 16, marginTop: 16 },
-  calcText: { color: colors.brandOrange, fontWeight: '900', fontSize: 16 },
-  result: { backgroundColor: colors.white, borderRadius: 20, padding: 18, marginTop: 18, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  resultTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 16, marginBottom: 12 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7 },
-  rowLabel: { color: colors.brandGrey[500], fontWeight: '700' },
-  rowValue: { color: colors.brandBlack.main, fontWeight: '800' },
-  divider: { height: 1, backgroundColor: '#EEF0F3', marginVertical: 8 },
-  actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  darkButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
-  darkButtonText: { color: colors.brandOrangeText, fontWeight: '800' },
-  orangeButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.brandOrange, borderRadius: 14, paddingVertical: 14 },
-  orangeButtonText: { color: colors.brandBlack.main, fontWeight: '800' },
-  purpleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#8B5CF6', borderRadius: 14, paddingVertical: 14 },
-  purpleButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 13 },
-  savedNote: { textAlign: 'center', color: colors.success, fontWeight: '600', marginTop: 12, fontSize: 12 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '70%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: colors.brandBlack.main },
-  templateItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F4F4F5' },
-  templateName: { flex: 1, color: colors.brandBlack.main, fontWeight: '700' },
-
-  // Sơ đồ cắt
-  optCard: { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
-  optCardHeader: { marginBottom: 8 },
-  optCardTitle: { fontSize: 15, fontWeight: '900', color: colors.brandBlack.main },
-  optCardDesc: { fontSize: 12, color: colors.brandGrey[500], marginTop: 2 },
-  barItemBox: { backgroundColor: '#ffffff', borderRadius: 8, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#cbd5e1' },
-  barVisualTrack: { flexDirection: 'row', height: 28, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: '#cbd5e1' },
-  cutSegment: { height: '100%', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderColor: '#ffffff' },
-  cutSegmentText: { fontSize: 11, fontWeight: '800', color: '#ffffff' },
-  remainingSegment: { height: '100%', justifyContent: 'center', alignItems: 'center' },
-  remainingSegmentText: { fontSize: 10, fontWeight: '700', color: '#ffffff' },
+  gapTop: { marginTop: 10 },
+  stack: { gap: 10 },
+  guestPage: { padding: 16, paddingBottom: 80, width: '100%', maxWidth: 680, alignSelf: 'center' },
+  guestTotal: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  guestTotalValue: { color: ws.ink, fontSize: 20, fontWeight: '900' },
+  savedMsg: { color: ws.success, fontSize: 12, fontWeight: '800', textAlign: 'center', marginTop: 10 },
+  itemCard: { marginBottom: 10 },
+  itemHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  itemBadge: { width: 30, height: 30, borderRadius: 9, backgroundColor: ws.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  itemBadgeText: { color: ws.orangeText, fontSize: 13, fontWeight: '900' },
+  qtyCol: { width: 64 },
+  wide: { flex: 2, minWidth: 0 },
+  trashCol: { justifyContent: 'flex-end' },
+  formulaPicker: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: ws.orangeLine, backgroundColor: ws.orangeSoft },
+  formulaPickerOn: { borderColor: '#A6F4C5', backgroundColor: ws.successBg },
+  formulaLabel: { color: ws.body, fontSize: 11.5, fontWeight: '700' },
+  formulaValue: { color: ws.orangeText, fontSize: 13, fontWeight: '800', marginTop: 2 },
+  subBox: { marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: ws.lineSoft },
+  subTitle: { color: ws.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  groupTitle: { color: ws.ink, fontSize: 13, fontWeight: '800', marginTop: 18 },
+  settleBox: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  settleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  calcButton: { marginTop: 18 },
+  table: { minWidth: 790 },
+  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
+  thRow: { backgroundColor: '#F9FAFB', borderBottomColor: ws.line },
+  th: { paddingVertical: 9, paddingHorizontal: 8, color: ws.muted, fontSize: 11.5, fontWeight: '800', textAlign: 'center' },
+  td: { paddingVertical: 8, paddingHorizontal: 8, color: ws.text, fontSize: 12, lineHeight: 17 },
+  tdStrong: { color: ws.ink, fontWeight: '800' },
+  center: { textAlign: 'center' },
+  right: { textAlign: 'right' },
+  groupRow: { backgroundColor: ws.orangeSoft, justifyContent: 'center' },
+  groupRowText: { paddingVertical: 7, paddingHorizontal: 10, color: ws.orangeText, fontSize: 12, fontWeight: '800' },
+  totalRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: ws.line },
+  totalLabel: { color: ws.ink, fontSize: 13, fontWeight: '900' },
+  totalValue: { color: ws.ink, fontSize: 21, fontWeight: '900' },
+  actionGrid: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  optCard: { marginBottom: 10 },
+  optStrong: { color: ws.orangeText, fontWeight: '900' },
+  optScrap: { color: ws.dangerText, fontWeight: '900' },
+  barBox: { marginTop: 10, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: ws.lineSoft, backgroundColor: '#F9FAFB' },
+  barHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  barTitle: { color: ws.ink, fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
+  barTrack: { flexDirection: 'row', height: 28, borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: ws.line, backgroundColor: '#F2F4F7' },
+  cutSegment: { height: '100%', alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: ws.surface },
+  cutText: { color: ws.surface, fontSize: 10.5, fontWeight: '800' },
+  cutList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  cutPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: ws.line, backgroundColor: ws.surface },
+  cutPillText: { color: ws.text, fontSize: 11 },
+  templateImage: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F2F4F7' },
 });

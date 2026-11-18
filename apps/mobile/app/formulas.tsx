@@ -1,11 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { colors } from '@eurohouse/ui';
 import { filterCuttingFormulaSystems, type FormulaCapability } from '@eurohouse/types';
+import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
+import {
+  Banner, Button, Card, EmptyState, Field, FieldLabel, IconButton, Input, Kpi, KpiRow, ListRow, Loading,
+  SectionHead, ValueLine, ws, wsStyles,
+} from '../src/components/ws';
 import { API_URL, api, assetUrl, authHeaders } from '../src/lib/api';
 import { resetScrollToTop, useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import { confirmAction } from '../src/lib/alert';
@@ -173,14 +177,19 @@ export default function FormulasScreen() {
   const ui = formulaUiState(capability);
   const router = useRouter();
   if (ui.showLockedScreen) {
-    return <View style={styles.lockedScreen}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.lockedIcon}><Icon name="lock" size={28} color={colors.brandOrangeText} /></View>
-      <Text style={styles.lockedEyebrow}>{ui.statusLabel}</Text>
-      <Text style={styles.lockedTitle}>{ui.message}</Text>
-      <Text style={styles.lockedCopy}>Công thức Eurohouse được mở riêng cho từng cơ sở bởi NPP phụ trách. Báo giá thủ công và các tiện ích quản lý miễn phí vẫn sử dụng bình thường.</Text>
-      <Pressable style={styles.lockedAction} onPress={() => router.push('/profile')}><Text style={styles.lockedActionText}>Nhập mã mời NPP</Text></Pressable>
-    </View>;
+    return (
+      <View style={wsStyles.screen}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <AppHeader title="Công thức cắt" subtitle={ui.statusLabel} />
+        <Card style={styles.lockedCard}>
+          <View style={styles.lockedIcon}><Icon name="lock" size={26} color={ws.orangeText} /></View>
+          <Text style={styles.lockedEyebrow}>{ui.statusLabel}</Text>
+          <Text style={styles.lockedTitle}>{ui.message}</Text>
+          <Text style={styles.lockedCopy}>Công thức Eurohouse được mở riêng cho từng cơ sở bởi NPP phụ trách. Báo giá thủ công và các tiện ích quản lý miễn phí vẫn dùng bình thường.</Text>
+          <Button label="Nhập mã mời NPP" icon="send" onPress={() => router.push('/profile')} />
+        </Card>
+      </View>
+    );
   }
   return <ActiveFormulasScreen capability={capability!} />;
 }
@@ -502,111 +511,119 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
     else setStep((step - 1) as Step);
   }
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      {step > 1 ? (
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Icon name="arrow-left" size={22} color={colors.brandBlack.main} />
-        </Pressable>
-      ) : null}
-      <View style={{ flex: 1 }}>
-        <Text style={styles.title}>Công Thức Cắt</Text>
-        <Text style={styles.subtitle}>{selectedSystem?.name || 'Chọn hệ nhôm để bắt đầu'}</Text>
-      </View>
-    </View>
-  );
+  const STEP_LABELS = ['Hệ nhôm', 'Loại cửa', 'Mẫu cửa', 'Kích thước'];
+  const subtitle = [selectedSystem?.name, selectedType?.name].filter(Boolean).join(' · ') || 'Chọn hệ nhôm để bắt đầu';
 
   const renderProgress = () => (
     <View style={styles.progress}>
-      {[1, 2, 3, 4].map((item, index) => (
-        <React.Fragment key={item}>
-          <View style={[styles.stepDot, step >= item && styles.stepDotActive]}>
-            <Text style={[styles.stepText, step >= item && styles.stepTextActive]}>{item}</Text>
-          </View>
-          {index < 3 ? <View style={[styles.stepLine, step > item && styles.stepLineActive]} /> : null}
-        </React.Fragment>
-      ))}
+      {STEP_LABELS.map((label, index) => {
+        const item = (index + 1) as Step;
+        const done = step > item;
+        const current = step === item;
+        return (
+          <Pressable
+            key={label}
+            disabled={item >= step}
+            onPress={() => setStep(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Bước ${item}: ${label}`}
+            style={styles.progressItem}
+          >
+            <View style={[styles.progressBar, (done || current) && styles.progressBarOn]} />
+            <Text style={[styles.progressText, current && styles.progressTextOn, done && styles.progressTextDone]} numberOfLines={1}>{item}. {label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 
   const renderSystemStep = () => (
-    <ScrollView ref={inputScrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sectionTitle}>Chọn Hệ Nhôm</Text>
-      {loading ? <ActivityIndicator color={colors.brandOrange} /> : null}
-      {!loading && systems.length === 0 ? <Text style={styles.emptyText}>Chưa có dữ liệu hệ nhôm.</Text> : null}
-      {systems.map((system) => (
-        <Pressable key={system.id} style={styles.listCard} onPress={() => selectSystem(system)}>
-          <View style={styles.listIcon}><Icon name="layers" size={18} color={colors.brandOrangeText} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{system.name}</Text>
-            <Text style={styles.cardSub}>{system.profileCount || 0} mã thanh · {system.templateCount} công thức đã phát hành</Text>
-          </View>
-          <Icon name="chevron-right" size={18} color={colors.brandGrey[500]} />
-        </Pressable>
-      ))}
+    <ScrollView ref={inputScrollRef} contentContainerStyle={wsStyles.content} keyboardShouldPersistTaps="handled">
+      <SectionHead title="Chọn hệ nhôm" sub="Công thức do Eurohouse phát hành cho từng hệ" />
+      {loading ? <Loading /> : null}
+      {!loading && systems.length === 0 ? <EmptyState icon="layers" title="Chưa có hệ nhôm" text="Chưa có công thức nào được phát hành." /> : null}
+      {systems.length ? (
+        <Card padded={false}>
+          {systems.map((system, index) => (
+            <ListRow key={system.id} first={index === 0} onPress={() => selectSystem(system)} label={`Chọn ${system.name}`}>
+              <View style={wsStyles.avatar}><Icon name="layers" size={17} color={ws.orangeText} /></View>
+              <View style={wsStyles.grow}>
+                <Text style={wsStyles.rowTitle}>{system.name}</Text>
+                <Text style={wsStyles.rowMeta}>{system.profileCount || 0} mã thanh · {system.templateCount} công thức</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color={ws.muted} />
+            </ListRow>
+          ))}
+        </Card>
+      ) : null}
     </ScrollView>
   );
 
   const renderTypeStep = () => (
-    <ScrollView ref={inputScrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sectionTitle}>Chọn loại cửa</Text>
-      {loading ? <ActivityIndicator color={colors.brandOrange} /> : null}
-      {!loading && types.length === 0 ? <Text style={styles.emptyText}>WebAdmin chưa phát hành công thức nào cho hệ nhôm này.</Text> : null}
-      {types.map((type) => (
-        <Pressable key={type.id} style={styles.listCard} onPress={() => selectType(type)}>
-          <View style={styles.listIcon}><Icon name="layout" size={18} color={colors.brandOrangeText} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{type.name}</Text>
-            <Text style={styles.cardSub}>{type.templateCount} công thức đang sử dụng</Text>
-          </View>
-          <Icon name="chevron-right" size={18} color={colors.brandGrey[500]} />
-        </Pressable>
-      ))}
+    <ScrollView ref={inputScrollRef} contentContainerStyle={wsStyles.content} keyboardShouldPersistTaps="handled">
+      <SectionHead title="Chọn loại cửa" sub={selectedSystem?.name} />
+      {loading ? <Loading /> : null}
+      {!loading && types.length === 0 ? <EmptyState icon="layout" title="Chưa có loại cửa" text="Hệ nhôm này chưa có công thức được phát hành." /> : null}
+      {types.length ? (
+        <Card padded={false}>
+          {types.map((type, index) => (
+            <ListRow key={type.id} first={index === 0} onPress={() => selectType(type)} label={`Chọn ${type.name}`}>
+              <View style={wsStyles.avatar}><Icon name="layout" size={17} color={ws.orangeText} /></View>
+              <View style={wsStyles.grow}>
+                <Text style={wsStyles.rowTitle}>{type.name}</Text>
+                <Text style={wsStyles.rowMeta}>{type.templateCount} công thức</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color={ws.muted} />
+            </ListRow>
+          ))}
+        </Card>
+      ) : null}
     </ScrollView>
   );
 
   const renderTemplateStep = () => (
-    <ScrollView ref={inputScrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sectionTitle}>Chọn mẫu cửa</Text>
-      <Text style={styles.helperText}>{selectedType?.name} · Dữ liệu kỹ thuật do Eurohouse phát hành</Text>
-      {loading ? <ActivityIndicator color={colors.brandOrange} /> : null}
-      {!loading && templates.length === 0 ? <Text style={styles.emptyText}>Chưa có mẫu cửa được phát hành.</Text> : null}
+    <ScrollView ref={inputScrollRef} contentContainerStyle={wsStyles.content} keyboardShouldPersistTaps="handled">
+      <SectionHead title="Chọn mẫu cửa" sub={`${selectedType?.name ?? ''} · dữ liệu kỹ thuật Eurohouse`} />
+      {loading ? <Loading /> : null}
+      {!loading && templates.length === 0 ? <EmptyState icon="file" title="Chưa có mẫu cửa" text="Chưa có mẫu cửa được phát hành cho loại này." /> : null}
       <View style={styles.templateGrid}>
-        {templates.map((template) => (
-          <Pressable key={template.templateId} style={[styles.templateCard, selectedTemplate?.templateId === template.templateId && styles.templateCardActive]} onPress={() => selectTemplate(template)}>
-            <View style={styles.templateImageWrap}>
-              {template.imageUrl ? <Image source={{ uri: assetUrl(template.imageUrl) }} style={styles.templateImage} resizeMode="contain" /> : <Text style={styles.templateDescription} numberOfLines={5}>{template.description || 'Chưa có ảnh mẫu'}</Text>}
-            </View>
-            <View style={styles.templateBody}>
-              <Text style={styles.templateName} numberOfLines={2}>{template.templateName}</Text>
-              <Text style={styles.cardSub}>Revision {template.revision || 1} · Đã phát hành</Text>
-            </View>
-            {selectedTemplate?.templateId === template.templateId ? (
-              <View style={styles.checkBadge}><Icon name="check" size={13} color={colors.brandBlack.main} /></View>
-            ) : null}
-          </Pressable>
-        ))}
+        {templates.map((template) => {
+          const active = selectedTemplate?.templateId === template.templateId;
+          return (
+            <Pressable key={template.templateId} accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.templateCard, active && styles.templateCardOn]} onPress={() => selectTemplate(template)}>
+              <View style={styles.templateImageWrap}>
+                {template.imageUrl ? <Image source={{ uri: assetUrl(template.imageUrl) }} style={styles.templateImage} resizeMode="contain" /> : <Text style={styles.templateDescription} numberOfLines={5}>{template.description || 'Chưa có ảnh mẫu'}</Text>}
+              </View>
+              <View style={styles.templateBody}>
+                <Text style={styles.templateName} numberOfLines={2}>{template.templateName}</Text>
+                <Text style={wsStyles.rowMeta}>Phiên bản {template.revision || 1}</Text>
+              </View>
+              {active ? <View style={styles.checkBadge}><Icon name="check" size={13} color={ws.surface} /></View> : null}
+            </Pressable>
+          );
+        })}
       </View>
     </ScrollView>
   );
 
+  const glassCount = results.reduce((total, row) => total + (row.result.glass ?? []).reduce((sum, glass) => sum + Number(glass.quantity || 0), 0), 0);
+
   const renderInputStep = () => (
-    <ScrollView ref={inputScrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView ref={inputScrollRef} contentContainerStyle={wsStyles.content} keyboardShouldPersistTaps="handled">
       {selectedTemplate?.imageUrl ? (
-        <View style={styles.heroImageCard}>
+        <Card padded={false} style={styles.heroCard}>
           <Image source={{ uri: assetUrl(selectedTemplate.imageUrl) }} style={styles.heroImage} resizeMode="contain" />
-        </View>
+        </Card>
       ) : null}
 
-      <View style={styles.formCard}>
-        <Text style={styles.sectionTitle}>{selectedTemplate?.templateName}</Text>
-        <Text style={styles.helperText}>{selectedType?.name} · {selectedSystem?.code || selectedSystem?.name}</Text>
-        <View style={styles.fieldFull}>
-          <Text style={styles.inputLabel}>Tên bộ cửa</Text>
-          <TextInput style={styles.input} value={doorName} onChangeText={setDoorName} placeholder="VD: D1, D2, Cửa chính" placeholderTextColor="#94A3B8" />
-        </View>
+      <Card>
+        <Text style={styles.formTitle}>{selectedTemplate?.templateName}</Text>
+        <Text style={wsStyles.rowMeta}>{selectedType?.name} · {selectedSystem?.code || selectedSystem?.name}</Text>
+        <Field label="Tên bộ cửa">
+          <Input value={doorName} onChangeText={setDoorName} placeholder="VD: D1, D2, Cửa chính" />
+        </Field>
 
-        {loading ? <ActivityIndicator color={colors.brandOrange} /> : (
+        {loading ? <Loading /> : (
           <View style={styles.inputGrid}>
             {requiredInputs.map((input) => {
               if (input.type === 'boolean') {
@@ -614,7 +631,9 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
                 return (
                   <Pressable
                     key={input.id}
-                    style={[styles.booleanField, checked && styles.booleanFieldActive]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked }}
+                    style={[styles.booleanField, checked && styles.booleanFieldOn]}
                     onPress={() => {
                       const nextChecked = !checked;
                       setResults([]);
@@ -628,12 +647,10 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
                       }));
                     }}
                   >
-                    <View style={[styles.checkbox, checked && styles.checkboxActive]}>
-                      {checked ? <Icon name="check" size={14} color={colors.white} /> : null}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.booleanLabel}>{input.name}</Text>
-                      {input.id === 'HAS_TOP_FIX' ? <Text style={styles.booleanHint}>Tách ô fix ba khoang L1 - L2 - L1 phía trên khỏi cánh cửa hoạt động</Text> : null}
+                    <View style={[styles.checkbox, checked && styles.checkboxOn]}>{checked ? <Icon name="check" size={13} color={ws.surface} /> : null}</View>
+                    <View style={wsStyles.grow}>
+                      <Text style={wsStyles.rowTitle}>{input.name}</Text>
+                      {input.id === 'HAS_TOP_FIX' ? <Text style={wsStyles.rowMeta}>Tách ô fix ba khoang L1 - L2 - L1 phía trên khỏi cánh cửa hoạt động</Text> : null}
                     </View>
                   </Pressable>
                 );
@@ -641,9 +658,8 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
               if (input.id === 'FIX_H' && !hasTopFix) return null;
               return (
                 <View key={input.id} style={input.id === 'FIX_H' ? styles.inputCellFull : styles.inputCell}>
-                  <Text style={styles.inputLabel}>{input.name}{input.unit ? ` (${input.unit})` : ''}</Text>
-                  <TextInput
-                    style={styles.input}
+                  <FieldLabel>{input.name}{input.unit ? ` (${input.unit})` : ''}</FieldLabel>
+                  <Input
                     value={dynamicInputs[input.id] || ''}
                     onChangeText={(value) => {
                       setResults([]);
@@ -653,8 +669,7 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
                       setDynamicInputs((current) => ({ ...current, [input.id]: input.type === 'string' ? value : value.replace(/[^0-9.]/g, '') }));
                     }}
                     keyboardType={input.type === 'string' ? 'default' : 'numeric'}
-                    placeholder={input.id === 'FIX_H' ? 'Nhập chiều cao ô fix' : 'Nhập số'}
-                    placeholderTextColor="#94A3B8"
+                    placeholder={input.id === 'FIX_H' ? 'Chiều cao ô fix' : 'Nhập số'}
                   />
                 </View>
               );
@@ -663,34 +678,26 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
         )}
 
         {supportsTopFix && hasTopFix && totalHeight > 0 ? (
-          <View style={styles.fixSummary}>
-            <Text style={styles.fixSummaryLabel}>Phần cửa hoạt động</Text>
-            <Text style={[styles.fixSummaryValue, activeDoorHeight > MAX_ACTIVE_DOOR_HEIGHT_MM && styles.fixSummaryDanger]}>{formatNumber(activeDoorHeight)} mm</Text>
-            <Text style={styles.fixSummaryHint}>Tổng cao {formatNumber(totalHeight)} mm - ô fix {formatNumber(topFixHeight)} mm</Text>
+          <View style={styles.gapTop}>
+            <Banner
+              tone={activeDoorHeight > MAX_ACTIVE_DOOR_HEIGHT_MM ? 'error' : 'success'}
+              title={`Phần cửa hoạt động: ${formatNumber(activeDoorHeight)} mm`}
+              text={`Tổng cao ${formatNumber(totalHeight)} mm − ô fix ${formatNumber(topFixHeight)} mm`}
+            />
           </View>
         ) : supportsTopFix && totalHeight > MAX_ACTIVE_DOOR_HEIGHT_MM ? (
-          <View style={styles.heightWarning}><Text style={styles.heightWarningText}>Chiều cao vượt {formatNumber(MAX_ACTIVE_DOOR_HEIGHT_MM)} mm. Hãy tick chọn ô fix phía trên.</Text></View>
+          <View style={styles.gapTop}><Banner tone="warning" text={`Chiều cao vượt ${formatNumber(MAX_ACTIVE_DOOR_HEIGHT_MM)} mm. Hãy chọn ô fix phía trên.`} /></View>
         ) : null}
 
         <View style={styles.actionRow}>
-          <Pressable style={styles.secondaryAction} onPress={handleSaveCurrentSet}>
-            <Icon name="save" size={15} color={colors.brandOrangeText} />
-            <Text style={styles.secondaryActionText}>Lưu</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryAction} onPress={addAnotherDoor}>
-            <Icon name="plus" size={15} color={colors.brandOrangeText} />
-            <Text style={styles.secondaryActionText}>Thêm bộ</Text>
-          </Pressable>
+          <Button label="Lưu bộ" icon="save" variant="secondary" onPress={handleSaveCurrentSet} style={wsStyles.half} />
+          <Button label="Thêm bộ" icon="plus" variant="secondary" onPress={addAnotherDoor} style={wsStyles.half} />
         </View>
-        <Pressable style={[styles.primaryAction, calculating && { opacity: 0.6 }]} disabled={calculating} onPress={calculateAll}>
-          {calculating ? <ActivityIndicator color={colors.brandBlack.main} /> : <Icon name="tool" size={17} color={colors.brandBlack.main} />}
-          <Text style={styles.primaryActionText}>Tính toán công thức cắt</Text>
-        </Pressable>
-      </View>
+        <Button label="Tính công thức cắt" icon="tool" loading={calculating} onPress={calculateAll} style={styles.gapTop} />
+      </Card>
 
       {results.length > 0 ? (
         <View
-          style={styles.resultBox}
           onLayout={(event) => {
             if (!pendingResultScrollRef.current) return;
             pendingResultScrollRef.current = false;
@@ -698,103 +705,91 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
             requestAnimationFrame(() => inputScrollRef.current?.scrollTo({ y: targetY, animated: true }));
           }}
         >
-          <Text style={styles.resultTitle}>Tổng thanh nhôm cần cắt</Text>
-          <Text style={styles.resultSummary}>
-            {summaryAluminum.length} dòng cắt · {results.reduce((total, row) => total + (row.result.glass ?? []).reduce((sum, glass) => sum + Number(glass.quantity || 0), 0), 0)} tấm kính
-          </Text>
-          {summaryAluminum.map((item) => (
-            <View key={`${item.code}-${item.length}`} style={styles.resultRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.resultName}>{item.code}</Text>
-                <Text style={styles.cardSub}>{item.systemCode ? `${item.systemCode} · ` : ''}{item.name}</Text>
-              </View>
-              <Text style={styles.resultValue}>{formatNumber(item.length)} mm x {formatNumber(item.quantity)}</Text>
-            </View>
-          ))}
+          <SectionHead title="Kết quả cắt" sub={`${summaryAluminum.length} dòng cắt · ${glassCount} tấm kính`} />
 
           {cuttingPlan ? (
-            <View style={styles.massSection}>
-              <Text style={styles.massTitle}>Dự tính khối lượng nhôm</Text>
-              <View style={styles.massTable}>
-                <View style={styles.massTableRow}>
-                  {['Tổng kg nhôm cần', 'Kg nhôm thành phẩm', 'DC còn lại', 'DC vụn'].map((label) => (
-                    <View key={label} style={styles.massCell}><Text style={styles.massLabel}>{label}</Text></View>
-                  ))}
-                </View>
-                <View style={[styles.massTableRow, styles.massValueRow]}>
-                  {[cuttingPlan.summary.totalInputKg, cuttingPlan.summary.finishedKg, cuttingPlan.summary.reusableRemnantKg, cuttingPlan.summary.scrapKg].map((value, index) => (
-                    <View key={`${index}-${value}`} style={styles.massCell}><Text style={styles.massValue}>{formatKg(value)}</Text></View>
-                  ))}
-                </View>
+            <>
+              <KpiRow>
+                <Kpi label="Nhôm cần" value={formatKg(cuttingPlan.summary.totalInputKg)} />
+                <Kpi label="Thành phẩm" value={formatKg(cuttingPlan.summary.finishedKg)} />
+              </KpiRow>
+              <View style={styles.gapTop}>
+                <KpiRow>
+                  <Kpi label="DC còn lại" value={formatKg(cuttingPlan.summary.reusableRemnantKg)} tone="success" />
+                  <Kpi label="DC vụn" value={formatKg(cuttingPlan.summary.scrapKg)} tone={cuttingPlan.summary.scrapKg > 0 ? 'warning' : undefined} />
+                </KpiRow>
               </View>
-              <Text style={styles.massHint}>
-                Gồm {cuttingPlan.summary.newBars} cây mới và {cuttingPlan.summary.reusedDeXePieces} DC tận dụng. DC từ 1.000 mm được lưu lại; mạch cắt tính 5 mm.
-              </Text>
+              <Text style={wsStyles.hint}>Gồm {cuttingPlan.summary.newBars} cây mới và {cuttingPlan.summary.reusedDeXePieces} DC tận dụng. DC từ 1.000 mm được lưu lại; mạch cắt tính 5 mm.</Text>
               {Math.abs(cuttingPlan.summary.massBalanceDifferenceKg) > 0.005 ? (
-                <Text style={styles.massWarning}>Chênh lệch cân bằng: {formatKg(cuttingPlan.summary.massBalanceDifferenceKg)}. Vui lòng kiểm tra lại dữ liệu tỷ trọng.</Text>
+                <View style={styles.gapTop}><Banner tone="error" text={`Chênh lệch cân bằng ${formatKg(cuttingPlan.summary.massBalanceDifferenceKg)}. Vui lòng kiểm tra lại dữ liệu tỷ trọng.`} /></View>
               ) : null}
-              <View style={styles.resultActions}>
-                <Pressable
-                  style={[styles.inventoryAction, (savingRemnants || remnantsCommitted) && styles.actionDisabled]}
-                  disabled={savingRemnants || remnantsCommitted}
+              <View style={styles.actionRow}>
+                <Button
+                  label={remnantsCommitted ? 'Đã lưu kho DC' : 'Lưu DC vào kho'}
+                  icon={remnantsCommitted ? 'check' : 'save'}
+                  variant="secondary"
+                  loading={savingRemnants}
+                  disabled={remnantsCommitted}
                   onPress={confirmCommitRemnants}
-                >
-                  {savingRemnants ? <ActivityIndicator color={colors.success} /> : <Icon name={remnantsCommitted ? 'check' : 'save'} size={16} color={colors.success} />}
-                  <Text style={styles.inventoryActionText}>{remnantsCommitted ? 'Đã lưu kho DC' : 'Lưu DC vào kho'}</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.pdfAction, exportingPdf && styles.actionDisabled]}
-                  disabled={exportingPdf}
-                  onPress={() => void exportCuttingPlanPdf()}
-                >
-                  {exportingPdf ? <ActivityIndicator color={colors.brandBlack.main} /> : <Icon name="download" size={16} color={colors.brandBlack.main} />}
-                  <Text style={styles.pdfActionText}>Xuất PDF</Text>
-                </Pressable>
+                  style={wsStyles.half}
+                />
+                <Button label="Xuất PDF" icon="download" loading={exportingPdf} onPress={() => void exportCuttingPlanPdf()} style={wsStyles.half} />
               </View>
-            </View>
+            </>
           ) : null}
 
-          {results.map((row) => (
-            <View key={row.setId} style={styles.doorResult}>
-              <Text style={styles.smallTitle}>{row.setName} · {row.templateName}</Text>
-              {(row.result.glass ?? []).map((glass, index) => (
-                <Text key={`${row.setId}-glass-${index}`} style={styles.glassLine}>
-                  Kính: {formatNumber(glass.width_mm)} x {formatNumber(glass.height_mm)} mm · SL {formatNumber(glass.quantity)}
-                </Text>
-              ))}
-              {(row.result.accessories ?? []).slice(0, 8).map((accessory, index) => (
-                <Text key={`${row.setId}-acc-${index}`} style={styles.glassLine}>
-                  Phụ kiện: {accessory.name || accessory.code || '-'} · SL {formatNumber(Number(accessory.quantity || 0))}
-                </Text>
-              ))}
+          <SectionHead title="Thanh nhôm cần cắt" />
+          <Card padded={false}>
+            {summaryAluminum.map((item, index) => (
+              <ListRow key={`${item.systemCode}-${item.code}-${item.length}`} first={index === 0}>
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle}>{item.code}</Text>
+                  <Text style={wsStyles.rowMeta} numberOfLines={1}>{item.systemCode ? `${item.systemCode} · ` : ''}{item.name}</Text>
+                </View>
+                <Text style={styles.cutValue}>{formatNumber(item.length)} mm × {formatNumber(item.quantity)}</Text>
+              </ListRow>
+            ))}
+          </Card>
+
+          {results.map((row) => ((row.result.glass?.length || row.result.accessories?.length) ? (
+            <View key={row.setId}>
+              <SectionHead title={`${row.setName} · ${row.templateName}`} />
+              <Card padded={false}>
+                {(row.result.glass ?? []).map((glass, index) => (
+                  <ValueLine key={`${row.setId}-g-${index}`} first={index === 0} label={`Kính ${formatNumber(glass.width_mm)} × ${formatNumber(glass.height_mm)} mm`} value={`SL ${formatNumber(glass.quantity)}`} />
+                ))}
+                {(row.result.accessories ?? []).slice(0, 8).map((accessory, index) => (
+                  <ValueLine key={`${row.setId}-a-${index}`} first={index === 0 && !(row.result.glass ?? []).length} label={accessory.name || accessory.code || '-'} detail="Phụ kiện" value={`SL ${formatNumber(Number(accessory.quantity || 0))}`} />
+                ))}
+              </Card>
             </View>
-          ))}
+          ) : null))}
         </View>
       ) : null}
 
       {doorSets.length > 0 ? (
-        <View style={styles.savedBox}>
-          <Text style={styles.smallTitle}>Bộ cửa đã lưu</Text>
-          {doorSets.map((set) => (
-            <View key={set.id} style={styles.savedRow}>
-              <View style={styles.savedContent}>
-                <Text style={styles.savedName}>{set.name}</Text>
-                <Text style={styles.savedMeta}>{set.template.windowTypeName} · {inputSummary(set)}</Text>
-              </View>
-              <Pressable accessibilityLabel={`Xoá ${set.name}`} style={styles.savedDelete} onPress={() => removeDoorSet(set)}>
-                <Icon name="trash-2" size={17} color={colors.danger} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
+        <>
+          <SectionHead title="Bộ cửa đã lưu" sub={`${doorSets.length} bộ trong phiếu cắt`} />
+          <Card padded={false}>
+            {doorSets.map((set, index) => (
+              <ListRow key={set.id} first={index === 0}>
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle}>{set.name}</Text>
+                  <Text style={wsStyles.rowMeta} numberOfLines={2}>{set.template.windowTypeName} · {inputSummary(set)}</Text>
+                </View>
+                <IconButton icon="trash-2" tone="danger" label={`Xoá ${set.name}`} onPress={() => removeDoorSet(set)} />
+              </ListRow>
+            ))}
+          </Card>
+        </>
       ) : null}
     </ScrollView>
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={wsStyles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
-      {renderHeader()}
+      <AppHeader title="Công thức cắt" subtitle={subtitle} onBack={step > 1 ? goBack : undefined} />
       {renderProgress()}
       {step === 1 ? renderSystemStep() : null}
       {step === 2 ? renderTypeStep() : null}
@@ -805,98 +800,38 @@ function ActiveFormulasScreen({ capability }: { capability: FormulaCapability })
 }
 
 const styles = StyleSheet.create({
-  lockedScreen: { flex: 1, backgroundColor: '#FFF9F3', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  lockedIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  lockedEyebrow: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  lockedTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 26, lineHeight: 32, textAlign: 'center', marginTop: 8 },
-  lockedCopy: { color: colors.brandGrey[600], fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 420, marginTop: 10 },
-  lockedAction: { minHeight: 50, borderRadius: 14, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, marginTop: 22 },
-  lockedActionText: { color: colors.white, fontWeight: '900', fontSize: 15 },
-  screen: { flex: 1, backgroundColor: colors.brandGrey[50] },
-  header: { paddingTop: 58, paddingHorizontal: 18, paddingBottom: 16, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: colors.brandGrey[200] },
-  backBtn: { width: 44, height: 44, borderRadius: 999, backgroundColor: colors.brandGrey[100], alignItems: 'center', justifyContent: 'center' },
-  title: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 21 },
-  subtitle: { color: colors.brandGrey[500], fontWeight: '700', fontSize: 12, marginTop: 3 },
-  progress: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14 },
-  stepDot: { width: 25, height: 25, borderRadius: 999, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  stepDotActive: { backgroundColor: colors.brandOrange },
-  stepText: { color: colors.brandGrey[600], fontWeight: '900', fontSize: 12 },
-  stepTextActive: { color: colors.brandBlack.main },
-  stepLine: { flex: 1, height: 2, backgroundColor: '#E2E8F0', marginHorizontal: 5 },
-  stepLineActive: { backgroundColor: colors.brandOrange },
-  container: { padding: 18, paddingBottom: 120 },
-  sectionTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 18, marginBottom: 8 },
-  helperText: { color: colors.brandGrey[500], fontWeight: '700', marginBottom: 14 },
-  emptyText: { color: colors.brandGrey[500], textAlign: 'center', fontWeight: '700' },
-  listCard: { minHeight: 72, backgroundColor: colors.white, borderRadius: 16, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: colors.brandBlack.main, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  listIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 14 },
-  cardSub: { color: colors.brandGrey[500], fontWeight: '700', fontSize: 12, marginTop: 3 },
+  lockedCard: { margin: 16, alignItems: 'center', gap: 8, paddingVertical: 24 },
+  lockedIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: ws.orangeSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  lockedEyebrow: { color: ws.orangeText, fontSize: 12, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  lockedTitle: { color: ws.ink, fontSize: 20, lineHeight: 26, fontWeight: '900', textAlign: 'center' },
+  lockedCopy: { color: ws.muted, fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 420, marginBottom: 8 },
+  progress: { flexDirection: 'row', gap: 6, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 2 },
+  progressItem: { flex: 1, minWidth: 0, gap: 5 },
+  progressBar: { height: 4, borderRadius: 2, backgroundColor: ws.line },
+  progressBarOn: { backgroundColor: ws.orange },
+  progressText: { color: ws.faint, fontSize: 11, fontWeight: '700' },
+  progressTextOn: { color: ws.ink, fontWeight: '900' },
+  progressTextDone: { color: ws.orangeText },
+  gapTop: { marginTop: 10 },
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
-  templateCard: { width: '48%', minHeight: 206, backgroundColor: colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', marginBottom: 10 },
-  templateCardActive: { borderColor: colors.brandOrange },
-  templateImageWrap: { height: 132, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', padding: 8 },
+  templateCard: { width: '48%', backgroundColor: ws.surface, borderRadius: 14, borderWidth: 1, borderColor: ws.line, overflow: 'hidden' },
+  templateCardOn: { borderColor: ws.orange, borderWidth: 2 },
+  templateImageWrap: { height: 128, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center', padding: 8, borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
   templateImage: { width: '100%', height: '100%' },
-  templateDescription: { color: colors.brandGrey[600], fontWeight: '700', fontSize: 12, lineHeight: 17, textAlign: 'center', padding: 8 },
-  templateBody: { padding: 12 },
-  templateName: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 13, minHeight: 34 },
-  checkBadge: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 999, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center' },
-  heroImageCard: { backgroundColor: colors.white, borderRadius: 18, overflow: 'hidden', marginBottom: 14 },
-  heroImage: { width: '100%', height: 210, backgroundColor: '#F8FAFC' },
-  formCard: { backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 14 },
-  fieldFull: { marginBottom: 12 },
-  inputGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  inputCell: { flexBasis: '48%', flexGrow: 1 },
+  templateDescription: { color: ws.muted, fontSize: 12, lineHeight: 17, textAlign: 'center', padding: 8 },
+  templateBody: { padding: 10 },
+  templateName: { color: ws.ink, fontSize: 13, fontWeight: '800', minHeight: 34 },
+  checkBadge: { position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: ws.orange, alignItems: 'center', justifyContent: 'center' },
+  heroCard: { marginBottom: 10 },
+  heroImage: { width: '100%', height: 200, backgroundColor: '#F9FAFB' },
+  formTitle: { color: ws.ink, fontSize: 16, fontWeight: '900' },
+  inputGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  inputCell: { flexBasis: '47%', flexGrow: 1 },
   inputCellFull: { flexBasis: '100%', flexGrow: 1 },
-  inputLabel: { color: colors.brandGrey[600], fontWeight: '800', fontSize: 12, marginBottom: 6 },
-  input: { minHeight: 46, backgroundColor: colors.brandGrey[50], borderRadius: 12, paddingHorizontal: 12, color: colors.brandBlack.main, fontWeight: '800' },
-  booleanField: { flexBasis: '100%', minHeight: 62, borderWidth: 1.5, borderColor: colors.brandGrey[200], borderRadius: 12, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: colors.brandGrey[50] },
-  booleanFieldActive: { borderColor: colors.brandOrange, backgroundColor: colors.orangeSoft },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: colors.brandGrey[400], alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
-  checkboxActive: { borderColor: colors.brandOrangeText, backgroundColor: colors.brandOrangeText },
-  booleanLabel: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 14 },
-  booleanHint: { color: colors.brandGrey[600], fontWeight: '600', fontSize: 11, marginTop: 3, lineHeight: 15 },
-  fixSummary: { marginTop: 10, borderLeftWidth: 3, borderLeftColor: colors.success, backgroundColor: '#F0FDF4', padding: 11, borderRadius: 8 },
-  fixSummaryLabel: { color: colors.brandGrey[600], fontWeight: '800', fontSize: 11 },
-  fixSummaryValue: { color: colors.success, fontWeight: '900', fontSize: 18, marginTop: 2 },
-  fixSummaryDanger: { color: colors.danger },
-  fixSummaryHint: { color: colors.brandGrey[600], fontWeight: '600', fontSize: 11, marginTop: 2 },
-  heightWarning: { marginTop: 10, borderWidth: 1, borderColor: '#F59E0B', backgroundColor: '#FFFBEB', padding: 11, borderRadius: 8 },
-  heightWarningText: { color: '#92400E', fontWeight: '800', fontSize: 12, lineHeight: 17 },
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  secondaryAction: { flex: 1, minHeight: 48, borderRadius: 14, borderWidth: 1.5, borderColor: colors.brandOrange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.white },
-  secondaryActionText: { color: colors.brandOrangeText, fontWeight: '900' },
-  primaryAction: { minHeight: 52, borderRadius: 15, backgroundColor: colors.brandOrange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  primaryActionText: { color: colors.brandBlack.main, fontWeight: '900' },
-  savedBox: { backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 14 },
-  smallTitle: { color: colors.brandBlack.main, fontWeight: '900', marginBottom: 8 },
-  savedRow: { minHeight: 58, paddingVertical: 9, borderTopWidth: 1, borderTopColor: colors.brandGrey[100], flexDirection: 'row', alignItems: 'center', gap: 10 },
-  savedContent: { flex: 1, minWidth: 0 },
-  savedDelete: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFF1F2', alignItems: 'center', justifyContent: 'center' },
-  savedName: { color: colors.brandBlack.main, fontWeight: '900' },
-  savedMeta: { color: colors.brandGrey[500], fontWeight: '700', marginTop: 3, fontSize: 12 },
-  resultBox: { backgroundColor: colors.white, borderRadius: 18, padding: 16 },
-  resultTitle: { color: colors.success, fontWeight: '900', fontSize: 16, marginBottom: 10 },
-  resultSummary: { color: colors.brandGrey[600], fontWeight: '800', fontSize: 12, marginTop: -4, marginBottom: 8 },
-  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.brandGrey[100] },
-  resultName: { color: colors.brandBlack.main, fontWeight: '900' },
-  resultValue: { color: colors.brandOrangeText, fontWeight: '900' },
-  massSection: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.brandGrey[200] },
-  massTitle: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 15, marginBottom: 9 },
-  massTable: { borderWidth: 1, borderColor: colors.brandGrey[200], borderRadius: 10, overflow: 'hidden' },
-  massTableRow: { flexDirection: 'row', minHeight: 46, backgroundColor: colors.brandGrey[50] },
-  massValueRow: { minHeight: 48, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.brandGrey[200] },
-  massCell: { width: '25%', paddingHorizontal: 5, paddingVertical: 7, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: colors.brandGrey[200] },
-  massLabel: { color: colors.brandGrey[600], fontWeight: '800', fontSize: 9, lineHeight: 12, textAlign: 'center' },
-  massValue: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 11, textAlign: 'center' },
-  massHint: { color: colors.brandGrey[600], fontWeight: '600', fontSize: 11, lineHeight: 16, marginTop: 8 },
-  massWarning: { color: colors.danger, fontWeight: '800', fontSize: 11, lineHeight: 16, marginTop: 5 },
-  resultActions: { flexDirection: 'row', gap: 9, marginTop: 12 },
-  inventoryAction: { flex: 1, minHeight: 47, borderRadius: 13, borderWidth: 1.5, borderColor: colors.success, backgroundColor: '#F0FDF4', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 8 },
-  inventoryActionText: { color: colors.success, fontWeight: '900', fontSize: 12, textAlign: 'center' },
-  pdfAction: { flex: 1, minHeight: 47, borderRadius: 13, backgroundColor: colors.brandOrange, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 8 },
-  pdfActionText: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 12 },
-  actionDisabled: { opacity: 0.55 },
-  doorResult: { marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.brandGrey[200] },
-  glassLine: { color: colors.brandGrey[700], fontWeight: '700', lineHeight: 20 },
+  booleanField: { flexBasis: '100%', minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: ws.field, backgroundColor: ws.surface },
+  booleanFieldOn: { borderColor: ws.orange, backgroundColor: ws.orangeSoft },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: ws.faint, alignItems: 'center', justifyContent: 'center', backgroundColor: ws.surface },
+  checkboxOn: { borderColor: ws.orange, backgroundColor: ws.orange },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  cutValue: { color: ws.ink, fontSize: 13, fontWeight: '800' },
 });

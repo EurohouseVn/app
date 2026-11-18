@@ -1,27 +1,34 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { colors } from '@eurohouse/ui';
 import type { QuotationRecord } from '@eurohouse/types';
 import { Icon } from '../src/components/Icon';
+import { Button, Card, EmptyState, IconButton, Kpi, KpiRow, ListRow, Loading, SearchBox, SectionHead, SubHeader, ws, wsStyles } from '../src/components/ws';
 import { api, API_URL, authHeaders } from '../src/lib/api';
+import { compactVnd } from '../src/lib/projectListState';
 
 import { confirmAction, showAlert } from '../src/lib/alert';
+
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
+}
 
 export default function QuotationsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<QuotationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
     api.get<QuotationRecord[]>('/quotations')
       .then(setItems)
       .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setLoaded(true); });
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -59,86 +66,98 @@ export default function QuotationsScreen() {
     }
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}><Icon name="chevron-left" size={22} color={colors.brandOrangeText} /></Pressable>
-        <Text style={styles.topTitle}>Báo giá đã lưu</Text>
-        <Pressable onPress={() => router.push('/quote')} style={styles.addBtn}><Icon name="plus" size={20} color={colors.brandBlack.main} /></Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {!loading && items.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}><Icon name="file-text" size={26} color={colors.brandGrey[500]} /></View>
-            <Text style={styles.emptyText}>Chưa có báo giá nào. Tạo báo giá mới để chào khách.</Text>
-            <Pressable style={styles.emptyBtn} onPress={() => router.push('/quote')}>
-              <Text style={styles.emptyBtnText}>+ Tạo báo giá</Text>
-            </Pressable>
-          </View>
-        ) : (
-          items.map((q) => (
-            <View key={q.id} style={styles.card}>
-              <View style={styles.cardHead}>
-                <View style={styles.cardIcon}><Icon name="file-text" size={18} color={colors.brandOrangeText} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.code}>{q.code}</Text>
-                  <Text style={styles.meta}>{q.customerName || 'Khách lẻ'} · {q.items?.length || 0} hạng mục</Text>
-                </View>
-                <Text style={styles.date}>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <View>
-                  <Text style={styles.bodyLabel}>{q.items?.length ? `${q.items[0].doorType}${q.items.length > 1 ? ', ...' : ''}` : 'Không có hạng mục'}</Text>
-                  <Text style={styles.total}>{q.totalAmount.toLocaleString('vi-VN')} đ</Text>
-                </View>
-                
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <Pressable style={styles.actionBtn} onPress={() => router.push({ pathname: '/quote', params: { id: q.id } })}>
-                    <Icon name="edit-2" size={14} color={colors.brandBlack.main} />
-                  </Pressable>
-                  <Pressable style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} onPress={() => handleDelete(q.id)}>
-                    <Icon name="trash-2" size={14} color={colors.danger} />
-                  </Pressable>
-                  <Pressable style={[styles.pdfBtn, exportingId === `${q.id}:quotation` && { opacity: 0.6 }]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'quotation')}>
-                    <Icon name="download" size={14} color={colors.brandBlack.main} />
-                    <Text style={styles.pdfBtnText}>{exportingId === `${q.id}:quotation` ? '...' : 'Báo giá'}</Text>
-                  </Pressable>
-                  <Pressable style={[styles.pdfBtn, exportingId === `${q.id}:estimate` && { opacity: 0.6 }]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'estimate')}>
-                    <Icon name="file-text" size={14} color={colors.brandBlack.main} />
-                    <Text style={styles.pdfBtnText}>{exportingId === `${q.id}:estimate` ? '...' : 'Dự toán'}</Text>
-                  </Pressable>
-                </View>
+  const filtered = useMemo(() => {
+    const needle = fold(query.trim());
+    if (!needle) return items;
+    return items.filter((q) => fold(`${q.code} ${q.customerName || ''} ${q.customerPhone || ''}`).includes(needle));
+  }, [items, query]);
+  const totalValue = items.reduce((sum, q) => sum + (q.totalAmount || 0), 0);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const monthCount = items.filter((q) => String(q.createdAt).slice(0, 7) === thisMonth).length;
 
-              </View>
-            </View>
-          ))
-        )}
+  return (
+    <View style={wsStyles.screen}>
+      <SubHeader
+        title="Báo giá đã lưu"
+        subtitle={loaded ? `${items.length} báo giá` : 'Đang tải...'}
+        onBack={() => router.back()}
+        right={<IconButton icon="plus" tone="orange" label="Tạo báo giá mới" onPress={() => router.push('/quote')} />}
+      />
+      <ScrollView contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {items.length ? (
+          <>
+            <KpiRow>
+              <Kpi label="Tổng báo giá" value={String(items.length)} />
+              <Kpi label="Tháng này" value={String(monthCount)} />
+              <Kpi label="Tổng giá trị" value={compactVnd(totalValue)} />
+            </KpiRow>
+            <View style={styles.searchWrap}><SearchBox value={query} onChangeText={setQuery} placeholder="Tìm mã báo giá, khách hàng, SĐT" /></View>
+          </>
+        ) : null}
+
+        {loading && !loaded ? <Loading /> : null}
+
+        {loaded && items.length === 0 ? (
+          <EmptyState
+            icon="file-text"
+            title="Chưa có báo giá nào"
+            text="Tạo báo giá mới để chào khách, xuất PDF và chuyển thành công trình."
+            action={<Button label="Tạo báo giá" icon="plus" onPress={() => router.push('/quote')} />}
+          />
+        ) : null}
+
+        {items.length > 0 && filtered.length === 0 ? <EmptyState icon="search" title="Không có báo giá khớp" text="Thử tìm theo mã báo giá hoặc tên khách." /> : null}
+
+        {filtered.length ? (
+          <>
+            <SectionHead title="Danh sách" sub={query ? `${filtered.length} kết quả` : 'Mới nhất lên trước'} />
+            <Card padded={false}>
+              {filtered.map((q, index) => {
+                const firstType = q.items?.length ? `${q.items[0].doorType}${q.items.length > 1 ? ` +${q.items.length - 1}` : ''}` : 'Không có hạng mục';
+                return (
+                  <View key={q.id} style={index > 0 && styles.divider}>
+                    <ListRow first onPress={() => router.push({ pathname: '/quotation/[id]', params: { id: q.id } })} label={`Mở báo giá ${q.code}`}>
+                      <View style={wsStyles.avatar}><Icon name="file-text" size={17} color={ws.orangeText} /></View>
+                      <View style={wsStyles.grow}>
+                        <Text style={wsStyles.rowTitle} numberOfLines={1}>{q.customerName || 'Khách lẻ'}</Text>
+                        <Text style={wsStyles.rowMeta} numberOfLines={1}>{q.code} · {new Date(q.createdAt).toLocaleDateString('vi-VN')}</Text>
+                        <Text style={styles.typeText} numberOfLines={1}>{firstType}</Text>
+                      </View>
+                      <Text style={styles.total}>{compactVnd(q.totalAmount)}</Text>
+                    </ListRow>
+                    <View style={styles.actions}>
+                      <Pressable style={styles.action} onPress={() => router.push({ pathname: '/quote', params: { id: q.id } })}>
+                        <Icon name="edit-2" size={14} color={ws.body} /><Text style={styles.actionText}>Sửa</Text>
+                      </Pressable>
+                      <Pressable style={[styles.action, exportingId === `${q.id}:quotation` && styles.dim]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'quotation')}>
+                        <Icon name="download" size={14} color={ws.body} /><Text style={styles.actionText}>{exportingId === `${q.id}:quotation` ? 'Đang xuất' : 'Báo giá'}</Text>
+                      </Pressable>
+                      <Pressable style={[styles.action, exportingId === `${q.id}:estimate` && styles.dim]} disabled={Boolean(exportingId)} onPress={() => exportPdf(q, 'estimate')}>
+                        <Icon name="file-text" size={14} color={ws.body} /><Text style={styles.actionText}>{exportingId === `${q.id}:estimate` ? 'Đang xuất' : 'Dự toán'}</Text>
+                      </Pressable>
+                      <Pressable accessibilityLabel={`Xoá báo giá ${q.code}`} style={[styles.action, styles.actionDanger]} onPress={() => handleDelete(q.id)}>
+                        <Icon name="trash-2" size={14} color={ws.dangerText} />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </Card>
+          </>
+        ) : null}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topBar: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, backgroundColor: colors.orangeSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  backBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: 'rgba(217, 92, 0, 0.1)', alignItems: 'center', justifyContent: 'center' },
-  addBtn: { width: 38, height: 38, borderRadius: 999, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 17 },
-  container: { padding: 18, paddingBottom: 40 },
-  empty: { alignItems: 'center', paddingVertical: 50, gap: 12 },
-  emptyIconWrap: { width: 60, height: 60, borderRadius: 20, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: colors.brandGrey[500], textAlign: 'center', paddingHorizontal: 30 },
-  emptyBtn: { backgroundColor: colors.brandOrange, borderRadius: 999, paddingHorizontal: 22, paddingVertical: 12, marginTop: 4 },
-  emptyBtnText: { color: colors.brandBlack.main, fontWeight: '900' },
-  card: { backgroundColor: colors.white, borderRadius: 20, padding: 16, marginBottom: 12, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  code: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 15 },
-  meta: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
-  date: { color: colors.brandGrey[500], fontSize: 12 },
-  cardBody: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, borderTopWidth: 1, borderTopColor: '#EEF0F3', paddingTop: 12 },
-  bodyLabel: { color: colors.brandGrey[500], fontSize: 12 },
-  total: { color: colors.brandOrangeText, fontWeight: '900', fontSize: 18, marginTop: 2 },
-  pdfBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.orangeSoft, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 10 },
-  pdfBtnText: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 13 },
-  actionBtn: { width: 34, height: 34, borderRadius: 999, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
+  searchWrap: { marginTop: 10 },
+  divider: { borderTopWidth: 1, borderTopColor: ws.line },
+  typeText: { color: ws.faint, fontSize: 11, marginTop: 1 },
+  total: { color: ws.ink, fontSize: 14, fontWeight: '900' },
+  actions: { flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 11 },
+  action: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, borderRadius: 9, borderWidth: 1, borderColor: ws.line, backgroundColor: ws.surface },
+  actionDanger: { marginLeft: 'auto', borderColor: '#FECDCA', backgroundColor: ws.dangerBg },
+  actionText: { color: ws.body, fontSize: 12, fontWeight: '700' },
+  dim: { opacity: 0.55 },
 });
