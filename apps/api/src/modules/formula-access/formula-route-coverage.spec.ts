@@ -1,13 +1,13 @@
 import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FORMULA_ACCESS_REQUIRED_KEY } from './formula-access.decorator';
+import { EUROHOUSE_FEATURE_REQUIRED_KEY } from '../eurohouse-access/eurohouse-feature.decorator';
 import { SystemFormulasController } from '../quotations/system-formulas.controller';
 import { QuotationsController } from '../quotations/quotations.controller';
 
 function guarded(controller: any, method: string) {
-  return Reflect.getMetadata(FORMULA_ACCESS_REQUIRED_KEY, controller.prototype[method]) === true
-    || Reflect.getMetadata(FORMULA_ACCESS_REQUIRED_KEY, controller) === true;
+  return Reflect.getMetadata(EUROHOUSE_FEATURE_REQUIRED_KEY, controller.prototype[method]) === 'FORMULA_CUTTING'
+    || Reflect.getMetadata(EUROHOUSE_FEATURE_REQUIRED_KEY, controller) === 'FORMULA_CUTTING';
 }
 
 test('every formula discovery, calculation, cutting, PDF and remnant route requires entitlement', () => {
