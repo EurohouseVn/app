@@ -97,6 +97,7 @@ function Gate() {
       <Tabs.Screen name="order/[id]" options={{ href: null }} />
       <Tabs.Screen name="order/[id]/edit" options={{ href: null }} />
       <Tabs.Screen name="workforce" options={{ href: null }} />
+      <Tabs.Screen name="payslip/[workerId]" options={{ href: null }} />
       <Tabs.Screen name="reminders" options={{ href: null }} />
       <Tabs.Screen name="weather" options={{ href: null }} />
       <Tabs.Screen name="survey" options={{ href: null }} />
