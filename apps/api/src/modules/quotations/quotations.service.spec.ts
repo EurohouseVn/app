@@ -127,3 +127,31 @@ test('profile updates are scoped to the current user organization', async () => 
   assert.equal(profile?.organizationId, 'factory-own');
   assert.equal(profile?.productionName, 'NHÔM KÍNH MINH AN');
 });
+
+test('project order draft allows the same CSSX organization and resolves legacy quotation codes', async () => {
+  const prisma = {
+    project: {
+      findUnique: async () => ({
+        id: 'project-shared', ownerId: 'user-other', organizationId: 'org-own', quotationId: 'BG-LEGACY-01',
+        name: 'Công trình chung', code: 'CT-01', customerName: 'Khách hàng', customerPhone: '0901', address: 'Hà Nội',
+      }),
+    },
+    quotation: {
+      findFirst: async (args: { where: { OR: Array<Record<string, string>> } }) => {
+        assert.deepEqual(args.where.OR, [{ id: 'BG-LEGACY-01' }, { code: 'BG-LEGACY-01' }]);
+        return {
+          id: 'quotation-id', createdById: 'user-own',
+          items: [{ templateId: 'formula-1', system: 'Hệ trượt quay', color: 'CAFE_METALIC' }],
+        };
+      },
+    },
+  };
+  const quotationBom = {
+    buildOrderItems: async () => [{ profileId: 'profile-1', productCode: 'TQ01', quantity: 2 }],
+  };
+  const service = new QuotationsService(prisma as never, quotationBom as never, {} as never);
+  const draft = await service.createOrderDraftFromProject('project-shared', user({ sub: 'user-own', organizationId: 'org-own' }));
+  assert.equal(draft.customerName, 'Khách hàng');
+  assert.equal(draft.items.length, 1);
+  assert.equal(draft.items[0].productCode, 'TQ01');
+});

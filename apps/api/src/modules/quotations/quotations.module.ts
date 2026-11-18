@@ -8,11 +8,15 @@ import { FormulaEvaluatorService } from './formula-evaluator.service';
 import { CuttingOptimizerService } from './cutting-optimizer.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { QuotationBomService } from './quotation-bom.service';
+import { ManagedCuttingPlanService } from './managed-cutting-plan.service';
+import { CuttingPlanPdfService } from './cutting-plan-pdf.service';
+import { InventoryModule } from '../inventory/inventory.module';
+import { QuotationContractPdfService } from './quotation-contract-pdf.service';
 
 @Module({
-  imports: [PrismaModule, MulterModule.register({ dest: './uploads' })],
+  imports: [PrismaModule, InventoryModule, MulterModule.register({ dest: './uploads' })],
   controllers: [QuotationsController, SystemFormulasController],
-  providers: [QuotationsService, QuotationPdfService, FormulaEvaluatorService, CuttingOptimizerService, QuotationBomService],
+  providers: [QuotationsService, QuotationPdfService, QuotationContractPdfService, FormulaEvaluatorService, CuttingOptimizerService, QuotationBomService, ManagedCuttingPlanService, CuttingPlanPdfService],
   exports: [QuotationsService, QuotationBomService, FormulaEvaluatorService, CuttingOptimizerService],
 })
 export class QuotationsModule {}

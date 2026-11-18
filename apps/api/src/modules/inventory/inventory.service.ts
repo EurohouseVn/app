@@ -19,7 +19,7 @@ import type {
 import { InventoryCommandService, type InventoryCommandContext } from './inventory-command.service';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
-  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-55': 'Hệ 55 Vát Cạnh',
   'EU-TRUOT': 'Hệ trượt Châu Âu',
 };
 
@@ -211,11 +211,48 @@ export class InventoryService {
       where: { id: userId },
       select: { scrapKg: true },
     });
+    const materialCodes = Array.from(new Set(items.map((item) => item.materialCode.toUpperCase())));
+    const profiles = materialCodes.length ? await this.prisma.profile.findMany({
+      where: { code: { in: materialCodes, mode: 'insensitive' } },
+      include: { aluSystem: { select: { code: true, name: true } } },
+    }) : [];
+    const profileByCode = new Map(profiles.map((profile) => [profile.code.toUpperCase(), profile]));
 
     return {
-      items,
+      items: items.map((item) => {
+        const profile = profileByCode.get(item.materialCode.toUpperCase());
+        return {
+          ...item,
+          profileName: profile?.name || item.materialCode,
+          systemCode: profile?.aluSystem.code || 'KHAC',
+          systemName: displaySystemName(profile?.aluSystem.code, profile?.aluSystem.name),
+          kgPerMeter: profile?.kgPerMeter || 0,
+        };
+      }),
       scrapKg: user?.scrapKg || 0,
     };
+  }
+
+  async adjustUserInventory(userId: string, input: { materialCode?: string; lengthMm?: number; quantity?: number; type?: 'FULL_BAR' | 'DE_XE' }) {
+    const materialCode = String(input.materialCode || '').trim().toUpperCase();
+    const lengthMm = Math.round(Number(input.lengthMm));
+    const quantity = Math.round(Number(input.quantity));
+    const type = input.type === 'DE_XE' ? 'DE_XE' : 'FULL_BAR';
+    if (!materialCode) throw new BadRequestException('Vui lòng nhập mã thanh nhôm.');
+    if (!Number.isFinite(lengthMm) || lengthMm <= 0) throw new BadRequestException('Chiều dài thanh phải lớn hơn 0 mm.');
+    if (!Number.isFinite(quantity) || quantity === 0) throw new BadRequestException('Số lượng điều chỉnh phải khác 0.');
+    const existing = await this.prisma.inventoryItem.findFirst({ where: { userId, materialCode, lengthMm, type } });
+    if (!existing) {
+      if (quantity < 0) throw new BadRequestException('Kho không đủ số lượng để xuất.');
+      return this.prisma.inventoryItem.create({ data: { userId, materialCode, lengthMm, quantity, type } });
+    }
+    const nextQuantity = existing.quantity + quantity;
+    if (nextQuantity < 0) throw new BadRequestException('Kho không đủ số lượng để xuất.');
+    if (nextQuantity === 0) {
+      await this.prisma.inventoryItem.delete({ where: { id: existing.id } });
+      return { ...existing, quantity: 0, deleted: true };
+    }
+    return this.prisma.inventoryItem.update({ where: { id: existing.id }, data: { quantity: nextQuantity } });
   }
 
   async listMaterials(filter?: { category?: string; group?: string }): Promise<MaterialItem[]> {

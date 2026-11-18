@@ -17,11 +17,11 @@ const issuer = {
 };
 
 const itemSeeds = [
-  ['D1-01', 'Cửa đi 2 cánh mở quay', 1800, 2400, 2, 2_450_000, 'Hệ 55 Euroqueen', 'Trắng trong'],
-  ['D1-02', 'Cửa đi 1 cánh mở quay', 900, 2200, 2, 2_380_000, 'Hệ 55 Euroqueen', 'Trắng trong'],
+  ['D1-01', 'Cửa đi 2 cánh mở quay', 1800, 2400, 2, 2_450_000, 'Hệ 55 Vát Cạnh', 'Trắng trong'],
+  ['D1-02', 'Cửa đi 1 cánh mở quay', 900, 2200, 2, 2_380_000, 'Hệ 55 Vát Cạnh', 'Trắng trong'],
   ['D4-01', 'Cửa đi 4 cánh mở quay', 3200, 2600, 1, 2_690_000, 'Hệ Ecento Plus', 'Xanh đen'],
-  ['S1-01', 'Cửa sổ 2 cánh mở quay', 1500, 1500, 4, 2_250_000, 'Hệ 55 Euroqueen', 'Xanh đen'],
-  ['S2-01', 'Cửa sổ mở hất', 800, 1200, 3, 2_180_000, 'Hệ 55 Euroqueen', 'Trắng trong'],
+  ['S1-01', 'Cửa sổ 2 cánh mở quay', 1500, 1500, 4, 2_250_000, 'Hệ 55 Vát Cạnh', 'Xanh đen'],
+  ['S2-01', 'Cửa sổ mở hất', 800, 1200, 3, 2_180_000, 'Hệ 55 Vát Cạnh', 'Trắng trong'],
   ['T2-01', 'Cửa trượt 2 cánh', 2400, 2200, 2, 2_320_000, 'Hệ trượt Châu Âu', 'Xanh đục'],
   ['T4-01', 'Cửa trượt 4 cánh', 4200, 2400, 1, 2_480_000, 'Hệ trượt Châu Âu', 'Trắng trong'],
   ['V1-01', 'Vách kính cố định', 1800, 2600, 3, 1_780_000, 'Hệ Preco', 'Trắng trong'],

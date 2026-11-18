@@ -45,7 +45,7 @@ const SOURCE_WINDOW_TYPES = {
 const SELECTED_TEMPLATE_BACKUP = 'formula-templates-before-prune-2026-08-10T08-33-10-712Z.json';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
-  'EU-55': 'Hệ 55 Euroqueen',
+  'EU-55': 'Hệ 55 Vát Cạnh',
   'EU-TRUOT': 'Hệ trượt Châu Âu',
 };
 
@@ -315,6 +315,272 @@ export class FormulaEvaluatorService {
     }
 
     return templates.map((template) => this.toTemplateDto(template));
+  }
+
+  public async getManagedSystems() {
+    const systems = await this.prisma.aluSystem.findMany({
+      where: { code: { startsWith: 'EU-' } },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        _count: {
+          select: {
+            systemFormulas: {
+              where: {
+                status: 'PUBLISHED',
+                doorModel: { source: 'EUROHOUSE_ADMIN', active: true },
+              },
+            },
+            profiles: true,
+          },
+        },
+      },
+    });
+
+    return systems.map((system) => ({
+      id: system.id,
+      code: system.code,
+      name: displaySystemName(system.code, system.name),
+      description: system.description,
+      profileCount: system._count.profiles,
+      templateCount: system._count.systemFormulas,
+    }));
+  }
+
+  public async getManagedTypes(aluSystemId: string) {
+    const formulas = await this.prisma.systemFormula.findMany({
+      where: {
+        aluSystemId,
+        status: 'PUBLISHED',
+        doorModel: { source: 'EUROHOUSE_ADMIN', active: true },
+      },
+      include: { doorModel: true },
+      orderBy: { doorModel: { type: 'asc' } },
+    });
+    const counts = new Map<string, number>();
+    formulas.forEach((formula) => counts.set(formula.doorModel.type, (counts.get(formula.doorModel.type) ?? 0) + 1));
+    return [...counts.entries()].map(([name, templateCount]) => ({ id: name, name, templateCount }));
+  }
+
+  public async getManagedTemplates(aluSystemId: string, type?: string, includeDrafts = false) {
+    const formulas = await this.prisma.systemFormula.findMany({
+      where: {
+        aluSystemId,
+        ...(includeDrafts ? {} : { status: 'PUBLISHED' }),
+        doorModel: {
+          source: 'EUROHOUSE_ADMIN',
+          active: true,
+          ...(type ? { type } : {}),
+        },
+      },
+      include: { doorModel: true, aluSystem: true },
+      orderBy: [{ status: 'asc' }, { doorModel: { name: 'asc' } }],
+    });
+    return formulas.map((formula) => this.toManagedTemplateDto(formula));
+  }
+
+  public async getManagedTemplateDetails(id: string, includeDrafts = false) {
+    const formula = await this.prisma.systemFormula.findFirst({
+      where: {
+        id,
+        ...(includeDrafts ? {} : { status: 'PUBLISHED' }),
+        doorModel: { source: 'EUROHOUSE_ADMIN', active: true },
+      },
+      include: { doorModel: true, aluSystem: true },
+    });
+    if (!formula) throw new NotFoundException(`Managed formula ${id} not found`);
+    return this.toManagedTemplateDto(formula, true);
+  }
+
+  public async evaluateManagedFormula(id: string, rawInputs: Record<string, unknown>) {
+    const formula = await this.prisma.systemFormula.findFirst({
+      where: {
+        id,
+        status: 'PUBLISHED',
+        doorModel: { source: 'EUROHOUSE_ADMIN', active: true },
+      },
+      include: { doorModel: true, aluSystem: true },
+    });
+    if (!formula) throw new NotFoundException(`Managed formula ${id} not found`);
+
+    const fields = this.managedInputFields(formula.inputSchema);
+    const values: Record<string, number> = {};
+    for (const field of fields) {
+      const key = field.key.toUpperCase();
+      const raw = rawInputs[field.key] ?? rawInputs[key] ?? field.defaultValue;
+      if (field.required && (raw === undefined || raw === null || raw === '')) {
+        throw new BadRequestException(`Thiếu kích thước: ${field.label}`);
+      }
+      const value = field.type === 'boolean'
+        ? (raw === true || raw === 1 || ['1', 'true', 'yes', 'on'].includes(String(raw ?? '').trim().toLowerCase()) ? 1 : 0)
+        : Number(raw ?? 0);
+      if (!Number.isFinite(value) || value < 0) {
+        throw new BadRequestException(`${field.label} phải là số không âm.`);
+      }
+      values[key] = value;
+    }
+
+    const rules = this.managedCutRules(formula.cutRules);
+    if (rules.length === 0) throw new BadRequestException('Công thức chưa có quy tắc cắt.');
+    const aluminum = rules.flatMap((rule) => {
+      const quantity = this.evaluateManagedExpression(rule.quantityFormula || '1', values);
+      if (quantity === 0) return [];
+      const length = this.evaluateManagedExpression(rule.lengthFormula, values);
+      if (!Number.isFinite(length) || length <= 0) {
+        throw new BadRequestException(`Chiều dài của mã ${rule.profileCode} phải lớn hơn 0.`);
+      }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new BadRequestException(`Số lượng của mã ${rule.profileCode} phải lớn hơn 0.`);
+      }
+      return [{
+        systemCode: rule.profileSystemCode || formula.aluSystem.code,
+        code: rule.profileCode,
+        name: rule.profileName || rule.profileCode,
+        length_mm: Math.round(length * 1000) / 1000,
+        quantity: Math.max(1, Math.round(quantity)),
+        cutAngle: rule.cutAngle || '90-90',
+        note: rule.note || '',
+      }];
+    });
+
+    const glass = this.managedGlassRules(formula.glassRules).flatMap((rule) => {
+      const quantity = this.evaluateManagedExpression(rule.quantityFormula || '1', values);
+      if (quantity === 0) return [];
+      const width = this.evaluateManagedExpression(rule.widthFormula, values);
+      const height = this.evaluateManagedExpression(rule.heightFormula, values);
+      if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+        throw new BadRequestException(`Kích thước kính "${rule.name}" phải lớn hơn 0.`);
+      }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new BadRequestException(`Số lượng kính "${rule.name}" phải lớn hơn 0.`);
+      }
+      const roundedQuantity = Math.max(1, Math.round(quantity));
+      return [{
+        name: rule.name,
+        width_mm: Math.round(width * 1000) / 1000,
+        height_mm: Math.round(height * 1000) / 1000,
+        quantity: roundedQuantity,
+        area_m2: Math.round((width * height * roundedQuantity / 1_000_000) * 1000) / 1000,
+        note: rule.note || '',
+      }];
+    });
+
+    return {
+      aluminum,
+      glass,
+      accessories: [],
+      metadata: {
+        formulaId: formula.id,
+        revision: formula.revision,
+        systemCode: formula.aluSystem.code,
+        templateName: formula.doorModel.name,
+        sourceRef: formula.sourceRef,
+        verificationStatus: formula.verificationStatus,
+      },
+    };
+  }
+
+  private toManagedTemplateDto(formula: any, includeRules = false) {
+    const inputFields = this.managedInputFields(formula.inputSchema);
+    return {
+      id: formula.id,
+      templateId: formula.id,
+      systemId: formula.aluSystemId,
+      systemCode: formula.aluSystem.code,
+      systemName: displaySystemName(formula.aluSystem.code, formula.aluSystem.name),
+      windowTypeName: formula.doorModel.type,
+      templateName: formula.doorModel.name,
+      description: formula.doorModel.description,
+      imageUrl: formula.doorModel.imageUrl,
+      status: formula.status,
+      revision: formula.revision,
+      sourceRef: formula.sourceRef,
+      verificationStatus: formula.verificationStatus,
+      requiredInputs: inputFields.map((field) => ({
+        id: field.key,
+        name: field.label,
+        unit: field.unit,
+        type: field.type,
+        required: field.required,
+        defaultValue: field.defaultValue,
+      })),
+      ...(includeRules ? {
+        inputFields,
+        cutRules: this.managedCutRules(formula.cutRules),
+        glassRules: this.managedGlassRules(formula.glassRules),
+      } : {}),
+      updatedAt: formula.updatedAt,
+      publishedAt: formula.publishedAt,
+    };
+  }
+
+  private managedInputFields(value: unknown): Array<{ key: string; label: string; unit: string; type: 'number' | 'boolean'; required: boolean; defaultValue?: number }> {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item: any) => {
+      const key = String(item?.key || '').trim().toUpperCase();
+      const label = String(item?.label || '').trim();
+      if (!/^[A-Z][A-Z0-9_]{0,19}$/.test(key) || !label) return [];
+      const defaultValue = item.defaultValue === '' || item.defaultValue === undefined ? undefined : Number(item.defaultValue);
+      const type = item?.type === 'boolean' ? 'boolean' as const : 'number' as const;
+      return [{ key, label, unit: String(item.unit || (type === 'boolean' ? '' : 'mm')), type, required: item.required !== false, ...(Number.isFinite(defaultValue) ? { defaultValue } : {}) }];
+    });
+  }
+
+  private managedCutRules(value: unknown): Array<{ profileSystemCode: string; profileCode: string; profileName: string; lengthFormula: string; quantityFormula: string; cutAngle: string; note: string }> {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item: any) => {
+      const profileCode = String(item?.profileCode || '').trim().toUpperCase();
+      const lengthFormula = String(item?.lengthFormula || '').trim();
+      if (!profileCode || !lengthFormula) return [];
+      return [{
+        profileSystemCode: String(item?.profileSystemCode || '').trim().toUpperCase(),
+        profileCode,
+        profileName: String(item?.profileName || '').trim(),
+        lengthFormula,
+        quantityFormula: String(item?.quantityFormula || '1').trim(),
+        cutAngle: String(item?.cutAngle || '90-90').trim(),
+        note: String(item?.note || '').trim(),
+      }];
+    });
+  }
+
+  private managedGlassRules(value: unknown): Array<{ name: string; widthFormula: string; heightFormula: string; quantityFormula: string; note: string }> {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item: any) => {
+      const name = String(item?.name || '').trim();
+      const widthFormula = String(item?.widthFormula || '').trim();
+      const heightFormula = String(item?.heightFormula || '').trim();
+      if (!name || !widthFormula || !heightFormula) return [];
+      return [{
+        name,
+        widthFormula,
+        heightFormula,
+        quantityFormula: String(item?.quantityFormula || '1').trim(),
+        note: String(item?.note || '').trim(),
+      }];
+    });
+  }
+
+  private evaluateManagedExpression(rawFormula: string, values: Record<string, number>) {
+    const functions = new Set(['ROUND', 'MIN', 'MAX', 'ABS']);
+    const expression = String(rawFormula || '').trim().replace(/^=/, '').replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (token) => {
+      const upper = token.toUpperCase();
+      if (functions.has(upper)) return upper;
+      if (Object.prototype.hasOwnProperty.call(values, upper)) return String(values[upper]);
+      throw new BadRequestException(`Biến ${token} chưa được khai báo trong trường kích thước.`);
+    });
+    if (!expression) throw new BadRequestException('Biểu thức công thức không được để trống.');
+    const result = this.evaluateSafeExpression(expression, {
+      ROUND: (value: number, digits = 0) => {
+        const factor = Math.pow(10, Number(digits) || 0);
+        return Math.round(Number(value) * factor) / factor;
+      },
+      MIN: Math.min,
+      MAX: Math.max,
+      ABS: Math.abs,
+    });
+    const numeric = Number(result);
+    if (!Number.isFinite(numeric)) throw new BadRequestException(`Công thức "${rawFormula}" không cho kết quả hợp lệ.`);
+    return numeric;
   }
 
   private getQuoteDoorTypesForSystem(systemCode?: string): QuoteDoorType[] {

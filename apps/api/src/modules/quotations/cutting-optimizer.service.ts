@@ -166,6 +166,7 @@ export class CuttingOptimizerService {
       // 4. Thống kê kết quả & Sơ đồ cắt chi tiết
       let scrapMmTotal = 0;
       const usedDeXeIds = new Set<string>();
+      const usedDeXeCount = new Map<string, number>();
       const newDeXeGenerated: number[] = [];
       const barLayouts: BarCuttingLayout[] = [];
 
@@ -175,6 +176,7 @@ export class CuttingOptimizerService {
 
         if (!bin.isNewBar) {
           usedDeXeIds.add(bin.id);
+          usedDeXeCount.set(bin.id, (usedDeXeCount.get(bin.id) ?? 0) + 1);
         }
 
         const usedLengthMm = bin.cuts.reduce((sum, c) => sum + c.lengthMm, 0);
@@ -205,15 +207,29 @@ export class CuttingOptimizerService {
         });
       }
 
-      const scrapGeneratedKg = Number(((scrapMmTotal / 1000) * kgPerMeter).toFixed(2));
+      const inputLengthMm = barLayouts.reduce((sum, layout) => sum + layout.barLengthMm, 0);
+      const finishedLengthMm = piecesToCut.reduce((sum, piece) => sum + piece.lengthMm, 0);
+      const reusableRemnantLengthMm = newDeXeGenerated.reduce((sum, length) => sum + length, 0);
+      const newStockLengthMm = newBarsNeeded * barStandardLength;
+      const usedDeXeLengthMm = inputLengthMm - newStockLengthMm;
+      const kgFromLength = (lengthMm: number) => Number(((lengthMm / 1000) * kgPerMeter).toFixed(3));
+      const scrapGeneratedKg = kgFromLength(scrapMmTotal);
 
       results.push({
         materialCode: req.materialCode,
         materialName: profile?.name || req.materialCode,
         pieces: piecesToCut.map((piece) => piece.lengthMm),
         usedDeXeIds: Array.from(usedDeXeIds),
+        usedDeXe: Array.from(usedDeXeCount, ([id, quantity]) => ({ id, quantity })),
         newBarsNeeded,
         newDeXeGenerated,
+        kgPerMeter,
+        barLengthMm: barStandardLength,
+        inputKg: kgFromLength(inputLengthMm),
+        newStockKg: kgFromLength(newStockLengthMm),
+        usedDeXeKg: kgFromLength(usedDeXeLengthMm),
+        finishedKg: kgFromLength(finishedLengthMm),
+        reusableRemnantKg: kgFromLength(reusableRemnantLengthMm),
         scrapGeneratedKg,
         barLayouts,
       });

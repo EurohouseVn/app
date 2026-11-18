@@ -180,6 +180,13 @@ export class InventoryController {
     return this.service.getUserInventory(user.sub);
   }
 
+  @Post('inventory/items/adjust')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
+  adjustUserInventory(@CurrentUser() user: JwtUser, @Body() body: { materialCode?: string; lengthMm?: number; quantity?: number; type?: 'FULL_BAR' | 'DE_XE' }) {
+    return this.service.adjustUserInventory(user.sub, body);
+  }
+
   @Post('inventory/sync-order')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')

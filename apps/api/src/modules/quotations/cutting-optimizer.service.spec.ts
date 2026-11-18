@@ -23,7 +23,20 @@ function service(profiles = [profile()]) {
 test('a full-length piece does not create negative remaining capacity', async () => {
   const result = await service().optimizeCuts('worker', [{ materialCode: 'TEST', systemCode: 'EU-55', lengths: [6000] }]);
   assert.equal(result[0].barLayouts?.[0].remainingLengthMm, 0);
+  assert.equal(result[0].inputKg, 6);
+  assert.equal(result[0].finishedKg, 6);
+  assert.equal(result[0].reusableRemnantKg, 0);
   assert.equal(result[0].scrapGeneratedKg, 0);
+});
+
+test('mass summary balances finished aluminum, reusable remnants and cutting scrap', async () => {
+  const result = await service().optimizeCuts('worker', [{ materialCode: 'TEST', systemCode: 'EU-55', lengths: [3000, 2995] }]);
+  assert.equal(result[0].newBarsNeeded, 1);
+  assert.equal(result[0].inputKg, 6);
+  assert.equal(result[0].finishedKg, 5.995);
+  assert.equal(result[0].reusableRemnantKg, 0);
+  assert.equal(result[0].scrapGeneratedKg, 0.005);
+  assert.equal(Number((result[0].finishedKg + result[0].reusableRemnantKg + result[0].scrapGeneratedKg).toFixed(3)), result[0].inputKg);
 });
 
 test('a piece longer than the catalog bar is rejected', async () => {

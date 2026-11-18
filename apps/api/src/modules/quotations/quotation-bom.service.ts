@@ -39,7 +39,8 @@ export class QuotationBomService {
     quotationItems: QuotationBomItem[],
     options: { defaultColor: string; customItemQuantities?: Record<string, number> },
   ) {
-    const [systems, profiles] = await Promise.all([
+    const templateIds = Array.from(new Set(quotationItems.map((item) => item.templateId).filter((id): id is string => Boolean(id))));
+    const [systems, profiles, managedFormulas] = await Promise.all([
       this.prisma.aluSystem.findMany({ select: { id: true, code: true, name: true } }),
       this.prisma.profile.findMany({
         select: {
@@ -51,7 +52,11 @@ export class QuotationBomService {
           barLengthMm: true,
         },
       }),
+      templateIds.length
+        ? this.prisma.systemFormula.findMany({ where: { id: { in: templateIds }, status: 'PUBLISHED' }, select: { id: true } })
+        : Promise.resolve([]),
     ]);
+    const managedFormulaIds = new Set(managedFormulas.map((formula) => formula.id));
     const errors = new Set<string>();
     const demand = new Map<string, { profile: (typeof profiles)[number]; colorCode: string; lengths: number[] }>();
 
@@ -75,12 +80,18 @@ export class QuotationBomService {
       const snapshot = item.formulaSnapshot && typeof item.formulaSnapshot === 'object'
         ? item.formulaSnapshot as { result?: any }
         : undefined;
-      const result = snapshot?.result ?? await this.formulaService.evaluateTemplate(item.templateId, {
+      const formulaInputs = {
         ...dynamicInputs,
         width: item.widthMm,
         height: item.heightMm,
         quantity: item.quantity,
-      });
+        W: dynamicInputs.W ?? item.widthMm,
+        H: dynamicInputs.H ?? item.heightMm,
+        Q: dynamicInputs.Q ?? item.quantity,
+      };
+      const result = snapshot?.result ?? (managedFormulaIds.has(item.templateId)
+        ? await this.formulaService.evaluateManagedFormula(item.templateId, formulaInputs)
+        : await this.formulaService.evaluateTemplate(item.templateId, formulaInputs));
 
       for (const row of result.aluminum ?? []) {
         const sourceCode = String(row.code || '').trim();

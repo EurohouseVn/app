@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
+import { seedManagedTqFormulas } from './seed-managed-tq';
+import { seedManagedTruotFormulas } from './seed-managed-truot';
 
 const prisma = new PrismaClient();
 const PROFILES_DIR = path.join(__dirname, '..', 'public', 'profiles');
@@ -25,7 +27,7 @@ const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Eurohouse@2026';
 // 11 hệ nhôm đã có đủ mã chuẩn. 8 hệ đầu gom nhóm từ phiếu xuất kho + catalog R17;
 // 3 hệ Ecento Plus, Phào đại hội, Mặt dựng được bổ sung ảnh mặt cắt từ catalog R18.
 const aluSystems = [
-  { code: 'EU-55', name: 'Hệ 55 Euroqueen', description: 'Cửa đi & cửa sổ mở quay hệ 55', sortOrder: 1 },
+  { code: 'EU-55', name: 'Hệ 55 Vát Cạnh', description: 'Cửa đi & cửa sổ mở quay hệ 55 vát cạnh', sortOrder: 1 },
   { code: 'EU-PRECO', name: 'Hệ Preco', description: 'Hệ cửa đi & cửa sổ dòng Preco', sortOrder: 2 },
   { code: 'EU-TRUOT', name: 'Hệ trượt Châu Âu', description: 'Cửa trượt lùa, trượt quay kiểu châu Âu', sortOrder: 3 },
   { code: 'EU-TQ', name: 'Hệ trượt quay', description: 'Cửa trượt quay đa điểm', sortOrder: 4 },
@@ -483,6 +485,10 @@ async function main() {
   console.log(`Seed xong: ${aluSystems.length} hệ nhôm, ${profiles.length + profilesR18.length} thanh nhôm, ${colors.length} màu.`);
   const formulaTemplateCount = await seedFormulaTemplates();
   console.log(`Seeded ${formulaTemplateCount} formula templates.`);
+  const managedTqCount = await seedManagedTqFormulas(prisma);
+  console.log(`Seeded ${managedTqCount} managed EU-TQ formulas.`);
+  const managedTruotCount = await seedManagedTruotFormulas(prisma);
+  console.log(`Seeded ${managedTruotCount} managed Ecento Châu Âu formulas.`);
 }
 
 main()

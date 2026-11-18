@@ -3,7 +3,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { QuotationInput, QuotationResult, QuotationRecord } from '@eurohouse/types';
 import type { JwtUser } from '../../auth/current-user.decorator';
 import { QuotationBomService } from './quotation-bom.service';
+import { nextProjectCode, type ProjectCodeDatabase } from '../projects/project-code';
 import { FormulaEvaluatorService } from './formula-evaluator.service';
+
+const LEGACY_EU55_SYSTEM_NAMES = new Set(['Hệ 55 Euroqueen', 'EUROQUEEN Hệ 55', 'EUROQUEEN 55']);
+
+function canonicalSystemName(value?: string | null) {
+  const name = String(value || '').trim();
+  return LEGACY_EU55_SYSTEM_NAMES.has(name) ? 'Hệ 55 Vát Cạnh' : name;
+}
 
 @Injectable()
 export class QuotationsService {
@@ -83,29 +91,41 @@ export class QuotationsService {
 
   private async captureFormulaSnapshots(items: QuotationInput['items']) {
     const templateIds = Array.from(new Set(items.map((item) => item.templateId).filter((id): id is string => Boolean(id))));
-    const templates = templateIds.length
-      ? await this.prisma.formulaTemplate.findMany({ where: { id: { in: templateIds } }, select: { id: true, templateId: true, updatedAt: true } })
-      : [];
+    const [templates, managedFormulas] = templateIds.length
+      ? await Promise.all([
+          this.prisma.formulaTemplate.findMany({ where: { OR: [{ id: { in: templateIds } }, { templateId: { in: templateIds } }] }, select: { id: true, templateId: true, updatedAt: true } }),
+          this.prisma.systemFormula.findMany({ where: { id: { in: templateIds }, status: 'PUBLISHED' }, select: { id: true, updatedAt: true } }),
+        ])
+      : [[], []];
     const templateById = new Map(templates.flatMap((template) => [
       [template.id, template],
       [template.templateId, template],
     ]));
+    const managedById = new Map(managedFormulas.map((formula) => [formula.id, formula]));
 
     return Promise.all(items.map(async (item) => {
       if (!item.templateId) return null;
       const dynamicInputs = item.dynamicInputs && typeof item.dynamicInputs === 'object'
         ? item.dynamicInputs as Record<string, unknown>
         : {};
-      const result = await this.formulaService.evaluateTemplate(item.templateId, {
+      const formulaInputs = {
         ...dynamicInputs,
         width: item.widthMm,
         height: item.heightMm,
         quantity: item.quantity,
-      });
+        W: dynamicInputs.W ?? item.widthMm,
+        H: dynamicInputs.H ?? item.heightMm,
+        Q: dynamicInputs.Q ?? item.quantity,
+      };
+      const managed = managedById.get(item.templateId);
+      const result = managed
+        ? await this.formulaService.evaluateManagedFormula(item.templateId, formulaInputs)
+        : await this.formulaService.evaluateTemplate(item.templateId, formulaInputs);
       const template = templateById.get(item.templateId);
       return {
         templateId: item.templateId,
-        templateUpdatedAt: template?.updatedAt.toISOString() || null,
+        templateUpdatedAt: (managed?.updatedAt ?? template?.updatedAt)?.toISOString() || null,
+        engine: managed ? 'EUROHOUSE_MANAGED' : 'LEGACY_XLSX',
         capturedAt: new Date().toISOString(),
         result,
       };
@@ -128,10 +148,11 @@ export class QuotationsService {
     throw new ForbiddenException('Khong co quyen truy cap danh sach bao gia.');
   }
 
-  private assertCanAccessProject(project: { ownerId: string | null }, user?: JwtUser) {
+  private assertCanAccessProject(project: { ownerId: string | null; organizationId?: string | null }, user?: JwtUser) {
     if (this.hasGlobalQuotationAccess(user)) return;
     if (project.ownerId === user?.sub) return;
-    throw new ForbiddenException('Khong co quyen truy cap cong trinh nay.');
+    if (project.organizationId && project.organizationId === user?.organizationId) return;
+    throw new ForbiddenException('Không có quyền truy cập công trình này.');
   }
 
   calcQuotation(input: QuotationInput): QuotationResult {
@@ -250,7 +271,7 @@ export class QuotationsService {
         extraProducts: result.extraProducts && result.extraProducts.length > 0 ? JSON.stringify(result.extraProducts) : null,
         items: {
           create: result.items.map((i, index) => ({
-            name: i.name, system: i.system || '', doorType: i.doorType, templateId: i.templateId, widthMm: i.widthMm, heightMm: i.heightMm,
+            name: i.name, system: canonicalSystemName(i.system), doorType: i.doorType, templateId: i.templateId, widthMm: i.widthMm, heightMm: i.heightMm,
             wallHugging: i.wallHugging || 'Non', quantity: i.quantity, includesAccessories: i.includesAccessories ?? true, accessoriesPrice: i.accessoriesPrice || 0,
             areaM2: i.areaM2, pricePerM2: i.pricePerM2, totalPrice: i.totalPrice,
             color: i.color, glassType: i.glassType, glassColor: i.glassColor, dynamicInputs: i.dynamicInputs as any,
@@ -289,7 +310,7 @@ export class QuotationsService {
         extraProducts: result.extraProducts && result.extraProducts.length > 0 ? JSON.stringify(result.extraProducts) : null,
         items: {
           create: result.items.map((i, index) => ({
-            name: i.name, system: i.system || '', doorType: i.doorType, templateId: i.templateId, widthMm: i.widthMm, heightMm: i.heightMm,
+            name: i.name, system: canonicalSystemName(i.system), doorType: i.doorType, templateId: i.templateId, widthMm: i.widthMm, heightMm: i.heightMm,
             wallHugging: i.wallHugging || 'Non', quantity: i.quantity, includesAccessories: i.includesAccessories ?? true, accessoriesPrice: i.accessoriesPrice || 0,
             areaM2: i.areaM2, pricePerM2: i.pricePerM2, totalPrice: i.totalPrice,
             color: i.color, glassType: i.glassType, glassColor: i.glassColor, dynamicInputs: i.dynamicInputs as any,
@@ -334,9 +355,10 @@ export class QuotationsService {
       depositAmount,
       remainingAmount,
       items: (q.items || []).map((i: any) => ({
-        id: i.id, name: i.name, system: i.system, doorType: i.doorType, widthMm: i.widthMm, heightMm: i.heightMm, wallHugging: i.wallHugging,
+        id: i.id, name: i.name, system: canonicalSystemName(i.system), doorType: i.doorType, widthMm: i.widthMm, heightMm: i.heightMm, wallHugging: i.wallHugging,
         quantity: i.quantity, pricePerM2: i.pricePerM2, includesAccessories: i.includesAccessories, accessoriesPrice: i.accessoriesPrice,
-        areaM2: i.areaM2, totalPrice: i.totalPrice, color: i.color, glassType: i.glassType, glassColor: i.glassColor, dynamicInputs: i.dynamicInputs
+        areaM2: i.areaM2, totalPrice: i.totalPrice, color: i.color, glassType: i.glassType, glassColor: i.glassColor,
+        templateId: i.templateId, dynamicInputs: i.dynamicInputs
       })),
       extraProducts,
       accessoryCost: q.accessoryCost, laborCost: q.laborCost, installCost: q.installCost,
@@ -383,12 +405,14 @@ export class QuotationsService {
     this.assertCanAccessQuotation(quotation, user);
 
     const now = new Date();
-    const code = `CT-${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(100 + Math.random() * 900)}`;
+    const code = await nextProjectCode(this.prisma as unknown as ProjectCodeDatabase, user.organizationId, now);
+    const productsUsed = Array.from(new Set(quotation.items.map((item) => item.system).filter(Boolean))).join(', ');
 
     const project = await this.prisma.project.create({
       data: {
         code,
         name: quotation.customerName ? `Công trình ${quotation.customerName}` : `Công trình ${quotation.code}`,
+        organizationId: user.organizationId || undefined,
         ownerId: user.sub,
         customerName: quotation.customerName || '',
         customerPhone: quotation.customerPhone || '',
@@ -396,6 +420,8 @@ export class QuotationsService {
         quotationId: quotation.id,
         estimatedValue: quotation.totalAmount,
         contractValue: quotation.totalAmount,
+        settledValue: quotation.totalAmount,
+        productsUsed,
         status: 'OPEN',
         note: `Tự động chuyển từ Báo giá ${quotation.code}`
       }
@@ -408,18 +434,19 @@ export class QuotationsService {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId }
     });
-    if (!project) throw new NotFoundException('Không tìm thấy công trình.');
+    if (!project || project.archivedAt) throw new NotFoundException('Không tìm thấy công trình.');
 
     this.assertCanAccessProject(project, user);
 
     let quotationItems: any[] = [];
     let colorCode = '';
     if (project.quotationId) {
-      const quotation = await this.prisma.quotation.findUnique({
-        where: { id: project.quotationId },
+      const quotation = await this.prisma.quotation.findFirst({
+        where: { OR: [{ id: project.quotationId }, { code: project.quotationId }] },
         include: { items: true }
       });
       if (quotation) {
+        this.assertCanAccessQuotation(quotation, user);
         quotationItems = quotation.items;
         if (quotationItems.length > 0 && quotationItems[0].color) {
           colorCode = quotationItems[0].color;
