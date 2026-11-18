@@ -126,3 +126,32 @@ test('active work comes first, then completed, cancelled last; newest update fir
   assert.deepEqual(sortForList(list).map((p) => p.id), ['quote-new', 'run-old', 'done-new', 'done-old', 'cancelled']);
   assert.equal(list[0].id, 'cancelled', 'input order is not mutated');
 });
+
+test('trang chủ: tối đa 3 công trình cần chú ý, còn nợ nhiều lên trước, rồi tới lâu chưa cập nhật', async () => {
+  const { homeProjects } = await import('./projectListState.ts');
+  const now = Date.parse('2026-11-18T03:00:00Z');
+  const day = 86_400_000;
+  const p = (id: string, status: 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED', value: number, received: number | undefined, updatedDaysAgo: number) => ({
+    id, code: id, name: `CT ${id}`, customerName: '', status, estimatedAmount: value, finalAmount: 0, receivedAmount: received, createdAt: now - 60 * day, updatedAt: now - updatedDaysAgo * day,
+  });
+  const list = [
+    p('a', 'IN_PROGRESS', 100_000_000, 80_000_000, 1),
+    p('b', 'DONE', 300_000_000, 100_000_000, 3),
+    p('c', 'IN_PROGRESS', 50_000_000, 50_000_000, 20),
+    p('d', 'IN_PROGRESS', 70_000_000, 70_000_000, 2),
+    p('e', 'CANCELLED', 90_000_000, 0, 1),
+    p('f', 'DONE', 40_000_000, 40_000_000, 1),
+  ];
+  const home = homeProjects(list, now);
+  assert.deepEqual(home.items.map((x) => [x.project.id, x.reason]), [
+    ['b', 'Còn phải thu 200 tr'],
+    ['a', 'Còn phải thu 20 tr'],
+    ['c', '20 ngày chưa cập nhật'],
+  ]);
+  assert.equal(home.totalDue, 220_000_000);
+  assert.equal(home.running, 3);
+  // Không có gì cần chú ý thì lấy công trình đang thi công mới cập nhật nhất.
+  const calm = homeProjects([p('d', 'IN_PROGRESS', 70_000_000, 70_000_000, 2), p('f', 'DONE', 1, 1, 1)], now);
+  assert.deepEqual(calm.items.map((x) => [x.project.id, x.reason]), [['d', 'Đang thi công']]);
+  assert.deepEqual(homeProjects([], now), { items: [], totalDue: 0, running: 0 });
+});

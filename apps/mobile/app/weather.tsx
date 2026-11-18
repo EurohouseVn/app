@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { ActivityIndicator, Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@eurohouse/ui';
 import { Icon } from '../src/components/Icon';
+import { Banner, IconButton, Loading, SectionHead, SubHeader, ws } from '../src/components/ws';
 import { useAuth } from '../src/lib/auth';
 import {
   fetchWeatherForecast,
@@ -27,11 +28,13 @@ const riskColors: Record<InstallationWeatherRisk, { background: string; text: st
   RAIN: { background: '#EAF1FF', text: '#1D4ED8', border: '#BFD1FF' },
 };
 
+const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
 function formatDay(date: string, index: number): { day: string; date: string } {
   const value = new Date(`${date}T12:00:00`);
   return {
-    day: index === 0 ? 'Hôm nay' : value.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('.', ''),
-    date: value.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }).replace(/-/g, '/'),
+    day: index === 0 ? 'Hôm nay' : WEEKDAY_SHORT[value.getDay()],
+    date: `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}`,
   };
 }
 
@@ -182,18 +185,13 @@ export default function WeatherScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: Math.max(12, insets.top + 2) }]}>
-        <Pressable accessibilityLabel="Quay lại" style={styles.headerButton} onPress={() => router.back()}>
-          <Icon name="arrow-left" size={22} color="#172033" />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Thời tiết lắp đặt</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>{forecast?.location.label ?? 'Đang xác định khu vực'}</Text>
-        </View>
-        <Pressable accessibilityLabel="Tải lại dự báo" style={styles.headerButton} disabled={!forecast || loading} onPress={() => forecast && void loadForecast(forecast.location)}>
-          <Icon name="refresh-cw" size={19} color={loading ? '#98A2B3' : '#172033'} />
-        </Pressable>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader
+        title="Thời tiết lắp đặt"
+        subtitle={forecast?.location.label ?? 'Đang xác định khu vực'}
+        onBack={() => router.back()}
+        right={<IconButton icon="refresh-cw" label="Tải lại dự báo" disabled={!forecast || loading} onPress={() => { if (forecast) void loadForecast(forecast.location); }} />}
+      />
 
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 112 + insets.bottom }]}>
         {needsLocation ? (
@@ -244,17 +242,11 @@ export default function WeatherScreen() {
         </View>
 
         {error ? (
-          <Pressable style={styles.errorBanner} onPress={() => forecast && void loadForecast(forecast.location)}>
-            <Icon name="alert-circle" size={18} color="#B42318" />
-            <Text style={styles.errorText}>{error}</Text>
-          </Pressable>
+          <View style={styles.gapTop}><Banner tone="error" text={error} onPress={forecast ? () => void loadForecast(forecast.location) : undefined} /></View>
         ) : null}
 
         {loading && !forecast ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={colors.brandOrange} />
-            <Text style={styles.loadingText}>Đang tải dự báo 7 ngày...</Text>
-          </View>
+          <Loading text="Đang tải dự báo 7 ngày..." />
         ) : current && forecast ? (
           <>
             <View style={styles.currentPanel}>
@@ -291,13 +283,7 @@ export default function WeatherScreen() {
 
             <WeekStrip days={forecast.daily} />
 
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Chi tiết 7 ngày</Text>
-                <Text style={styles.sectionSubtitle}>Đánh giá nhanh điều kiện lắp đặt</Text>
-              </View>
-              {loading ? <ActivityIndicator size="small" color={colors.brandOrange} /> : null}
-            </View>
+            <SectionHead title="Chi tiết 7 ngày" sub="Đánh giá nhanh điều kiện lắp đặt" action={loading ? <ActivityIndicator size="small" color={ws.orange} /> : undefined} />
             <View style={styles.forecastList}>
               {forecast.daily.map((item, index) => <ForecastRow key={item.date} item={item} index={index} />)}
             </View>
@@ -314,14 +300,10 @@ export default function WeatherScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
-  header: { minHeight: 78, paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: '#E4E7EC' },
-  headerButton: { width: 42, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F4F7' },
-  headerCopy: { flex: 1, minWidth: 0 },
-  title: { color: '#172033', fontSize: 19, lineHeight: 24, fontWeight: '900' },
-  subtitle: { color: '#667085', fontSize: 11, marginTop: 2 },
+  screen: { flex: 1, backgroundColor: ws.bg },
+  gapTop: { marginTop: 12 },
   content: { padding: 16 },
-  locationPanel: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E3E7EC', backgroundColor: colors.white },
+  locationPanel: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
   searchRow: { flexDirection: 'row', gap: 8 },
   searchInputWrap: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#F4F6F8', borderWidth: 1, borderColor: '#E4E7EC' },
   searchInput: { flex: 1, minWidth: 0, color: '#172033', fontSize: 13, paddingVertical: 0 },
@@ -333,12 +315,8 @@ const styles = StyleSheet.create({
   resultIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF2E8' },
   resultCopy: { flex: 1, minWidth: 0 },
   resultTitle: { color: '#1D2939', fontSize: 13, fontWeight: '800' },
-  resultDetail: { color: '#667085', fontSize: 10, marginTop: 3 },
-  errorBanner: { minHeight: 48, marginTop: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 10, borderWidth: 1, borderColor: '#FECDCA', backgroundColor: '#FEF3F2' },
-  errorText: { flex: 1, color: '#B42318', fontSize: 11, lineHeight: 16, fontWeight: '700' },
-  loadingBox: { minHeight: 180, marginTop: 14, alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E3E7EC' },
-  loadingText: { color: '#667085', fontSize: 12 },
-  currentPanel: { marginTop: 14, padding: 15, borderRadius: 14, borderWidth: 1, borderColor: '#E3E7EC', backgroundColor: colors.white },
+  resultDetail: { color: '#667085', fontSize: 11, marginTop: 3 },
+  currentPanel: { marginTop: 14, padding: 15, borderRadius: 14, borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
   currentTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   currentIcon: { width: 52, height: 52, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF2E8' },
   currentCopy: { flex: 1, minWidth: 0 },
@@ -348,37 +326,34 @@ const styles = StyleSheet.create({
   currentMetrics: { minHeight: 74, marginTop: 14, flexDirection: 'row', alignItems: 'center', borderRadius: 10, backgroundColor: '#F7F8FA' },
   currentMetric: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
   currentMetricValue: { color: '#172033', fontSize: 14, fontWeight: '900', marginTop: 3 },
-  currentMetricLabel: { color: '#667085', fontSize: 9, fontWeight: '700', marginTop: 2, textAlign: 'center' },
+  currentMetricLabel: { color: '#667085', fontSize: 10.5, fontWeight: '700', marginTop: 2, textAlign: 'center' },
   currentDivider: { width: 1, height: 38, backgroundColor: '#E2E6EB' },
-  sectionHeader: { marginTop: 22, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: '#172033', fontSize: 17, fontWeight: '900' },
-  sectionSubtitle: { color: '#667085', fontSize: 10, marginTop: 3 },
-  forecastList: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E3E7EC', backgroundColor: colors.white },
+  forecastList: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
   forecastRow: { minHeight: 82, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EAECF0' },
   forecastDate: { width: 50 },
   forecastDay: { color: '#1D2939', fontSize: 11, fontWeight: '900' },
-  forecastDateText: { color: '#667085', fontSize: 9, marginTop: 4 },
+  forecastDateText: { color: '#667085', fontSize: 10.5, marginTop: 4 },
   conditionIcon: { width: 36, height: 36, marginRight: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F4F6F8' },
   forecastMain: { flex: 1, minWidth: 0 },
   forecastCondition: { color: '#344054', fontSize: 11, fontWeight: '800' },
   forecastMetrics: { marginTop: 5, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  forecastMetric: { color: '#667085', fontSize: 8.5, fontWeight: '600' },
-  metricDot: { color: '#98A2B3', fontSize: 8.5, marginHorizontal: 3 },
+  forecastMetric: { color: '#667085', fontSize: 11, fontWeight: '600' },
+  metricDot: { color: '#98A2B3', fontSize: 11, marginHorizontal: 3 },
   forecastRight: { width: 74, alignItems: 'flex-end' },
   temperatureRange: { color: '#172033', fontSize: 11, fontWeight: '900' },
   riskBadge: { minWidth: 66, minHeight: 24, marginTop: 7, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 7, borderWidth: 1 },
-  riskText: { fontSize: 9, fontWeight: '900' },
+  riskText: { fontSize: 10.5, fontWeight: '900' },
   askCard: { marginBottom: 12, padding: 16, borderRadius: 14, backgroundColor: '#FFF4E9', borderWidth: 1, borderColor: '#FFD7B5' },
   askIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
   askTitle: { color: '#7A3108', fontSize: 16, fontWeight: '900', marginTop: 10 },
   askText: { color: '#75472C', fontSize: 12, lineHeight: 18, marginTop: 4 },
-  weekStrip: { marginTop: 12, flexDirection: 'row', gap: 4, padding: 6, borderRadius: 14, borderWidth: 1, borderColor: '#E3E7EC', backgroundColor: colors.white },
+  weekStrip: { marginTop: 12, flexDirection: 'row', gap: 4, padding: 6, borderRadius: 14, borderWidth: 1, borderColor: '#E4E7EC', backgroundColor: colors.white },
   weekDay: { flex: 1, minWidth: 0, alignItems: 'center', gap: 4, paddingVertical: 8, borderRadius: 10 },
   weekDayToday: { backgroundColor: '#FFF2E8' },
-  weekDayName: { color: '#344054', fontSize: 10, fontWeight: '900' },
+  weekDayName: { color: '#344054', fontSize: 11, fontWeight: '900' },
   weekTemp: { color: '#172033', fontSize: 13, fontWeight: '900' },
-  weekTempMin: { color: '#98A2B3', fontSize: 10, fontWeight: '700', marginTop: -3 },
+  weekTempMin: { color: '#98A2B3', fontSize: 11, fontWeight: '700', marginTop: -3 },
   weekRiskDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
   note: { marginTop: 12, padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: 10, backgroundColor: '#EEF1F4' },
-  noteText: { flex: 1, color: '#475467', fontSize: 10, lineHeight: 15, fontWeight: '600' },
+  noteText: { flex: 1, color: '#475467', fontSize: 11, lineHeight: 15, fontWeight: '600' },
 });

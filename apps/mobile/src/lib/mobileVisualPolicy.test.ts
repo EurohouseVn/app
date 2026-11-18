@@ -57,10 +57,13 @@ test('guest local tool branches do not call protected mutations', () => {
   assert.match(quote, /sessionTier\s*===\s*'GUEST'/);
 });
 
-test('profile keeps the workspace section and shows Eurohouse feature access', () => {
+test('profile shows one Eurohouse access block with the NPP invite input', () => {
   const profile = readFileSync(resolve(testDirectory, '../../app/profile.tsx'), 'utf8');
-  assert.match(profile, /Khu làm việc/);
-  assert.match(profile, /<EurohouseAccessCard \/>/);
+  assert.match(profile, /title="Tài khoản"/);
+  assert.match(profile, /title="Quyền Eurohouse"/);
+  assert.match(profile, /Nhập mã mời NPP/);
+  assert.match(profile, /eurohouse-access\/redeem/);
+  assert.doesNotMatch(profile, /EurohouseAccessCard/);
 });
 
 test('secondary routes never leak into the five-item tab bar', () => {

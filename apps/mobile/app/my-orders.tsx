@@ -1,11 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useFocusEffect, type Href } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@eurohouse/ui';
+import { Stack, useFocusEffect, useRouter, type Href } from 'expo-router';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { PaginatedOrders } from '@eurohouse/types';
-import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+import { Banner, Button, Card, Chip, EmptyState, IconButton, ListRow, Loading, SubHeader, ws, wsStyles } from '../src/components/ws';
 import { confirmAction, showAlert } from '../src/lib/alert';
 import { statusText, statusTone } from '../src/lib/orderStatus';
 import { useAuth } from '../src/lib/auth';
@@ -42,6 +41,7 @@ function dayLabel(iso: string): string {
 }
 
 export default function MyOrdersScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const orderingCapability = user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING;
   const orderingPolicy = orderingScreenPolicy(orderingCapability);
@@ -106,88 +106,55 @@ export default function MyOrdersScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Đơn hàng của tôi" subtitle={`${total} đơn đã đặt`} />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.filterRow}>
-          {filters.map((f) => {
-            const active = filter === f.key;
-            return (
-              <Pressable key={f.key} onPress={() => changeFilter(f.key)} style={[styles.filterChip, active && styles.filterChipActive]}>
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>{f.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader title="Đơn hàng của tôi" subtitle={`${total} đơn đã đặt`} onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          {filters.map((f) => <Chip key={f.key} label={f.label} active={filter === f.key} onPress={() => changeFilter(f.key)} />)}
+        </ScrollView>
 
         {total >= ORDER_LIMIT ? (
-          <Pressable style={styles.limitBanner} onPress={showUpgradeInfo}>
-            <Icon name="zap" size={16} color={colors.warning} />
-            <Text style={styles.limitBannerText}>
-              Đã đạt giới hạn {ORDER_LIMIT} đơn lưu trữ — đơn cũ nhất sẽ không còn hiển thị. Nâng cấp gói 89k/tháng để lưu thêm.
-            </Text>
-          </Pressable>
+          <Banner tone="warning" icon="zap" text={`Đã đạt giới hạn ${ORDER_LIMIT} đơn lưu trữ, đơn cũ nhất sẽ không còn hiển thị. Nâng cấp gói 89k/tháng để lưu thêm.`} onPress={showUpgradeInfo} />
         ) : null}
 
+        {loading && orders.length === 0 ? <Loading /> : null}
         {!loading && orders.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}><Icon name="package" size={24} color={colors.brandGrey[500]} /></View>
-            <Text style={styles.emptyText}>Chưa có đơn nào ở trạng thái này.</Text>
-          </View>
+          <EmptyState icon="package" title="Chưa có đơn ở trạng thái này" text="Thử chọn bộ lọc khác." />
         ) : (
           grouped.map((group) => (
-            <View key={group.day} style={{ marginBottom: 4 }}>
-              <Text style={styles.dayHeader}>{group.day}</Text>
-              {group.items.map((order) => (
-                
-                <View key={order.id} style={styles.card}>
-                  <Link href={`/order/${order.id}` as Href} asChild>
-                    <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={styles.cardIcon}><Icon name="box" size={18} color={colors.brandOrangeText} /></View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.code}>{order.code}</Text>
-                        <Text style={styles.meta}>
-                          {(order.actualTotalKg ?? order.theoreticalTotalKg ?? order.totalKg).toFixed(2)} kg · {order.pricingStatus === 'FINALIZED' ? `${order.totalAmount.toLocaleString('vi-VN')} đ` : 'Chờ NPP chốt giá'}
+            <View key={group.day}>
+              <Text style={styles.dayHeader}>{group.day.toUpperCase()}</Text>
+              <Card padded={false}>
+                {group.items.map((order, index) => {
+                  const tone = statusTone[order.status] ?? ws.muted;
+                  const kg = order.actualTotalKg ?? order.theoreticalTotalKg ?? order.totalKg;
+                  return (
+                    <ListRow key={order.id} first={index === 0} onPress={() => router.push(`/order/${order.id}` as Href)} label={`Mở đơn ${order.code}`}>
+                      <View style={wsStyles.avatar}><Icon name="package" size={17} color={ws.orangeText} /></View>
+                      <View style={wsStyles.grow}>
+                        <Text style={wsStyles.rowTitle} numberOfLines={1}>{order.code}</Text>
+                        <Text style={wsStyles.rowMeta} numberOfLines={1}>
+                          {kg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} kg · {order.pricingStatus === 'FINALIZED' ? `${order.totalAmount.toLocaleString('vi-VN')} đ` : 'Chờ NPP chốt giá'}
                         </Text>
                       </View>
-                    </Pressable>
-                  </Link>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={[styles.statusPill, { backgroundColor: (statusTone[order.status] ?? colors.brandGrey[500]) + '1A' }]}>
-                      <Text style={[styles.statusPillText, { color: statusTone[order.status] ?? colors.brandBlack.main }]}>{statusText[order.status] ?? order.status}</Text>
-                    </View>
-                    {orderingPolicy.canMutate && order.status === 'DRAFT' ? (
-                      <Pressable style={{ padding: 4 }} onPress={() => handleDelete(order.id)}>
-                        <Icon name="trash-2" size={16} color={colors.danger} />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
-
-              ))}
+                      <View style={[styles.status, { backgroundColor: `${tone}1A` }]}><Text style={[styles.statusText, { color: tone }]} numberOfLines={1}>{statusText[order.status] ?? order.status}</Text></View>
+                      {orderingPolicy.canMutate && order.status === 'DRAFT' ? (
+                        <IconButton icon="trash-2" tone="danger" label={`Xoá đơn ${order.code}`} onPress={() => handleDelete(order.id)} />
+                      ) : null}
+                    </ListRow>
+                  );
+                })}
+              </Card>
             </View>
           ))
         )}
 
         {total > 0 ? (
-          <View style={styles.pagerRow}>
-            <Pressable
-              style={[styles.pagerBtn, page <= 1 && styles.pagerBtnDisabled]}
-              disabled={page <= 1}
-              onPress={() => load(page - 1, filter)}
-            >
-              <Icon name="chevron-left" size={16} color={page <= 1 ? colors.brandGrey[500] : colors.brandBlack.main} />
-              <Text style={[styles.pagerText, page <= 1 && { color: colors.brandGrey[500] }]}>Trang trước</Text>
-            </Pressable>
+          <View style={styles.pager}>
+            <Button label="Trang trước" icon="chevron-left" variant="secondary" disabled={page <= 1} onPress={() => load(page - 1, filter)} style={wsStyles.half} />
             <Text style={styles.pagerInfo}>{page}/{totalPages}</Text>
-            <Pressable
-              style={[styles.pagerBtn, page >= totalPages && styles.pagerBtnDisabled]}
-              disabled={page >= totalPages}
-              onPress={() => load(page + 1, filter)}
-            >
-              <Text style={[styles.pagerText, page >= totalPages && { color: colors.brandGrey[500] }]}>Trang sau</Text>
-              <Icon name="chevron-right" size={16} color={page >= totalPages ? colors.brandGrey[500] : colors.brandBlack.main} />
-            </Pressable>
+            <Button label="Trang sau" variant="secondary" disabled={page >= totalPages} onPress={() => load(page + 1, filter)} style={wsStyles.half} />
           </View>
         ) : null}
       </ScrollView>
@@ -196,27 +163,10 @@ export default function MyOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingBottom: 40 },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, backgroundColor: colors.white },
-  filterChipActive: { backgroundColor: colors.brandOrange },
-  filterText: { color: colors.brandGrey[500], fontWeight: '700', fontSize: 12 },
-  filterTextActive: { color: colors.brandBlack.main },
-  limitBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#FFF8E5', borderRadius: 16, padding: 14, marginBottom: 16 },
-  limitBannerText: { flex: 1, color: colors.brandBlack.main, fontSize: 12.5, lineHeight: 18, fontWeight: '600' },
-  empty: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  emptyIconWrap: { width: 60, height: 60, borderRadius: 20, backgroundColor: '#EEF0F3', alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: colors.brandGrey[500] },
-  dayHeader: { color: colors.brandGrey[500], fontWeight: '800', fontSize: 12, marginBottom: 8, marginTop: 6, textTransform: 'uppercase' },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.white, borderRadius: 20, padding: 14, marginBottom: 12, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  cardIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  code: { color: colors.brandBlack.main, fontWeight: '900' },
-  meta: { color: colors.brandGrey[500], marginTop: 2 },
-  statusPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  statusPillText: { fontWeight: '800', fontSize: 12 },
-  pagerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
-  pagerBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.white, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  pagerBtnDisabled: { opacity: 0.5 },
-  pagerText: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 12.5 },
-  pagerInfo: { color: colors.brandGrey[500], fontWeight: '700', fontSize: 12.5 },
+  chips: { gap: 6, paddingBottom: 10 },
+  dayHeader: { color: ws.muted, fontSize: 11.5, fontWeight: '900', letterSpacing: 0.4, marginTop: 12, marginBottom: 6, marginHorizontal: 2 },
+  status: { maxWidth: 110, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  statusText: { fontSize: 10.5, fontWeight: '800' },
+  pager: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  pagerInfo: { color: ws.body, fontSize: 13, fontWeight: '800', minWidth: 44, textAlign: 'center' },
 });

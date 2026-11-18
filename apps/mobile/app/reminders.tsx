@@ -1,23 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { CreateWorkshopReminderInput, WorkshopReminder, WorkshopReminderPriority } from '@eurohouse/types';
-import { colors } from '@eurohouse/ui';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+import { Banner, Button, Card, Chip, EmptyState, Field, IconButton, Input, Loading, SectionHead, Sheet, SubHeader, ws, wsStyles } from '../src/components/ws';
+import { dmy, parseDmy } from '../src/lib/invoiceState';
 
 const priorityLabel: Record<WorkshopReminderPriority, string> = {
   LOW: 'Thấp',
@@ -42,8 +30,8 @@ function dueText(value: string): string {
     ? 'Hôm nay'
     : date.toDateString() === tomorrow.toDateString()
       ? 'Ngày mai'
-      : date.toLocaleDateString('vi-VN');
-  return `${prefix} lúc ${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+      : `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+  return `${prefix} lúc ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function RemindersScreen() {
@@ -56,7 +44,7 @@ export default function RemindersScreen() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(localDate());
+  const [date, setDate] = useState(dmy(localDate()));
   const [time, setTime] = useState('08:00');
   const [priority, setPriority] = useState<WorkshopReminderPriority>('NORMAL');
 
@@ -84,9 +72,10 @@ export default function RemindersScreen() {
       Alert.alert('Thiếu nội dung', 'Vui lòng nhập việc cần nhắc.');
       return;
     }
-    const dueAt = new Date(`${date}T${time}:00+07:00`);
-    if (Number.isNaN(dueAt.getTime())) {
-      Alert.alert('Thời gian không hợp lệ', 'Ngày dùng định dạng YYYY-MM-DD và giờ dùng định dạng HH:mm.');
+    const dateKey = parseDmy(date);
+    const dueAt = new Date(`${dateKey}T${time.trim().padStart(5, '0')}:00+07:00`);
+    if (!dateKey || !/^\d{1,2}:\d{2}$/.test(time.trim()) || Number.isNaN(dueAt.getTime())) {
+      Alert.alert('Thời gian chưa đúng', 'Ngày nhập dạng ngày/tháng/năm (18/11/2026), giờ dạng 08:00.');
       return;
     }
     const body: CreateWorkshopReminderInput = { title: title.trim(), note: note.trim(), dueAt: dueAt.toISOString(), priority };
@@ -96,7 +85,7 @@ export default function RemindersScreen() {
       setModalOpen(false);
       setTitle('');
       setNote('');
-      setDate(localDate());
+      setDate(dmy(localDate()));
       setTime('08:00');
       setPriority('NORMAL');
       await load(true);
@@ -116,137 +105,82 @@ export default function RemindersScreen() {
     }
   }
 
-  function reminderRow(reminder: WorkshopReminder) {
+  function reminderRow(reminder: WorkshopReminder, index: number) {
     const isDone = !!reminder.completedAt;
     const overdue = !isDone && new Date(reminder.dueAt).getTime() < Date.now();
     return (
-      <View key={reminder.id} style={[styles.reminderRow, isDone && styles.reminderDone]}>
-        <Pressable accessibilityLabel={isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'} style={[styles.checkButton, isDone && styles.checkButtonDone]} onPress={() => void toggle(reminder)}>
-          {isDone ? <Icon name="check" size={18} color={colors.white} /> : null}
+      <View key={reminder.id} style={[styles.row, index > 0 && styles.divider]}>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: isDone }} accessibilityLabel={isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'} hitSlop={8} style={[styles.check, isDone && styles.checkDone]} onPress={() => void toggle(reminder)}>
+          {isDone ? <Icon name="check" size={15} color="#FFFFFF" /> : null}
         </Pressable>
-        <View style={styles.reminderCopy}>
-          <View style={styles.reminderTitleRow}>
-            <Text style={[styles.reminderTitle, isDone && styles.textDone]} numberOfLines={2}>{reminder.title}</Text>
-            {!isDone ? <View style={[styles.priorityBadge, reminder.priority === 'HIGH' && styles.priorityHigh, reminder.priority === 'LOW' && styles.priorityLow]}><Text style={styles.priorityText}>{priorityLabel[reminder.priority]}</Text></View> : null}
-          </View>
-          <View style={styles.dueRow}><Icon name="clock" size={13} color={overdue ? '#B42318' : '#667085'} /><Text style={[styles.dueText, overdue && styles.overdue]}>{overdue ? 'Quá hạn · ' : ''}{dueText(reminder.dueAt)}</Text></View>
-          {reminder.note ? <Text style={[styles.note, isDone && styles.textDone]} numberOfLines={2}>{reminder.note}</Text> : null}
+        <View style={wsStyles.grow}>
+          <Text style={[wsStyles.rowTitle, isDone && styles.textDone]} numberOfLines={2}>{reminder.title}</Text>
+          <Text style={[wsStyles.rowMeta, overdue && { color: ws.dangerText, fontWeight: '700' }]}>{overdue ? 'Quá hạn · ' : ''}{dueText(reminder.dueAt)}</Text>
+          {reminder.note ? <Text style={[wsStyles.rowMeta, isDone && styles.textDone]} numberOfLines={2}>{reminder.note}</Text> : null}
         </View>
+        {!isDone ? <View style={[styles.priority, reminder.priority === 'HIGH' && styles.priorityHigh, reminder.priority === 'LOW' && styles.priorityLow]}><Text style={[styles.priorityText, reminder.priority === 'HIGH' && { color: ws.dangerText }]}>{priorityLabel[reminder.priority]}</Text></View> : null}
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable accessibilityLabel="Quay lại" style={styles.iconButton} onPress={() => router.back()}><Icon name="arrow-left" size={21} color="#1D2939" /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.headerTitle}>Nhắc việc</Text><Text style={styles.headerSubtitle}>{active.length} việc đang chờ xử lý</Text></View>
-        <Pressable accessibilityLabel="Thêm nhắc việc" style={styles.addButton} onPress={() => setModalOpen(true)}><Icon name="plus" size={21} color={colors.brandOrangeText} /></Pressable>
-      </View>
-
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader
+        title="Nhắc việc"
+        subtitle={`${active.length} việc đang chờ`}
+        onBack={() => router.back()}
+        right={<IconButton icon="plus" tone="orange" label="Thêm nhắc việc" onPress={() => setModalOpen(true)} />}
+      />
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={wsStyles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.brandOrange} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={ws.orange} />}
       >
-        <View style={styles.todayBand}>
-          <View style={styles.calendarIcon}><Text style={styles.calendarDay}>{new Date().getDate()}</Text><Text style={styles.calendarMonth}>TH{new Date().getMonth() + 1}</Text></View>
-          <View style={styles.todayCopy}><Text style={styles.todayTitle}>Kế hoạch của xưởng</Text><Text style={styles.todaySub}>Lịch giao hàng, gọi khách, mua vật tư và việc nội bộ.</Text></View>
-        </View>
-
-        {error ? <Pressable style={styles.error} onPress={() => void load(true)}><Icon name="alert-circle" size={18} color="#B42318" /><Text style={styles.errorText}>{error}</Text></Pressable> : null}
-        {loading ? <View style={styles.loading}><ActivityIndicator color={colors.brandOrange} /><Text style={styles.muted}>Đang tải nhắc việc...</Text></View> : null}
-
-        {!loading ? (
+        {error ? <Banner tone="error" title="Chưa tải được" text={error} onPress={() => void load(true)} /> : null}
+        {loading ? <Loading text="Đang tải nhắc việc..." /> : (
           <>
-            <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Cần làm</Text><Text style={styles.sectionCount}>{active.length}</Text></View>
-            {active.length ? active.map(reminderRow) : (
-              <Pressable style={styles.empty} onPress={() => setModalOpen(true)}><Icon name="check-circle" size={30} color="#047857" /><Text style={styles.emptyTitle}>Danh sách đã gọn</Text><Text style={styles.emptyText}>Thêm lịch giao hàng hoặc việc cần nhớ cho cả xưởng.</Text></Pressable>
+            <SectionHead title="Cần làm" sub="Giao hàng, gọi khách, mua vật tư, việc nội bộ" action={<Text style={styles.count}>{active.length}</Text>} />
+            {active.length ? <Card padded={false}>{active.map(reminderRow)}</Card> : (
+              <EmptyState icon="check-circle" title="Danh sách đã gọn" text="Thêm lịch giao hàng hoặc việc cần nhớ cho cả xưởng." action={<Button label="Thêm nhắc việc" icon="plus" onPress={() => setModalOpen(true)} />} />
             )}
-            {completed.length ? <><View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Đã hoàn thành</Text><Text style={styles.sectionCount}>{completed.length}</Text></View>{completed.slice(0, 10).map(reminderRow)}</> : null}
+            {completed.length ? (
+              <>
+                <SectionHead title="Đã hoàn thành" action={<Text style={styles.count}>{completed.length}</Text>} />
+                <Card padded={false}>{completed.slice(0, 10).map(reminderRow)}</Card>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </ScrollView>
 
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}><View><Text style={styles.sheetTitle}>Tạo nhắc việc</Text><Text style={styles.sheetSub}>Nhắc đúng lúc để không bỏ sót việc</Text></View><Pressable style={styles.closeButton} onPress={() => setModalOpen(false)}><Icon name="x" size={20} color="#475467" /></Pressable></View>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Việc cần nhắc</Text><TextInput value={title} onChangeText={setTitle} placeholder="Ví dụ: Giao cửa công trình anh Minh" placeholderTextColor="#98A2B3" style={styles.input} />
-              <View style={styles.fieldRow}><View style={styles.fieldHalf}><Text style={styles.label}>Ngày</Text><TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor="#98A2B3" style={styles.input} /></View><View style={styles.fieldHalf}><Text style={styles.label}>Giờ</Text><TextInput value={time} onChangeText={setTime} placeholder="HH:mm" placeholderTextColor="#98A2B3" style={styles.input} /></View></View>
-              <Text style={styles.label}>Mức ưu tiên</Text><View style={styles.priorityOptions}>{(['LOW', 'NORMAL', 'HIGH'] as WorkshopReminderPriority[]).map((value) => <Pressable key={value} style={[styles.priorityOption, priority === value && styles.priorityOptionActive]} onPress={() => setPriority(value)}><Text style={[styles.priorityOptionText, priority === value && styles.priorityOptionTextActive]}>{priorityLabel[value]}</Text></Pressable>)}</View>
-              <Text style={styles.label}>Ghi chú</Text><TextInput value={note} onChangeText={setNote} placeholder="Thông tin người nhận, địa chỉ hoặc vật tư cần mang theo" placeholderTextColor="#98A2B3" multiline style={[styles.input, styles.noteInput]} />
-              <Pressable disabled={saving} style={[styles.primaryButton, saving && styles.disabled]} onPress={() => void createReminder()}>{saving ? <ActivityIndicator color="#172033" /> : <><Icon name="calendar" size={18} color="#172033" /><Text style={styles.primaryText}>Lưu nhắc việc</Text></>}</Pressable>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <Sheet visible={modalOpen} onClose={() => setModalOpen(false)} title="Tạo nhắc việc" sub="Nhắc đúng lúc để không bỏ sót việc">
+        <Field label="Việc cần nhắc"><Input value={title} onChangeText={setTitle} placeholder="Ví dụ: Giao cửa công trình anh Minh" /></Field>
+        <View style={wsStyles.row}>
+          <Field label="Ngày" style={wsStyles.half}><Input value={date} onChangeText={setDate} placeholder="dd/mm/yyyy" keyboardType="numbers-and-punctuation" /></Field>
+          <Field label="Giờ" style={wsStyles.half}><Input value={time} onChangeText={setTime} placeholder="08:00" keyboardType="numbers-and-punctuation" /></Field>
+        </View>
+        <Field label="Mức ưu tiên">
+          <View style={styles.priorityRow}>{(['LOW', 'NORMAL', 'HIGH'] as WorkshopReminderPriority[]).map((value) => <Chip key={value} label={priorityLabel[value]} active={priority === value} onPress={() => setPriority(value)} />)}</View>
+        </Field>
+        <Field label="Ghi chú"><Input value={note} onChangeText={setNote} placeholder="Người nhận, địa chỉ hoặc vật tư cần mang" multiline /></Field>
+        <View style={styles.gapTop}><Button label="Lưu nhắc việc" icon="calendar" loading={saving} disabled={saving} onPress={() => void createReminder()} /></View>
+      </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F5F6F8' },
-  header: { minHeight: 92, paddingTop: Platform.OS === 'ios' ? 44 : 24, paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: '#E7E9ED' },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerCopy: { flex: 1, marginLeft: 4 },
-  headerTitle: { color: '#172033', fontSize: 20, fontWeight: '900' },
-  headerSubtitle: { color: '#667085', fontSize: 11, marginTop: 2 },
-  addButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF0E5', alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16, paddingBottom: 120 },
-  todayBand: { minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 13, padding: 14, backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 14 },
-  calendarIcon: { width: 50, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#FFB15C' },
-  calendarDay: { color: '#172033', fontSize: 21, fontWeight: '900', lineHeight: 23 },
-  calendarMonth: { color: '#172033', fontSize: 9, fontWeight: '900' },
-  todayCopy: { flex: 1 },
-  todayTitle: { color: '#172033', fontSize: 15, fontWeight: '900' },
-  todaySub: { color: '#667085', fontSize: 10, lineHeight: 15, marginTop: 4 },
-  error: { minHeight: 52, marginTop: 12, borderRadius: 10, padding: 12, backgroundColor: '#FEF3F2', borderWidth: 1, borderColor: '#FECDCA', flexDirection: 'row', alignItems: 'center', gap: 9 },
-  errorText: { flex: 1, color: '#B42318', fontSize: 11, lineHeight: 16 },
-  loading: { minHeight: 190, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  muted: { color: '#667085', fontSize: 11 },
-  sectionHeader: { marginTop: 22, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: '#172033', fontSize: 16, fontWeight: '900' },
-  sectionCount: { minWidth: 27, height: 27, paddingHorizontal: 8, borderRadius: 14, textAlign: 'center', textAlignVertical: 'center', color: '#667085', backgroundColor: '#E9ECF1', fontSize: 10, lineHeight: 27, fontWeight: '800' },
-  reminderRow: { minHeight: 82, flexDirection: 'row', alignItems: 'flex-start', padding: 13, marginBottom: 8, backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: '#E7E9ED' },
-  reminderDone: { backgroundColor: '#F8F9FA' },
-  checkButton: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center', marginRight: 11, marginTop: 1 },
-  checkButtonDone: { borderColor: '#047857', backgroundColor: '#047857' },
-  reminderCopy: { flex: 1 },
-  reminderTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  reminderTitle: { flex: 1, color: '#1D2939', fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  textDone: { color: '#98A2B3', textDecorationLine: 'line-through' },
-  priorityBadge: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 6, backgroundColor: '#FFF4D8' },
-  priorityHigh: { backgroundColor: '#FEE4E2' },
-  priorityLow: { backgroundColor: '#E9ECF1' },
-  priorityText: { color: '#475467', fontSize: 8, fontWeight: '900' },
-  dueRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
-  dueText: { color: '#667085', fontSize: 10, fontWeight: '600' },
-  overdue: { color: '#B42318' },
-  note: { color: '#667085', fontSize: 10, lineHeight: 15, marginTop: 5 },
-  empty: { minHeight: 180, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyTitle: { color: '#344054', fontSize: 14, fontWeight: '800', marginTop: 10 },
-  emptyText: { color: '#667085', fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 5 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(16,24,40,0.55)' },
-  sheet: { maxHeight: '92%', paddingHorizontal: 18, paddingBottom: 24, backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
-  sheetHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: '#D0D5DD', alignSelf: 'center', marginTop: 10, marginBottom: 12 },
-  sheetHeader: { minHeight: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sheetTitle: { color: '#172033', fontSize: 18, fontWeight: '900' },
-  sheetSub: { color: '#667085', fontSize: 10, marginTop: 3 },
-  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F2F4F7', alignItems: 'center', justifyContent: 'center' },
-  label: { color: '#344054', fontSize: 11, fontWeight: '800', marginTop: 10, marginBottom: 6 },
-  input: { minHeight: 48, paddingHorizontal: 13, borderRadius: 10, borderWidth: 1, borderColor: '#D0D5DD', color: '#172033', backgroundColor: colors.white, fontSize: 12 },
-  noteInput: { minHeight: 78, paddingTop: 12, textAlignVertical: 'top' },
-  fieldRow: { flexDirection: 'row', gap: 10 },
-  fieldHalf: { flex: 1 },
-  priorityOptions: { flexDirection: 'row', gap: 7 },
-  priorityOption: { flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center' },
-  priorityOptionActive: { borderColor: '#FF7A1A', backgroundColor: '#FFF0E5' },
-  priorityOptionText: { color: '#667085', fontSize: 10, fontWeight: '700' },
-  priorityOptionTextActive: { color: colors.brandOrangeText, fontWeight: '900' },
-  primaryButton: { minHeight: 50, marginTop: 20, borderRadius: 11, backgroundColor: '#FF9A3C', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  primaryText: { color: '#172033', fontSize: 13, fontWeight: '900' },
-  disabled: { opacity: 0.55 },
+  gapTop: { marginTop: 10 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 12, paddingVertical: 11 },
+  divider: { borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: ws.field, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  checkDone: { borderColor: ws.success, backgroundColor: ws.success },
+  textDone: { color: ws.faint, textDecorationLine: 'line-through' },
+  priority: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: ws.warningBg },
+  priorityHigh: { backgroundColor: ws.dangerBg },
+  priorityLow: { backgroundColor: '#F2F4F7' },
+  priorityText: { color: ws.warning, fontSize: 10.5, fontWeight: '800' },
+  priorityRow: { flexDirection: 'row', gap: 6 },
+  count: { color: ws.muted, fontSize: 12.5, fontWeight: '800' },
 });

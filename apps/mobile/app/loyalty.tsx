@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@eurohouse/ui';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { GiftItem, PointLedgerItem, RedeemGiftResult, UserPoints } from '@eurohouse/types';
-import { AppHeader } from '../src/components/AppHeader';
 import { Icon, type IconName } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+import { Button, Card, EmptyState, SectionHead, SubHeader, ValueLine, ws, wsStyles } from '../src/components/ws';
 
 function giftIcon(name: string): IconName {
   const n = name.toLowerCase();
@@ -24,10 +23,12 @@ const reasonLabel: Record<PointLedgerItem['reason'], string> = {
 };
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('vi-VN');
+  const d = new Date(value);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
 export default function LoyaltyScreen() {
+  const router = useRouter();
   const [gifts, setGifts] = useState<GiftItem[]>([]);
   const [points, setPoints] = useState(0);
   const [ledger, setLedger] = useState<PointLedgerItem[]>([]);
@@ -55,7 +56,7 @@ export default function LoyaltyScreen() {
       const res = await api.post<RedeemGiftResult>('/gifts/redeem', { giftId: gift.id });
       setPoints(res.pointsBalance);
       load();
-      Alert.alert('Thành công', `Đã đổi "${res.giftName}". Số điểm còn lại: ${res.pointsBalance.toLocaleString('vi-VN')}.`);
+      Alert.alert('Đã đổi quà', `Đã đổi "${res.giftName}". Số điểm còn lại: ${res.pointsBalance.toLocaleString('vi-VN')}.`);
     } catch (e) {
       Alert.alert('Không đổi được quà', e instanceof Error ? e.message : 'Vui lòng thử lại.');
     } finally {
@@ -64,69 +65,60 @@ export default function LoyaltyScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F8FA' }}>
-      <AppHeader title="Đổi quà" subtitle="Loyalty Eurohouse" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.pointsBox}>
-          <View style={styles.pointsRow}>
-            <View style={styles.starWrap}><Icon name="star" size={22} color={colors.brandBlack.main} /></View>
-            <View>
-              <Text style={styles.pointsCaption}>SỐ ĐIỂM HIỆN CÓ</Text>
-              <Text style={styles.pointsValue}>{points.toLocaleString('vi-VN')} điểm</Text>
-            </View>
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader title="Đổi quà" subtitle="Điểm thưởng Eurohouse" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={wsStyles.content} showsVerticalScrollIndicator={false}>
+        <Card style={styles.pointsCard}>
+          <View style={styles.pointsIcon}><Icon name="star" size={22} color={ws.orangeText} /></View>
+          <View style={wsStyles.grow}>
+            <Text style={styles.pointsLabel}>Điểm hiện có</Text>
+            <Text style={styles.pointsValue}>{points.toLocaleString('vi-VN')} điểm</Text>
           </View>
-        </View>
+        </Card>
+        <Text style={wsStyles.hint}>Tích 5 điểm cho mỗi 100 kg nhôm Eurohouse đặt qua NPP.</Text>
 
-        <Text style={styles.sectionTitle}>Quà tặng</Text>
-        <View style={styles.grid}>
-          {gifts.map((gift) => {
-            const enough = points >= gift.points;
-            const busy = redeemingId === gift.id;
-            const outOfStock = gift.stock !== undefined && gift.stock !== null && gift.stock <= 0;
-            const disabled = !enough || busy || outOfStock;
-            return (
-              <View key={gift.id} style={styles.card}>
-                <View style={styles.iconWrap}><Icon name={giftIcon(gift.name)} size={26} color={colors.brandOrange} /></View>
-                <Text style={styles.name}>{gift.name}</Text>
-                <Text style={styles.points}>{gift.points.toLocaleString('vi-VN')} điểm</Text>
-                <Pressable
-                  style={[styles.redeemBtn, disabled && styles.redeemBtnOff]}
-                  disabled={disabled}
-                  onPress={() => confirmRedeem(gift)}
-                >
-                  {busy ? (
-                    <ActivityIndicator size="small" color={colors.brandGrey[500]} />
-                  ) : (
-                    <Text style={[styles.redeemText, disabled && { color: colors.brandGrey[500] }]}>
-                      {outOfStock ? 'Hết hàng' : enough ? 'Đổi quà' : 'Chưa đủ điểm'}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
-
-        <Text style={styles.sectionTitle}>Lịch sử điểm</Text>
-        {ledger.length === 0 ? (
-          <View style={styles.emptyLedger}>
-            <Text style={styles.emptyLedgerText}>Chưa có giao dịch điểm nào.</Text>
-          </View>
-        ) : (
-          <View style={styles.ledgerCard}>
-            {ledger.map((item, index) => (
-              <View key={item.id} style={[styles.ledgerRow, index < ledger.length - 1 && styles.ledgerRowBorder]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ledgerReason}>{reasonLabel[item.reason] ?? item.reason}</Text>
-                  {item.note ? <Text style={styles.ledgerNote}>{item.note}</Text> : null}
-                  <Text style={styles.ledgerDate}>{formatDate(item.createdAt)}</Text>
+        <SectionHead title="Quà tặng" />
+        {gifts.length === 0 ? <EmptyState icon="gift" title="Chưa có quà để đổi" text="Eurohouse sẽ cập nhật danh sách quà tại đây." /> : (
+          <View style={styles.grid}>
+            {gifts.map((gift) => {
+              const enough = points >= gift.points;
+              const busy = redeemingId === gift.id;
+              const outOfStock = gift.stock !== undefined && gift.stock !== null && gift.stock <= 0;
+              const disabled = !enough || busy || outOfStock;
+              return (
+                <View key={gift.id} style={styles.gift}>
+                  <View style={styles.giftIcon}><Icon name={giftIcon(gift.name)} size={22} color={ws.orangeText} /></View>
+                  <Text style={styles.giftName} numberOfLines={2}>{gift.name}</Text>
+                  <Text style={styles.giftPoints}>{gift.points.toLocaleString('vi-VN')} điểm</Text>
+                  <Button
+                    label={outOfStock ? 'Hết hàng' : enough ? 'Đổi quà' : `Thiếu ${(gift.points - points).toLocaleString('vi-VN')}`}
+                    variant={disabled ? 'secondary' : 'primary'}
+                    loading={busy}
+                    disabled={disabled}
+                    onPress={() => confirmRedeem(gift)}
+                    style={styles.giftButton}
+                  />
                 </View>
-                <Text style={[styles.ledgerDelta, { color: item.delta >= 0 ? colors.success : colors.brandOrange }]}>
-                  {item.delta >= 0 ? '+' : ''}{item.delta.toLocaleString('vi-VN')}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
+        )}
+
+        <SectionHead title="Lịch sử điểm" />
+        {ledger.length === 0 ? <EmptyState icon="clock" title="Chưa có giao dịch điểm" /> : (
+          <Card padded={false}>
+            {ledger.map((item, index) => (
+              <ValueLine
+                key={item.id}
+                first={index === 0}
+                label={reasonLabel[item.reason] ?? item.reason}
+                detail={[item.note, formatDate(item.createdAt)].filter(Boolean).join(' · ')}
+                value={`${item.delta >= 0 ? '+' : ''}${item.delta.toLocaleString('vi-VN')}`}
+                tone={item.delta >= 0 ? 'success' : 'minus'}
+              />
+            ))}
+          </Card>
         )}
       </ScrollView>
     </View>
@@ -134,28 +126,14 @@ export default function LoyaltyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingBottom: 110 },
-  pointsBox: { backgroundColor: colors.brandOrange, borderRadius: 22, padding: 20, marginBottom: 8 },
-  pointsRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  starWrap: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' },
-  pointsCaption: { color: colors.brandBlack.main, fontWeight: '700', fontSize: 12, opacity: 0.8 },
-  pointsValue: { color: colors.brandBlack.main, fontWeight: '900', fontSize: 26, marginTop: 2 },
-  sectionTitle: { color: colors.brandBlack.main, fontSize: 18, fontWeight: '900', marginTop: 22, marginBottom: 14 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '48%', backgroundColor: colors.white, borderRadius: 20, padding: 16, alignItems: 'center', gap: 8, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  iconWrap: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.orangeSoft, alignItems: 'center', justifyContent: 'center' },
-  name: { color: colors.brandBlack.main, fontWeight: '800' },
-  points: { color: colors.brandOrange, fontWeight: '900' },
-  redeemBtn: { backgroundColor: colors.orangeSoft, borderWidth: 1, borderColor: colors.brandOrange, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 18, marginTop: 4 },
-  redeemBtnOff: { backgroundColor: '#EEF0F3' },
-  redeemText: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 12 },
-  ledgerCard: { backgroundColor: colors.white, borderRadius: 18, paddingHorizontal: 16, shadowColor: colors.brandBlack.main, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  ledgerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
-  ledgerRowBorder: { borderBottomWidth: 1, borderBottomColor: '#EEF0F3' },
-  ledgerReason: { color: colors.brandBlack.main, fontWeight: '800', fontSize: 14 },
-  ledgerNote: { color: colors.brandGrey[500], fontSize: 12, marginTop: 2 },
-  ledgerDate: { color: colors.brandGrey[500], fontSize: 11, marginTop: 2 },
-  ledgerDelta: { fontWeight: '900', fontSize: 16 },
-  emptyLedger: { backgroundColor: colors.white, borderRadius: 18, padding: 24, alignItems: 'center' },
-  emptyLedgerText: { color: colors.brandGrey[500], fontSize: 13 },
+  pointsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFBF7', borderColor: ws.orangeLine },
+  pointsIcon: { width: 46, height: 46, borderRadius: 14, backgroundColor: ws.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  pointsLabel: { color: ws.muted, fontSize: 12, fontWeight: '700' },
+  pointsValue: { color: ws.orangeText, fontSize: 24, fontWeight: '900', marginTop: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  gift: { width: '48.8%', backgroundColor: ws.surface, borderRadius: 12, borderWidth: 1, borderColor: ws.line, padding: 12, alignItems: 'center', gap: 6 },
+  giftIcon: { width: 46, height: 46, borderRadius: 14, backgroundColor: ws.orangeSoft, alignItems: 'center', justifyContent: 'center' },
+  giftName: { color: ws.ink, fontSize: 13, fontWeight: '800', textAlign: 'center', minHeight: 34 },
+  giftPoints: { color: ws.orangeText, fontSize: 13, fontWeight: '900' },
+  giftButton: { alignSelf: 'stretch', marginTop: 2 },
 });

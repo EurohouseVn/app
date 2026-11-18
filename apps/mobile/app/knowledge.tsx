@@ -1,172 +1,131 @@
-import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Image } from 'react-native';
-import { useFocusEffect } from 'expo-router';
-import { AppHeader } from '../src/components/AppHeader';
+import { useCallback, useMemo, useState } from 'react';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '../src/components/Icon';
-import { colors } from '@eurohouse/ui';
-import { api } from '../src/lib/api';
+import { Banner, Card, Chip, EmptyState, ListRow, Loading, SearchBox, Sheet, SubHeader, ws, wsStyles } from '../src/components/ws';
+import { api, assetUrl } from '../src/lib/api';
+import { fold } from '../src/lib/invoiceState';
 
-const categories = [
-  { id: 'ALL', name: 'Tất cả' },
-  { id: 'CUTTING_GUIDE', name: 'Cắt nhôm' },
-  { id: 'CONSTRUCTION_GUIDE', name: 'Thi công' },
-  { id: 'PRODUCT_INFO', name: 'Sản phẩm' },
-  { id: 'CREATIVE_GUIDE', name: 'Mẹo hay' },
+type CategoryId = 'ALL' | 'CUTTING_GUIDE' | 'CONSTRUCTION_GUIDE' | 'PRODUCT_INFO' | 'CREATIVE_GUIDE';
+
+const CATEGORIES: Array<[CategoryId, string]> = [
+  ['ALL', 'Tất cả'],
+  ['CUTTING_GUIDE', 'Cắt nhôm'],
+  ['CONSTRUCTION_GUIDE', 'Thi công'],
+  ['PRODUCT_INFO', 'Sản phẩm'],
+  ['CREATIVE_GUIDE', 'Mẹo hay'],
 ];
 
-const defaultGuides = [
-  {
-    id: 'g-1',
-    title: 'Quy trình sản xuất & cắt cửa sổ lùa 2 cánh hệ 55 chuẩn EUROHOUSE',
-    category: 'Cắt nhôm',
-    system: 'Hệ 55',
-    readTime: '5 phút đọc',
-    description: 'Hướng dẫn chi tiết từ khâu đo đạc, trừ độ hở khung bao, cắt ke vuông góc 45 độ và ép góc ke ma thuật chống sệ cánh.',
-    icon: 'video'
-  },
-  {
-    id: 'g-2',
-    title: 'Kỹ thuật lắp đặt & căn chỉnh Cửa sổ Ecento 70 & Ecento Plus',
-    category: 'Thi công',
-    system: 'Ecento 70',
-    readTime: '7 phút đọc',
-    description: 'Phương pháp rà phẳng tường, bơm keo xốp silicone bám dính chắc chắn và chỉnh bản lề 3D nhịp nhàng không bị xệ.',
-    icon: 'tool'
-  },
-  {
-    id: 'g-3',
-    title: 'So sánh thông số kỹ thuật Nhôm Euroqueen và Ecento Plus',
-    category: 'Sản phẩm',
-    system: 'Euroqueen / Ecento',
-    readTime: '4 phút đọc',
-    description: 'Bảng tổng hợp độ dày 1.0mm - 2.0mm, hợp kim nhôm 6063-T5 và quy trình sơn tĩnh điện chống ăn mòn dải bờ biển.',
-    icon: 'book-open'
-  }
-];
+type Article = {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string | null;
+  categoryId: Exclude<CategoryId, 'ALL'>;
+  aluSystem?: { name?: string } | null;
+  updatedAt?: string;
+};
+
+function categoryName(id: string): string {
+  return CATEGORIES.find(([key]) => key === id)?.[1] ?? 'Kỹ thuật';
+}
+
+/** Ước lượng phút đọc: khoảng 200 chữ mỗi phút. */
+function readMinutes(content: string): number {
+  return Math.max(1, Math.round(content.trim().split(/\s+/).length / 200));
+}
 
 export default function KnowledgeScreen() {
-  const [articles, setArticles] = useState<any[]>([]);
-  const [selectedCat, setSelectedCat] = useState('ALL');
+  const router = useRouter();
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [category, setCategory] = useState<CategoryId>('ALL');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState<Article | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const data = await api.get<any[]>('/content/knowledge');
-      setArticles(data);
-    } catch (e) {
-      console.error(e);
+      setArticles(await api.get<Article[]>('/content/knowledge'));
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Không tải được bài viết.');
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
-  };
+  }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
 
-  const displayList = articles.length > 0 ? articles : defaultGuides;
+  const visible = useMemo(() => {
+    const needle = fold(query.trim());
+    return articles.filter((a) => (category === 'ALL' || a.categoryId === category) && (!needle || fold(`${a.title} ${a.content}`).includes(needle)));
+  }, [articles, category, query]);
+
+  const counts = useMemo(() => Object.fromEntries(CATEGORIES.map(([key]) => [key, key === 'ALL' ? articles.length : articles.filter((a) => a.categoryId === key).length])), [articles]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      <AppHeader title="Học viện & Kỹ thuật" subtitle="Cẩm nang & Video thi công Eurohouse" />
-
-      {/* Category Tabs */}
-      <View style={styles.categoryBar}>
-        <View style={styles.categoryGrid}>
-          {categories.map((cat) => {
-            const active = selectedCat === cat.id;
-            return (
-              <Pressable
-                key={cat.id}
-                onPress={() => setSelectedCat(cat.id)}
-                style={[styles.categoryButton, active && styles.categoryButtonActive]}
-              >
-                <Text numberOfLines={1} style={[styles.categoryText, active && styles.categoryTextActive]}>{cat.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <ScrollView 
-        contentContainerStyle={styles.container}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader title="Kiến thức" subtitle="Cẩm nang, hướng dẫn cắt và thi công" onBack={() => router.back()} />
+      <ScrollView
+        contentContainerStyle={wsStyles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={loading && loaded} onRefresh={() => void loadData()} tintColor={ws.orange} />}
       >
-        {/* Banner Học viện Eurohouse */}
-        <View style={styles.academyBanner}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <View style={{ backgroundColor: colors.brandOrange, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-              <Text style={{ color: colors.brandBlack.main, fontSize: 10, fontWeight: '900' }}>EUROHOUSE ACADEMY</Text>
-            </View>
-            <Text style={{ color: colors.brandOrangeText, fontSize: 12 }}>Chứng nhận Thợ Pro</Text>
-          </View>
-          <Text style={{ color: colors.brandBlack.main, fontSize: 16, fontWeight: '900', marginTop: 2 }}>Nâng Cao Tay Nghề & Kỹ Thuật Thi Công</Text>
-          <Text style={{ color: colors.brandGrey[700], fontSize: 12, marginTop: 4 }}>Học tập chuẩn hóa quy trình sản xuất nhôm cửa công nghệ mới.</Text>
+        <SearchBox value={query} onChangeText={setQuery} placeholder="Tìm bài viết, hệ nhôm" />
+        <View style={styles.categoryGrid}>
+          {CATEGORIES.map(([key, label]) => <Chip key={key} label={label} count={counts[key]} active={category === key} onPress={() => setCategory(key)} />)}
         </View>
 
-        <Text style={{ fontSize: 16, fontWeight: '900', color: colors.brandBlack.main, marginTop: 4 }}>Bài viết & Cẩm nang mới nhất</Text>
+        {error ? <Banner tone="error" title="Chưa tải được" text={error} onPress={() => void loadData()} /> : null}
+        {loading && !loaded ? <Loading /> : null}
+        {loaded && !error && visible.length === 0 ? (
+          <EmptyState
+            icon="book-open"
+            title={articles.length ? 'Không có bài khớp' : 'Chưa có bài viết'}
+            text={articles.length ? 'Thử chọn mục khác hoặc đổi từ khoá.' : 'Eurohouse sẽ đăng cẩm nang cắt nhôm và thi công tại đây.'}
+          />
+        ) : null}
 
-        {displayList.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ backgroundColor: colors.orangeSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                <Text style={{ color: colors.brandOrangeText, fontWeight: '800', fontSize: 11 }}>{item.category || item.system || 'Kỹ thuật'}</Text>
-              </View>
-              {item.readTime ? <Text style={{ color: '#94a3b8', fontSize: 11 }}>{item.readTime}</Text> : null}
-            </View>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.desc}>{item.description || item.content || 'Không có mô tả'}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 12 }}>
-              <Text style={{ color: colors.brandOrange, fontWeight: '800', fontSize: 13 }}>Xem chi tiết</Text>
-              <Icon name="chevron-right" size={16} color={colors.brandOrange} />
-            </View>
-          </View>
-        ))}
+        {visible.length ? (
+          <Card padded={false}>
+            {visible.map((article, index) => (
+              <ListRow key={article.id} first={index === 0} onPress={() => setOpen(article)} label={`Đọc ${article.title}`}>
+                {article.imageUrl ? (
+                  <Image source={{ uri: assetUrl(article.imageUrl) || article.imageUrl }} style={styles.thumb} resizeMode="cover" />
+                ) : (
+                  <View style={[wsStyles.avatar, styles.thumbIcon]}><Icon name="book-open" size={17} color={ws.orangeText} /></View>
+                )}
+                <View style={wsStyles.grow}>
+                  <Text style={wsStyles.rowTitle} numberOfLines={2}>{article.title}</Text>
+                  <Text style={wsStyles.rowMeta} numberOfLines={1}>
+                    {[categoryName(article.categoryId), article.aluSystem?.name, `${readMinutes(article.content)} phút đọc`].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={17} color={ws.faint} />
+              </ListRow>
+            ))}
+          </Card>
+        ) : null}
       </ScrollView>
+
+      <Sheet visible={Boolean(open)} onClose={() => setOpen(null)} title={open?.title ?? ''} sub={open ? `${categoryName(open.categoryId)} · ${readMinutes(open.content)} phút đọc` : undefined} tall>
+        {open?.imageUrl ? <Image source={{ uri: assetUrl(open.imageUrl) || open.imageUrl }} style={styles.cover} resizeMode="cover" /> : null}
+        <Text style={styles.body}>{open?.content}</Text>
+      </Sheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  categoryBar: { backgroundColor: colors.white, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: '#E2E8F0' },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryButton: { width: '31%', minHeight: 40, paddingHorizontal: 6, borderRadius: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  categoryButtonActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange },
-  categoryText: { color: '#475569', fontWeight: '800', fontSize: 12, textAlign: 'center' },
-  categoryTextActive: { color: colors.brandBlack.main },
-  container: { padding: 16, gap: 14, paddingBottom: 110 },
-  academyBanner: {
-    backgroundColor: colors.orangeSoft,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.brandBlack.main,
-    lineHeight: 22,
-    marginBottom: 6,
-  },
-  desc: {
-    fontSize: 13,
-    color: '#64748b',
-    lineHeight: 19,
-  },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 10 },
+  thumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#E4E7EC' },
+  thumbIcon: { width: 44, height: 44 },
+  cover: { width: '100%', height: 170, borderRadius: 12, backgroundColor: '#E4E7EC', marginBottom: 12 },
+  body: { color: ws.text, fontSize: 14, lineHeight: 22 },
 });

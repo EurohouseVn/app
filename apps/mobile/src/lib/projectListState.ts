@@ -107,3 +107,23 @@ const STATUS_ORDER: Record<ProjectStatus, number> = { OPEN: 0, IN_PROGRESS: 0, D
 export function sortForList<T extends ProjectListItem>(list: T[]): T[] {
   return [...list].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || b.updatedAt - a.updatedAt);
 }
+
+/**
+ * Trang chủ: tối đa 3 công trình cần chú ý. Còn nợ (nhiều trước), rồi lâu chưa cập nhật;
+ * không có gì cần chú ý thì lấy công trình đang thi công mới cập nhật nhất.
+ */
+export function homeProjects<T extends ProjectListItem>(list: T[], now: number, limit = 3) {
+  const live = list.filter((p) => p.status !== 'CANCELLED');
+  const debts = live.filter(hasDebt).sort((a, b) => (amountDue(b) ?? 0) - (amountDue(a) ?? 0));
+  const stale = live.filter((p) => !hasDebt(p) && isStale(p, now)).sort((a, b) => a.updatedAt - b.updatedAt);
+  const items: Array<{ project: T; reason: string; tone: 'danger' | 'warning' | 'muted' }> = [
+    ...debts.map((project) => ({ project, reason: `Còn phải thu ${compactVnd(amountDue(project) ?? 0)}`, tone: 'danger' as const })),
+    ...stale.map((project) => ({ project, reason: `${daysSinceUpdate(project, now)} ngày chưa cập nhật`, tone: 'warning' as const })),
+  ];
+  if (!items.length) {
+    const running = live.filter((p) => p.status === 'IN_PROGRESS').sort((a, b) => b.updatedAt - a.updatedAt);
+    items.push(...running.map((project) => ({ project, reason: 'Đang thi công', tone: 'muted' as const })));
+  }
+  const summary = projectSummary(live, now);
+  return { items: items.slice(0, limit), totalDue: summary.totalDue, running: summary.running };
+}

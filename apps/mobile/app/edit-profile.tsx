@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View, Alert, TouchableOpacity, Platform, Image } from 'react-native';
-import { useFocusEffect, router } from 'expo-router';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stack, useFocusEffect, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { assetUrl, ApiError } from '../src/lib/api';
-import { colors } from '@eurohouse/ui';
-import { AppHeader } from '../src/components/AppHeader';
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
+import { Button, Card, Field, Input, Loading, SectionHead, SubHeader, ws, wsStyles } from '../src/components/ws';
 
 type LogoUploadResponse = {
   url: string;
@@ -100,10 +99,10 @@ export default function SettingsScreen() {
     setSaving(true);
     try {
       await api.put('/npp/profile', form);
-      Alert.alert('Thành công', 'Lưu cấu hình thành công!');
+      Alert.alert('Đã lưu', 'Hồ sơ cơ sở đã được cập nhật.');
       router.back();
     } catch {
-      Alert.alert('Lỗi', 'Không thể lưu cấu hình, vui lòng thử lại.');
+      Alert.alert('Chưa lưu được', 'Vui lòng thử lại.');
     }
     setSaving(false);
   };
@@ -147,144 +146,54 @@ export default function SettingsScreen() {
 
 
   return (
-    <View style={styles.container}>
-      <AppHeader title="Hồ sơ cơ sở sản xuất" />
-      
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: colors.brandGrey[500] }}>Đang tải dữ liệu...</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
-          <View style={styles.card}>
-            <Text style={styles.subtitle}>Thông tin và ảnh đại diện này chỉ thuộc cơ sở đang đăng nhập, được đồng bộ trên tài khoản, báo giá, hợp đồng và báo cáo PDF.</Text>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Tên cơ sở / NPP</Text>
-              <TextInput style={styles.input} value={form.productionName} onChangeText={t => update('productionName', t)} placeholder="NHÔM KÍNH TIẾN MẠNH" placeholderTextColor="#94A3B8" />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Ảnh đại diện / Logo cơ sở (Tùy chọn)</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                {form.logoUrl ? (
-                  <Image source={{ uri: assetUrl(form.logoUrl) || form.logoUrl }} style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: '#f0f0f0' }} resizeMode="contain" />
-                ) : (
-                  <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: colors.brandGrey[100], alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="image" size={24} color={colors.brandGrey[400]} />
-                  </View>
-                )}
-                <TouchableOpacity onPress={handlePickImage} style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.brandGrey[100], borderRadius: 8 }}>
-                  <Text style={{ fontWeight: '600', color: colors.brandBlack.main }}>Chọn ảnh từ máy</Text>
-                </TouchableOpacity>
-                {form.logoUrl ? (
-                  <TouchableOpacity onPress={() => update('logoUrl', '')} style={{ paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFF1F2', borderRadius: 8 }}>
-                    <Text style={{ fontWeight: '700', color: '#B42318' }}>Gỡ ảnh</Text>
-                  </TouchableOpacity>
-                ) : null}
+    <View style={wsStyles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SubHeader title="Hồ sơ cơ sở" subtitle="In trên báo giá, hợp đồng và PDF" onBack={() => router.back()} />
+      {loading && !form.productionName ? <Loading /> : (
+        <ScrollView contentContainerStyle={[wsStyles.content, styles.contentPad]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Card>
+            <View style={styles.logoRow}>
+              {form.logoUrl ? (
+                <Image source={{ uri: assetUrl(form.logoUrl) || form.logoUrl }} style={styles.logo} resizeMode="contain" />
+              ) : (
+                <View style={[styles.logo, styles.logoEmpty]}><Icon name="image" size={22} color={ws.faint} /></View>
+              )}
+              <View style={wsStyles.grow}>
+                <Text style={styles.logoTitle}>Logo cơ sở</Text>
+                <Text style={wsStyles.rowMeta}>Ảnh vuông PNG, JPEG hoặc WebP</Text>
               </View>
+              <Button label={form.logoUrl ? 'Đổi ảnh' : 'Chọn ảnh'} variant="soft" loading={loading} onPress={() => void handlePickImage()} />
             </View>
+            {form.logoUrl ? <Pressable accessibilityRole="button" onPress={() => update('logoUrl', '')} style={styles.removeLogo}><Text style={styles.removeLogoText}>Gỡ logo</Text></Pressable> : null}
+            <Field label="Tên cơ sở"><Input value={form.productionName} onChangeText={(t) => update('productionName', t)} placeholder="Ví dụ: Nhôm Kính Tiến Mạnh" /></Field>
+            <Field label="Hạng mục thi công"><Input value={form.mainCategories} onChangeText={(t) => update('mainCategories', t)} placeholder="Thiết kế, thi công nhôm kính..." /></Field>
+          </Card>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Hạng mục thi công</Text>
-              <TextInput style={styles.input} value={form.mainCategories} onChangeText={t => update('mainCategories', t)} placeholder="Thiết kế, thi công nhôm kính..." placeholderTextColor="#94A3B8" />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Địa chỉ</Text>
-              <TextInput style={styles.input} value={form.address} onChangeText={t => update('address', t)} placeholder="Địa chỉ cơ sở" placeholderTextColor="#94A3B8" />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Số điện thoại</Text>
-              <TextInput style={styles.input} value={form.phone} onChangeText={t => update('phone', t)} placeholder="09xxxx" keyboardType="phone-pad" placeholderTextColor="#94A3B8" />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput style={styles.input} value={form.email} onChangeText={t => update('email', t)} placeholder="lienhe@..." keyboardType="email-address" placeholderTextColor="#94A3B8" />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Fanpage / Website</Text>
-              <TextInput style={styles.input} value={form.fanpage} onChangeText={t => update('fanpage', t)} placeholder="fb.com/..." placeholderTextColor="#94A3B8" />
-            </View>
-          </View>
+          <SectionHead title="Liên hệ" />
+          <Card>
+            <Field label="Số điện thoại"><Input value={form.phone} onChangeText={(t) => update('phone', t)} placeholder="09xx xxx xxx" keyboardType="phone-pad" /></Field>
+            <Field label="Địa chỉ"><Input value={form.address} onChangeText={(t) => update('address', t)} placeholder="Địa chỉ cơ sở" /></Field>
+            <Field label="Email"><Input value={form.email} onChangeText={(t) => update('email', t)} placeholder="lienhe@..." keyboardType="email-address" autoCapitalize="none" /></Field>
+            <Field label="Fanpage / website"><Input value={form.fanpage} onChangeText={(t) => update('fanpage', t)} placeholder="facebook.com/..." autoCapitalize="none" /></Field>
+          </Card>
+          <Text style={wsStyles.hint}>Thông tin và logo chỉ thuộc cơ sở đang đăng nhập.</Text>
         </ScrollView>
       )}
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.btnSave} onPress={handleSave} disabled={saving || loading}>
-          <Icon name="check" size={20} color="#fff" />
-          <Text style={styles.btnSaveText}>{saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}</Text>
-        </TouchableOpacity>
+        <Button label={saving ? 'Đang lưu...' : 'Lưu thay đổi'} icon="save" loading={saving} disabled={saving || loading} onPress={() => void handleSave()} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.brandGrey[50],
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.brandGrey[500],
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  field: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.brandGrey[800],
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.brandGrey[200],
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.brandBlack.main,
-    backgroundColor: colors.brandGrey[50],
-  },
-  footer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    paddingBottom: 32, // Add padding for bottom safe area
-    borderTopWidth: 1,
-    borderTopColor: colors.brandGrey[100],
-  },
-  btnSave: {
-    backgroundColor: '#2F6FED',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  btnSaveText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  }
+  contentPad: { paddingBottom: 180 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logo: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#F2F4F7' },
+  logoEmpty: { alignItems: 'center', justifyContent: 'center' },
+  logoTitle: { color: ws.ink, fontSize: 13.5, fontWeight: '800' },
+  removeLogo: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
+  removeLogoText: { color: ws.dangerText, fontSize: 12.5, fontWeight: '800' },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: ws.surface, borderTopWidth: 1, borderTopColor: ws.line, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 96 },
 });

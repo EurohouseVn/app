@@ -1,70 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useFocusEffect, type Href } from 'expo-router';
-import { ActivityIndicator, Dimensions, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, useFocusEffect, useRouter, type Href } from 'expo-router';
+import { Dimensions, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@eurohouse/ui';
 import type { Promotion, WorkforceDashboard, WorkshopReminder } from '@eurohouse/types';
 import { Icon, type IconName } from '../src/components/Icon';
+import { Banner, Card, ListRow, Loading, SectionHead, Sheet, ws, wsStyles } from '../src/components/ws';
+import { actionGroups, isActionLocked, primaryActions, type HomeAction } from '../src/lib/homeActions';
+import { compactMoney } from '../src/lib/invoiceState';
+import { LocalProjectsApi, type LocalProject } from '../src/lib/localProjects';
+import { homeProjects } from '../src/lib/projectListState';
 import { api, assetUrl } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth';
 import { formulaUiState } from '../src/lib/formulaAccess';
 import { featureUiState } from '../src/lib/eurohouseFeatureAccess';
-import { statusText, statusTone } from '../src/lib/orderStatus';
 import { fetchWeatherForecast, initialWeatherLocation, weatherIcon, weatherText } from '../src/lib/weather';
 import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import headerWorkshop from '../assets/header-workshop-focus-v2.jpg';
 import logo from '../assets/logo-mark.png';
+import houseBg from '../assets/header-house.jpg';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const ACTIVE_STATUSES = ['NEW', 'NPP_REVIEWING', 'CONFIRMED', 'RESERVED', 'PICKING', 'SHIPPED', 'PARTIALLY_SHIPPED', 'RECEIVED_BY_NPP', 'SENT_TO_ADMIN', 'PROCESSING', 'PARTIAL'];
-
-const quickActions: { label: string; icon: IconName; href: Href; color: string; bg: string }[] = [
-  { label: 'Đặt nhôm', icon: 'shopping-bag', href: '/orders', color: '#C54E09', bg: '#FFF0E5' },
-  { label: 'Báo giá', icon: 'file-text', href: '/quote', color: '#2563EB', bg: '#EAF1FF' },
-  { label: 'Công thức', icon: 'layout', href: '/formulas', color: '#0F766E', bg: '#E6F6F3' },
-  { label: 'Công trình', icon: 'briefcase', href: '/projects', color: '#C54E09', bg: '#FFF0E5' },
-  {
-    label: 'Việc xưởng',
-    icon: 'clipboard',
-    href: '/shop-floor' as Href,
-    color: '#334155',
-    bg: '#E9EDF2',
-  },
-  {
-    label: 'Kiểm tra QC',
-    icon: 'check-square',
-    href: '/qc' as Href,
-    color: '#047857',
-    bg: '#E5F7EF',
-  },
-  {
-    label: 'Lắp đặt',
-    icon: 'tool',
-    href: '/installations' as Href,
-    color: '#B54708',
-    bg: '#FFF1E8',
-  },
-  { label: 'Chấm công', icon: 'user-check', href: '/workforce', color: '#047857', bg: '#E5F7EF' },
-  { label: 'Nhắc việc', icon: 'calendar', href: '/reminders', color: '#B45309', bg: '#FFF4D8' },
-  { label: 'Công nợ', icon: 'credit-card', href: '/debts', color: '#BE123C', bg: '#FDE8EF' },
-  { label: 'Hoá đơn & thuế', icon: 'file-text', href: '/invoices' as Href, color: '#5925DC', bg: '#F4F3FF' },
-  {
-    label: 'Bảo hành',
-    icon: 'maximize',
-    href: '/service-warranty' as Href,
-    color: '#0369A1',
-    bg: '#E5F3FA',
-  },
-  {
-    label: 'Ảnh chờ gửi',
-    icon: 'cloud',
-    href: '/media-sync' as Href,
-    color: '#475467',
-    bg: '#F2F4F7',
-  },
-];
-
-const primaryActionLabels = ['Công trình', 'Việc xưởng', 'Đặt nhôm', 'Báo giá', 'Công thức', 'Chấm công'];
 
 type Workspace = {
   role: 'OWNER' | 'WORKSHOP_MANAGER' | 'SUPERVISOR' | 'WORKER' | 'INSTALLER' | 'ADMIN';
@@ -81,17 +37,6 @@ const workspaceCopy: Record<Workspace['role'], { title: string; detail: string }
   ADMIN: { title: 'Bảng điều hành', detail: 'Sức khỏe pilot và hoạt động các xưởng' },
 };
 
-type OrderRow = {
-  id: string;
-  code: string;
-  status: string;
-  totalAmount: number;
-  totalKg: number;
-  theoreticalTotalKg: number;
-  actualTotalKg?: number;
-  pricingStatus: 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
-};
-
 type WeatherData = {
   temperature: number;
   humidity: number;
@@ -100,9 +45,11 @@ type WeatherData = {
   label: string;
 };
 
-function formatMoney(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)} tr`;
-  return `${Math.round(value / 1_000)}k`;
+const WEEKDAYS = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+function todayLabel(): string {
+  const d = new Date();
+  return `${WEEKDAYS[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function greeting(): string {
@@ -169,14 +116,15 @@ function AuthenticatedHomeScreen() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const promoGalleryRef = useRef<ScrollView>(null);
   const mainScrollRef = useRef<ScrollView>(null);
-  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [projects, setProjects] = useState<LocalProject[]>([]);
   const [workforce, setWorkforce] = useState<WorkforceDashboard | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [showAllActions, setShowAllActions] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const router = useRouter();
 
   useResetScrollOnFocus(mainScrollRef);
 
@@ -202,15 +150,15 @@ function AuthenticatedHomeScreen() {
       else setLoading(true);
       setError('');
       const audience = user?.role === 'NPP' || user?.role === 'DAILY' ? 'NPP_DEALER' : 'WORKER';
-      const calls = [api.get<Promotion[]>(`/content/promotions?audience=${audience}`), api.get<OrderRow[]>('/orders'), user?.role === 'FACTORY' || user?.role === 'DAILY' ? api.get<WorkforceDashboard>('/workforce/dashboard') : Promise.resolve(null), loadWeather(), api.get<Workspace>('/workshop/v2/workspace')] as const;
-      const [promoResult, orderResult, workforceResult, , workspaceResult] = await Promise.allSettled(calls);
+      const calls = [api.get<Promotion[]>(`/content/promotions?audience=${audience}`), LocalProjectsApi.getAll(), user?.role === 'FACTORY' || user?.role === 'DAILY' ? api.get<WorkforceDashboard>('/workforce/dashboard') : Promise.resolve(null), loadWeather(), api.get<Workspace>('/workshop/v2/workspace')] as const;
+      const [promoResult, projectResult, workforceResult, , workspaceResult] = await Promise.allSettled(calls);
       const failures: string[] = [];
       if (promoResult.status === 'fulfilled') {
         setPromos(promoResult.value);
         setPromoIndex(0);
       } else failures.push('khuyến mại');
-      if (orderResult.status === 'fulfilled') setOrders(orderResult.value);
-      else failures.push('đơn hàng');
+      if (projectResult.status === 'fulfilled') setProjects(projectResult.value);
+      else failures.push('công trình');
       if (workforceResult.status === 'fulfilled') setWorkforce(workforceResult.value);
       else failures.push('vận hành xưởng');
       if (workspaceResult.status === 'fulfilled') setWorkspace(workspaceResult.value);
@@ -240,29 +188,7 @@ function AuthenticatedHomeScreen() {
     return gallery.length ? gallery : selectedPromo.imageUrl ? [selectedPromo.imageUrl] : [];
   }, [selectedPromo]);
 
-  const activeCount = orders.filter((order) => ACTIVE_STATUSES.includes(order.status)).length;
-  const actualKg = orders.reduce((sum, order) => {
-    if (order.actualTotalKg !== undefined) return sum + order.actualTotalKg;
-    return ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) ? sum + order.totalKg : sum;
-  }, 0);
-  const workspaceActions = useMemo(() => {
-    const preferred: Record<string, string[]> = {
-      WORKER: ['Việc xưởng', 'Kiểm tra QC', 'Chấm công'],
-      INSTALLER: ['Lắp đặt', 'Bảo hành', 'Ảnh chờ gửi'],
-      SUPERVISOR: ['Việc xưởng', 'Kiểm tra QC', 'Lắp đặt'],
-      OWNER: ['Công trình', 'Việc xưởng', 'Đơn hàng'],
-      WORKSHOP_MANAGER: ['Việc xưởng', 'Kiểm tra QC', 'Lắp đặt'],
-      ADMIN: ['Công trình', 'Việc xưởng', 'Ảnh chờ gửi'],
-    };
-    const order = preferred[workspace?.role || 'OWNER'] || [];
-    return [...quickActions].sort((a, b) => {
-      const ai = order.indexOf(a.label);
-      const bi = order.indexOf(b.label);
-      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
-    });
-  }, [workspace?.role]);
-  const primaryActions = useMemo(() => primaryActionLabels.flatMap((label) => quickActions.filter((action) => action.label === label)), []);
-  const visibleActions = showAllActions ? workspaceActions : primaryActions;
+  const focus = useMemo(() => homeProjects(projects, Date.now()), [projects]);
   const formulaState = formulaUiState(user?.capabilities.eurohouse.features.FORMULA_CUTTING ?? user?.capabilities.formulas);
   const orderingState = featureUiState(user?.capabilities.eurohouse.features.EUROHOUSE_ORDERING);
 
@@ -273,278 +199,157 @@ function AuthenticatedHomeScreen() {
     promoGalleryRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
   }
 
+  const reminders = workforce?.reminders ?? [];
+  const access = { ordering: orderingState.active, formulas: !formulaState.showLockedScreen };
+  const tiles = primaryActions();
+  const todaySub = workforce
+    ? `${workforce.workerCount} thợ · tháng ${Number(workforce.month.slice(5, 7))} ${workforce.monthClosed ? 'đã chốt lương' : 'chưa chốt lương'}`
+    : workspace ? workspaceCopy[workspace.role].detail : 'Nhân sự và việc trong ngày';
+
+  const renderTile = (action: HomeAction, onPress?: () => void) => {
+    const locked = isActionLocked(action, access);
+    const body = (
+      <Pressable accessibilityRole="button" accessibilityLabel={locked ? `${action.label} (chưa kích hoạt)` : action.label} onPress={onPress ?? (() => { setActionsOpen(false); router.push(action.href as Href); })} style={({ pressed }) => [hs.tile, pressed && { opacity: 0.8 }]}>
+        <View style={[hs.tileIcon, { backgroundColor: locked ? '#EEF0F3' : action.bg }]}>
+          <Icon name={action.icon as IconName} size={21} color={locked ? '#667085' : action.color} />
+        </View>
+        <Text style={hs.tileLabel} numberOfLines={2}>{action.label}</Text>
+        {locked ? <View style={hs.tileLock}><Icon name="lock" size={10} color="#667085" /></View> : null}
+      </Pressable>
+    );
+    return <View key={action.key} style={hs.tileWrap}>{body}</View>;
+  };
+
   return (
-    <View style={styles.screen}>
-      <ScrollView ref={mainScrollRef} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadDashboard(true)} tintColor={colors.brandOrange} />} contentContainerStyle={styles.scrollContent}>
-        <ImageBackground source={headerWorkshop} style={[styles.hero, { paddingTop: Math.max(16, insets.top + 4) }]} imageStyle={styles.heroImage} resizeMode="cover">
-          <View style={styles.heroShade} />
-          <View style={styles.heroTop}>
-            <View style={styles.logoFrame}>
-              <Image source={logo} style={styles.logo} resizeMode="contain" />
-            </View>
-            <View style={styles.heroBrand}>
-              <Text style={styles.brandName}>EUROHOUSE</Text>
-              <Text style={styles.organization}>WORKSHOP OS</Text>
+    <View style={hs.screen}>
+      <ScrollView ref={mainScrollRef} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadDashboard(true)} tintColor={ws.orange} />} contentContainerStyle={hs.scrollContent}>
+        <ImageBackground source={houseBg} style={[hs.hero, { paddingTop: Math.max(46, insets.top + 14) }]} imageStyle={hs.heroImage} resizeMode="cover">
+          <View style={hs.heroShade} />
+          <View style={hs.heroRow}>
+            <View style={hs.logoFrame}><Image source={logo} style={hs.logo} resizeMode="contain" /></View>
+            <View style={wsStyles.grow}>
+              <Text style={hs.greeting}>{greeting()},</Text>
+              <Text style={hs.orgName} numberOfLines={2}>{user?.organizationName ?? 'Cơ sở sản xuất Eurohouse'}</Text>
             </View>
             <Link href="/reminders" asChild>
-              <Pressable accessibilityLabel="Mở nhắc việc" style={styles.heroIconButton}>
-                <Icon name="bell" size={20} color={colors.white} />
-                {(workforce?.reminders.length ?? 0) > 0 ? <View style={styles.notificationDot} /> : null}
+              <Pressable accessibilityLabel="Mở nhắc việc" style={hs.heroButton}>
+                <Icon name="bell" size={19} color="#FFFFFF" />
+                {reminders.length > 0 ? <View style={hs.dot} /> : null}
               </Pressable>
             </Link>
           </View>
-
-          <View style={styles.heroBottom}>
-            <View style={styles.heroGreeting}>
-              <Text style={styles.greeting}>{greeting()},</Text>
-              <Text style={styles.userName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>
-                {user?.organizationName ?? 'Cơ sở sản xuất Eurohouse'}
-              </Text>
+          <View style={hs.chips}>
+            <View style={hs.chip}>
+              <Icon name="calendar" size={14} color="#FFFFFF" />
+              <Text style={hs.chipText}>{todayLabel()}</Text>
             </View>
-            <View style={styles.heroMetaRow}>
-              <View style={styles.heroMetaChip}>
-                <Icon name="calendar" size={15} color="#FFD28A" />
-                <Text style={styles.today}>
-                  {new Date().toLocaleDateString('vi-VN', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: '2-digit',
-                  })}
-                </Text>
-              </View>
-              <Link href="/weather" asChild>
-                <Pressable accessibilityLabel="Xem dự báo thời tiết 7 ngày" style={StyleSheet.flatten([styles.heroMetaChip, styles.weatherChip])}>
-                  {weather ? (
-                    <>
-                      <Icon name={weatherIcon(weather.code)} size={17} color="#FFD28A" />
-                      <Text style={styles.temperature}>{Math.round(weather.temperature)}°</Text>
-                      <Text style={styles.weatherTitle} numberOfLines={1}>
-                        {weatherText(weather.code)}
-                      </Text>
-                      <Icon name="chevron-right" size={14} color="#D0D5DD" />
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="cloud" size={16} color="#FFD28A" />
-                      <Text style={styles.weatherUnavailable}>Đang cập nhật</Text>
-                      <Icon name="chevron-right" size={14} color="#D0D5DD" />
-                    </>
-                  )}
-                </Pressable>
-              </Link>
-            </View>
+            <Link href="/weather" asChild>
+              <Pressable accessibilityLabel="Xem dự báo thời tiết" style={hs.chip}>
+                <Icon name={weather ? weatherIcon(weather.code) : 'cloud'} size={14} color="#FFFFFF" />
+                {weather ? <Text style={hs.chipStrong}>{Math.round(weather.temperature)}°</Text> : null}
+                <Text style={hs.chipText} numberOfLines={1}>{weather ? weatherText(weather.code) : 'Thời tiết'}</Text>
+                <Icon name="chevron-right" size={13} color="#FFFFFF" />
+              </Pressable>
+            </Link>
           </View>
         </ImageBackground>
 
-        <View style={styles.content}>
-          {error ? (
-            <Pressable style={styles.errorBanner} onPress={() => void loadDashboard(true)}>
-              <Icon name="alert-circle" size={18} color="#B42318" />
-              <Text style={styles.errorText}>{error}</Text>
-              <Icon name="refresh-cw" size={16} color="#B42318" />
+        <View style={hs.body}>
+          {error ? <View style={hs.gapBottom}><Banner tone="error" title="Chưa tải đủ dữ liệu" text={error} onPress={() => void loadDashboard(true)} /></View> : null}
+
+          <Card padded={false}>
+            <View style={hs.todayHead}>
+              <View style={wsStyles.grow}>
+                <Text style={hs.todayTitle}>Hôm nay</Text>
+                <Text style={wsStyles.rowMeta} numberOfLines={1}>{todaySub}</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/workforce')} style={({ pressed }) => [hs.smallButton, pressed && { opacity: 0.85 }]}>
+                <Icon name="user-check" size={15} color="#FFFFFF" />
+                <Text style={hs.smallButtonText}>Chấm công</Text>
+              </Pressable>
+            </View>
+            <Pressable accessibilityLabel="Mở Quản lý xưởng" onPress={() => router.push('/workforce')} style={hs.kpis}>
+                <View style={hs.kpi}><Text style={hs.kpiValue}>{workforce ? `${workforce.presentCount}/${workforce.workerCount}` : '–'}</Text><Text style={hs.kpiLabel}>Có mặt</Text></View>
+                <View style={[hs.kpi, hs.kpiDivider]}><Text style={hs.kpiValue}>{workforce ? `${workforce.overtimeHours.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} g` : '–'}</Text><Text style={hs.kpiLabel}>Tăng ca</Text></View>
+                <View style={[hs.kpi, hs.kpiDivider]}><Text style={hs.kpiValue}>{workforce ? compactMoney(workforce.estimatedPayroll) : '–'}</Text><Text style={hs.kpiLabel}>Lương dự tính</Text></View>
             </Pressable>
-          ) : null}
-
-          <View style={styles.todayPanel}>
-            <View style={styles.todayHeader}>
-              <View style={styles.todayHeading}>
-                <Text style={styles.sectionTitle}>Hôm nay</Text>
-                <Text style={styles.sectionCaption}>{workspace ? workspaceCopy[workspace.role].detail : 'Theo dõi công việc và nhân sự trong ngày'}</Text>
-              </View>
-              <Link href="/workforce" asChild>
-                <Pressable style={styles.attendanceButton}>
-                  <Icon name="user-check" size={17} color={colors.white} />
-                  <Text style={styles.attendanceButtonText}>Chấm công</Text>
-                </Pressable>
-              </Link>
-            </View>
-
-            <View style={styles.dailyMetrics}>
-              <Link href="/workforce" asChild>
-                <Pressable style={styles.dailyMetric}>
-                  <Icon name="users" size={18} color="#087F6A" />
-                  <Text style={styles.dailyValue}>
-                    {workforce?.presentCount ?? 0}/{workforce?.workerCount ?? 0}
-                  </Text>
-                  <Text style={styles.dailyLabel}>Có mặt</Text>
-                </Pressable>
-              </Link>
-              <View style={styles.metricDivider} />
-              <Link href="/workforce" asChild>
-                <Pressable style={styles.dailyMetric}>
-                  <Icon name="clock" size={18} color={colors.brandOrangeText} />
-                  <Text style={styles.dailyValue}>{(workforce?.overtimeHours ?? 0).toFixed(1)}h</Text>
-                  <Text style={styles.dailyLabel}>Tăng ca</Text>
-                </Pressable>
-              </Link>
-              <View style={styles.metricDivider} />
-              <Link href="/workforce" asChild>
-                <Pressable style={styles.dailyMetric}>
-                  <Icon name="dollar-sign" size={18} color="#2563EB" />
-                  <Text style={styles.dailyValue}>{formatMoney(workforce?.estimatedPayroll ?? 0)}</Text>
-                  <Text style={styles.dailyLabel}>Lương dự tính</Text>
-                </Pressable>
-              </Link>
-            </View>
-
-            <View style={styles.todayDivider} />
-            <View style={styles.reminderHeading}>
-              <View style={styles.reminderHeadingCopy}>
-                <Icon name="calendar" size={16} color={colors.brandOrangeText} />
-                <Text style={styles.reminderHeadingText}>Việc cần xử lý</Text>
-              </View>
-              <Link href="/reminders" asChild>
-                <Pressable accessibilityLabel="Thêm nhắc việc" style={styles.addReminderButton}>
-                  <Icon name="plus" size={18} color={colors.brandOrangeText} />
-                </Pressable>
-              </Link>
-            </View>
-            {(workforce?.reminders.length ?? 0) > 0 ? (
-              <View style={styles.reminderList}>
-                {workforce?.reminders.slice(0, 2).map((reminder) => (
-                  <Link key={reminder.id} href="/reminders" asChild>
-                    <Pressable style={styles.reminderRow}>
-                      <View style={[styles.priorityMark, reminder.priority === 'HIGH' && styles.priorityHigh]} />
-                      <View style={styles.reminderCopy}>
-                        <Text style={styles.reminderTitle} numberOfLines={1}>
-                          {reminder.title}
-                        </Text>
-                        <Text style={styles.reminderDue}>{formatDue(reminder)}</Text>
-                      </View>
-                      <Icon name="chevron-right" size={17} color="#98A2B3" />
-                    </Pressable>
-                  </Link>
-                ))}
-              </View>
-            ) : (
-              <Link href="/reminders" asChild>
-                <Pressable style={styles.noReminder}>
-                  <View style={styles.noReminderIcon}>
-                    <Icon name="check-circle" size={18} color="#087F6A" />
+            {reminders.length ? reminders.slice(0, 2).map((reminder) => (
+              <Pressable key={reminder.id} onPress={() => router.push('/reminders')} style={({ pressed }) => [hs.reminder, pressed && { backgroundColor: '#F9FAFB' }]}>
+                  <Icon name="calendar" size={16} color={reminder.priority === 'HIGH' ? ws.danger : ws.warning} />
+                  <View style={wsStyles.grow}>
+                    <Text style={hs.reminderTitle} numberOfLines={1}>{reminder.title}</Text>
+                    <Text style={wsStyles.rowMeta}>{formatDue(reminder)}</Text>
                   </View>
-                  <View style={styles.reminderCopy}>
-                    <Text style={styles.noReminderTitle}>Không có việc cần nhắc</Text>
-                    <Text style={styles.noReminderText}>Lịch làm việc hôm nay đang thông thoáng.</Text>
+                  <Icon name="chevron-right" size={16} color={ws.faint} />
+              </Pressable>
+            )) : (
+              <Pressable onPress={() => router.push('/reminders')} style={({ pressed }) => [hs.reminder, pressed && { backgroundColor: '#F9FAFB' }]}>
+                  <Icon name="check-circle" size={16} color={ws.success} />
+                  <View style={wsStyles.grow}>
+                    <Text style={hs.reminderTitle}>Không có việc cần nhắc</Text>
+                    <Text style={wsStyles.rowMeta}>Bấm để thêm nhắc việc</Text>
                   </View>
-                  <Icon name="chevron-right" size={17} color="#98A2B3" />
-                </Pressable>
-              </Link>
+                  <Icon name="plus" size={16} color={ws.orangeText} />
+              </Pressable>
             )}
-          </View>
+          </Card>
 
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Tiện ích xưởng</Text>
-              <Text style={styles.sectionCaption}>Sáu thao tác dùng nhiều nhất</Text>
+          <SectionHead title="Tiện ích" />
+          <Card padded={false}>
+            <View style={hs.tiles}>
+              {tiles.map((action) => (action.key === 'all' ? renderTile(action, () => setActionsOpen(true)) : renderTile(action)))}
             </View>
-            <Pressable accessibilityLabel={showAllActions ? 'Thu gọn tiện ích' : 'Xem tất cả tiện ích'} style={styles.seeAllActions} onPress={() => setShowAllActions((current) => !current)}>
-              <Text style={styles.seeAllActionsText}>{showAllActions ? 'Thu gọn' : 'Tất cả'}</Text>
-              <Icon name={showAllActions ? 'chevron-up' : 'chevron-down'} size={16} color={colors.brandOrangeText} />
-            </Pressable>
-          </View>
-          <View style={styles.actionGrid}>
-            {visibleActions.map((action) => (
-              <Link key={action.label} href={action.href} asChild>
-                <Pressable style={styles.actionItem}>
-                  {action.label === 'Công thức' && formulaState.showLockedScreen ? <View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{formulaState.statusLabel}</Text></View> : null}
-                  {action.label === 'Đặt nhôm' && !orderingState.active ? <View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{orderingState.statusLabel}</Text></View> : null}
-                  <View style={[styles.actionIcon, { backgroundColor: action.bg }]}>
-                    <Icon name={action.icon} size={21} color={action.color} />
+          </Card>
+
+          <SectionHead
+            title="Công trình cần chú ý"
+            sub={focus.running || focus.totalDue ? `${focus.running} đang thi công · còn phải thu ${compactMoney(focus.totalDue)}` : undefined}
+            action={<Link href="/projects" style={hs.seeAll}>Xem tất cả</Link>}
+          />
+          {loading && !projects.length ? <Loading text="Đang tải công trình..." /> : focus.items.length === 0 ? (
+            <Card padded={false}>
+              <ListRow first onPress={() => router.push('/projects')} label="Mở Công trình">
+                <View style={wsStyles.avatar}><Icon name="briefcase" size={17} color={ws.orangeText} /></View>
+                <View style={wsStyles.grow}><Text style={wsStyles.rowTitle}>Chưa có công trình đang chạy</Text><Text style={wsStyles.rowMeta}>Tạo công trình từ báo giá để theo dõi tiến độ và tiền thu</Text></View>
+                <Icon name="chevron-right" size={18} color={ws.faint} />
+              </ListRow>
+            </Card>
+          ) : (
+            <Card padded={false}>
+              {focus.items.map(({ project, reason, tone }, index) => (
+                <ListRow key={project.id} first={index === 0} onPress={() => router.push(`/project/${project.id}` as Href)} label={`Mở công trình ${project.name}`}>
+                  <View style={wsStyles.avatar}><Icon name="briefcase" size={17} color={ws.orangeText} /></View>
+                  <View style={wsStyles.grow}>
+                    <Text style={wsStyles.rowTitle} numberOfLines={1}>{project.name}</Text>
+                    <Text style={wsStyles.rowMeta} numberOfLines={1}>{[project.customerName, project.code].filter(Boolean).join(' · ')}</Text>
                   </View>
-                  <Text style={styles.actionLabel} numberOfLines={2}>
-                    {action.label}
-                  </Text>
-                </Pressable>
-              </Link>
-            ))}
-          </View>
+                  <Text style={[hs.reason, tone === 'danger' && { color: ws.dangerText }, tone === 'warning' && { color: ws.warning }]} numberOfLines={2}>{reason}</Text>
+                </ListRow>
+              ))}
+            </Card>
+          )}
 
           {promo ? (
             <>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Tin mới từ Eurohouse</Text>
-                  <Text style={styles.sectionCaption}>Chạm ảnh để xem đầy đủ</Text>
-                </View>
-                {promos.length > 1 ? (
-                  <Text style={styles.carouselCount}>
-                    {promoIndex + 1}/{promos.length}
-                  </Text>
-                ) : null}
-              </View>
-              <Pressable
-                style={styles.poster}
-                onPress={() => {
-                  setSelectedPromo(promo);
-                  setSelectedImageIndex(0);
-                }}
-              >
-                {promo.imageUrl ? <Image source={{ uri: assetUrl(promo.imageUrl) }} style={styles.posterImage} resizeMode="cover" /> : null}
-                <View style={styles.posterLabel}>
-                  <Icon name="zap" size={13} color={colors.brandBlack.main} />
-                  <Text style={styles.posterLabelText}>Khuyến mại</Text>
-                </View>
+              <SectionHead title="Tin Eurohouse" action={promos.length > 1 ? <Text style={hs.seeAll}>{promoIndex + 1}/{promos.length}</Text> : undefined} />
+              <Pressable accessibilityLabel="Xem tin Eurohouse" style={hs.poster} onPress={() => { setSelectedPromo(promo); setSelectedImageIndex(0); }}>
+                {promo.imageUrl ? <Image source={{ uri: assetUrl(promo.imageUrl) }} style={hs.posterImage} resizeMode="cover" /> : null}
+                <View style={hs.posterTag}><Text style={hs.posterTagText}>Khuyến mại</Text></View>
               </Pressable>
+              {promos.length > 1 ? <View style={hs.dots}>{promos.map((p, i) => <View key={p.id ?? i} style={[hs.dotItem, i === promoIndex && hs.dotOn]} />)}</View> : null}
             </>
           ) : null}
-
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Đơn hàng gần đây</Text>
-              <Text style={styles.sectionCaption}>
-                {activeCount} đơn đang xử lý · {actualKg.toFixed(1)} kg đã cân giao
-              </Text>
-            </View>
-            <Link href="/my-orders" style={styles.seeAll}>
-              Xem tất cả
-            </Link>
-          </View>
-
-          {loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color={colors.brandOrange} />
-              <Text style={styles.loadingText}>Đang tải dữ liệu xưởng...</Text>
-            </View>
-          ) : orders.length === 0 ? (
-            <Link href="/orders" asChild>
-              <Pressable style={styles.emptyOrders}>
-                <View style={styles.emptyOrderIcon}>
-                  <Icon name="package" size={24} color={colors.brandOrangeText} />
-                </View>
-                <View style={styles.reminderCopy}>
-                  <Text style={styles.emptyOrderTitle}>Chưa có đơn hàng</Text>
-                  <Text style={styles.emptyOrderText}>Bắt đầu tạo đơn nhôm đầu tiên cho công trình.</Text>
-                </View>
-                <Icon name="chevron-right" size={19} color="#98A2B3" />
-              </Pressable>
-            </Link>
-          ) : (
-            orders.slice(0, 4).map((order) => {
-              const deliveredKg = order.actualTotalKg ?? (['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status) ? order.totalKg : undefined);
-              return (
-                <Link key={order.id} href={`/order/${order.id}` as Href} asChild>
-                  <Pressable style={styles.orderRow}>
-                    <View style={styles.orderIcon}>
-                      <Icon name="box" size={18} color={colors.brandOrangeText} />
-                    </View>
-                    <View style={styles.orderCopy}>
-                      <Text style={styles.orderCode}>{order.code}</Text>
-                      <Text style={styles.orderMeta}>
-                        {deliveredKg !== undefined ? `${deliveredKg.toFixed(1)} kg thực tế` : `${(order.theoreticalTotalKg || order.totalKg).toFixed(1)} kg dự tính`} · {order.pricingStatus === 'FINALIZED' ? formatMoney(order.totalAmount) : 'Chờ chốt giá'}
-                      </Text>
-                    </View>
-                    <View style={[styles.statusPill, { backgroundColor: `${statusTone[order.status] ?? '#667085'}18` }]}>
-                      <Text style={[styles.statusText, { color: statusTone[order.status] ?? '#344054' }]} numberOfLines={1}>
-                        {statusText[order.status] ?? order.status}
-                      </Text>
-                    </View>
-                  </Pressable>
-                </Link>
-              );
-            })
-          )}
         </View>
       </ScrollView>
+
+      <Sheet visible={actionsOpen} onClose={() => setActionsOpen(false)} title="Tất cả tiện ích">
+        {actionGroups().map((group) => (
+          <View key={group.title} style={hs.sheetGroup}>
+            <Text style={hs.sheetGroupTitle}>{group.title.toUpperCase()}</Text>
+            <View style={hs.tiles}>{group.actions.map((action) => renderTile(action))}</View>
+          </View>
+        ))}
+      </Sheet>
 
       <Modal visible={!!selectedPromo} transparent animationType="fade" onRequestClose={() => setSelectedPromo(null)}>
         <View style={styles.modalOverlay}>
@@ -589,332 +394,6 @@ const styles = StyleSheet.create({
   guestToolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, guestToolCard: { flexGrow: 1, flexBasis: 180, minHeight: 150, borderRadius: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E6E8EC', padding: 16 }, guestToolIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: '#FFF1E7', alignItems: 'center', justifyContent: 'center' }, guestToolTitle: { color: '#1D2939', fontSize: 15, fontWeight: '900', marginTop: 13 }, guestToolText: { color: '#667085', fontSize: 12, lineHeight: 18, marginTop: 4 },
   guestDiscovery: { borderRadius: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E6E8EC', overflow: 'hidden' }, guestDiscoveryRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#EEF0F3' }, guestDiscoveryIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFF1E7', alignItems: 'center', justifyContent: 'center', marginRight: 12 }, guestDiscoveryText: { flex: 1, color: '#344054', fontSize: 13, fontWeight: '800' },
   guestUpgrade: { marginTop: 14, borderRadius: 22, backgroundColor: '#FFF4E9', borderWidth: 1, borderColor: '#FFD7B5', padding: 20 }, guestUpgradeTitle: { color: '#7A3108', fontSize: 20, lineHeight: 26, fontWeight: '900' }, guestUpgradeText: { color: '#75472C', fontSize: 13, lineHeight: 20, marginTop: 7 }, guestUpgradeButton: { minHeight: 48, borderRadius: 14, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center', marginTop: 16 }, guestUpgradeButtonText: { color: colors.white, fontSize: 14, fontWeight: '900' },
-  scrollContent: { paddingBottom: 124 },
-  hero: {
-    minHeight: 222,
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
-  },
-  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(7, 15, 27, 0.46)' },
-  heroTop: { flexDirection: 'row', alignItems: 'center', minHeight: 48 },
-  logoFrame: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: '#FFB43F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  logo: { width: 46, height: 46 },
-  heroBrand: { flex: 1, marginLeft: 11 },
-  brandName: { color: colors.white, fontSize: 16, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  organization: { color: '#F1F5F9', fontSize: 11, fontWeight: '700', marginTop: 2, maxWidth: 230, textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  heroIconButton: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 21,
-    backgroundColor: 'rgba(5,12,22,0.48)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF7A1A',
-    borderWidth: 1.5,
-    borderColor: colors.white,
-  },
-  heroBottom: { marginTop: 24 },
-  heroGreeting: { marginBottom: 12 },
-  greeting: { color: '#F1F5F9', fontSize: 12, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  userName: {
-    color: colors.white,
-    fontSize: 20,
-    lineHeight: 25,
-    fontWeight: '900',
-    marginTop: 1,
-    maxWidth: '100%',
-    textShadowColor: 'rgba(0,0,0,0.7)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  heroMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  heroMetaChip: {
-    minHeight: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 11,
-    borderRadius: 10,
-    backgroundColor: 'rgba(5,12,22,0.62)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  weatherChip: { flex: 1, minWidth: 0 },
-  today: { color: colors.white, fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  temperature: { color: colors.white, fontSize: 15, fontWeight: '900' },
-  weatherTitle: { flexShrink: 1, color: '#E2E8F0', fontSize: 10, fontWeight: '700' },
-  weatherUnavailable: { color: '#E2E8F0', fontSize: 10, fontWeight: '700' },
-  content: { paddingHorizontal: 16 },
-  errorBanner: {
-    marginTop: 14,
-    minHeight: 48,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECDCA',
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-  },
-  errorText: { flex: 1, color: '#B42318', fontSize: 12, lineHeight: 17, fontWeight: '600' },
-  todayPanel: {
-    marginTop: 14,
-    padding: 15,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E3E7EC',
-    borderRadius: 14,
-  },
-  todayHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  todayHeading: { flex: 1, minWidth: 0 },
-  attendanceButton: {
-    minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-    backgroundColor: colors.brandOrange,
-  },
-  attendanceButtonText: { color: colors.white, fontSize: 11, fontWeight: '900' },
-  dailyMetrics: {
-    minHeight: 82,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    borderRadius: 10,
-    backgroundColor: '#F7F8FA',
-  },
-  dailyMetric: {
-    flex: 1,
-    minHeight: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  dailyValue: { color: '#172033', fontWeight: '900', fontSize: 16, marginTop: 4 },
-  dailyLabel: {
-    color: '#667085',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  metricDivider: { width: 1, height: 42, backgroundColor: '#E2E6EB' },
-  todayDivider: { height: 1, marginTop: 14, backgroundColor: '#E8EBEF' },
-  reminderHeading: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  reminderHeadingCopy: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  reminderHeadingText: { color: '#344054', fontSize: 12, fontWeight: '900' },
-  addReminderButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#FFF2E8',
-  },
-  sectionHeader: {
-    marginTop: 22,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: { color: '#172033', fontSize: 17, lineHeight: 22, fontWeight: '900' },
-  sectionCaption: { color: '#667085', fontSize: 11, marginTop: 2 },
-  reminderList: { overflow: 'hidden' },
-  reminderRow: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF0F3',
-  },
-  priorityMark: {
-    width: 4,
-    height: 32,
-    borderRadius: 2,
-    backgroundColor: '#F59E0B',
-    marginRight: 11,
-  },
-  priorityHigh: { backgroundColor: '#E5484D' },
-  reminderCopy: { flex: 1 },
-  reminderTitle: { color: '#1D2939', fontSize: 13, fontWeight: '800' },
-  reminderDue: { color: '#667085', fontSize: 10, marginTop: 4 },
-  noReminder: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 10,
-    backgroundColor: '#EEF9F5',
-    borderRadius: 10,
-  },
-  noReminderIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-  },
-  noReminderTitle: { color: '#066B57', fontSize: 12, fontWeight: '800' },
-  noReminderText: { color: '#52756B', fontSize: 9, marginTop: 2, lineHeight: 13 },
-  seeAllActions: {
-    minHeight: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#FFF2E8',
-  },
-  seeAllActionsText: { color: colors.brandOrangeText, fontSize: 11, fontWeight: '900' },
-  actionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E3E7EC',
-    paddingVertical: 8,
-  },
-  actionItem: {
-    width: '33.333%',
-    minHeight: 88,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-    position: 'relative',
-  },
-  lockedBadge: { position: 'absolute', top: 4, right: 4, zIndex: 2, minHeight: 18, borderRadius: 7, backgroundColor: '#FFF1E8', paddingHorizontal: 5, justifyContent: 'center', borderWidth: 1, borderColor: '#FFD6B8' },
-  lockedBadgeText: { color: colors.brandOrangeText, fontSize: 7.5, fontWeight: '900' },
-  actionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    color: '#344054',
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 7,
-    minHeight: 16,
-  },
-  carouselCount: { color: '#667085', fontSize: 11, fontWeight: '700' },
-  poster: { height: 150, borderRadius: 14, overflow: 'hidden', backgroundColor: '#E9ECF1' },
-  posterImage: { width: '100%', height: '100%' },
-  posterLabel: {
-    position: 'absolute',
-    left: 10,
-    top: 10,
-    minHeight: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#FFB15C',
-  },
-  posterLabelText: { color: '#172033', fontSize: 11, fontWeight: '900' },
-  seeAll: { color: colors.brandOrangeText, fontWeight: '800', fontSize: 12 },
-  loading: {
-    minHeight: 100,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-  },
-  loadingText: { color: '#667085', fontSize: 11 },
-  emptyOrders: {
-    minHeight: 76,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    padding: 13,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E7E9ED',
-  },
-  emptyOrderIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FFF0E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyOrderTitle: { color: '#1D2939', fontSize: 13, fontWeight: '800' },
-  emptyOrderText: { color: '#667085', fontSize: 10, lineHeight: 15, marginTop: 3 },
-  orderRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E7E9ED',
-    borderRadius: 12,
-  },
-  orderIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    backgroundColor: '#FFF0E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderCopy: { flex: 1, minWidth: 0 },
-  orderCode: { color: '#1D2939', fontSize: 12, fontWeight: '900' },
-  orderMeta: { color: '#667085', fontSize: 10, marginTop: 4 },
-  statusPill: { maxWidth: 88, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
-  statusText: { fontSize: 9, fontWeight: '800', textAlign: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', justifyContent: 'center' },
   modalClose: {
     position: 'absolute',
@@ -944,5 +423,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalCount: { color: colors.white, fontWeight: '800', minWidth: 54, textAlign: 'center' },
+  modalCount: { color: colors.white, fontWeight: '800', minWidth: 54, textAlign: 'center' }
+});
+
+const hs = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: ws.bg },
+  scrollContent: { paddingBottom: 130 },
+  hero: { paddingHorizontal: 16, paddingBottom: 14, overflow: 'hidden', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  heroImage: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(21,17,16,0.6)' },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoFrame: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#FFB43F', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logo: { width: 42, height: 42 },
+  greeting: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  orgName: { color: '#FFFFFF', fontSize: 19, lineHeight: 23, fontWeight: '900', marginTop: 1 },
+  heroButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
+  dot: { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, backgroundColor: '#F04438', borderWidth: 2, borderColor: '#FFFFFF' },
+  chips: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', maxWidth: 200 },
+  chipText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  chipStrong: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  body: { paddingHorizontal: 14, paddingTop: 12 },
+  gapBottom: { marginBottom: 10 },
+  todayHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
+  todayTitle: { color: ws.ink, fontSize: 15, fontWeight: '900' },
+  smallButton: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, borderRadius: 10, backgroundColor: ws.orange },
+  smallButtonText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' },
+  kpis: { flexDirection: 'row' },
+  kpi: { flex: 1, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4 },
+  kpiDivider: { borderLeftWidth: 1, borderLeftColor: ws.lineSoft },
+  kpiValue: { color: ws.ink, fontSize: 17, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  kpiLabel: { color: ws.muted, fontSize: 10.5, fontWeight: '700', marginTop: 1 },
+  reminder: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: ws.lineSoft },
+  reminderTitle: { color: ws.ink, fontSize: 13, fontWeight: '800' },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', paddingVertical: 8, paddingHorizontal: 4 },
+  tileWrap: { width: '25%' },
+  tile: { alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 2 },
+  tileIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  tileLabel: { color: ws.text, fontSize: 11.5, lineHeight: 15, fontWeight: '700', textAlign: 'center' },
+  tileLock: { position: 'absolute', top: 2, right: '20%', width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: ws.line, alignItems: 'center', justifyContent: 'center' },
+  seeAll: { color: ws.orangeText, fontSize: 12.5, fontWeight: '800' },
+  reason: { maxWidth: 120, textAlign: 'right', color: ws.muted, fontSize: 11.5, fontWeight: '800' },
+  poster: { height: 150, borderRadius: 14, overflow: 'hidden', backgroundColor: '#E4E7EC' },
+  posterImage: { width: '100%', height: '100%' },
+  posterTag: { position: 'absolute', left: 10, bottom: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#FCB042' },
+  posterTagText: { color: '#1D2939', fontSize: 10.5, fontWeight: '800' },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  dotItem: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D0D5DD' },
+  dotOn: { width: 16, backgroundColor: ws.orange },
+  sheetGroup: { marginBottom: 8 },
+  sheetGroupTitle: { color: ws.muted, fontSize: 11.5, fontWeight: '900', letterSpacing: 0.4, marginTop: 4, marginHorizontal: 4 },
 });
