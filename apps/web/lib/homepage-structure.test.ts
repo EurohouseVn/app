@@ -18,13 +18,15 @@ function order(input: string, tokens: readonly string[]) {
   return true;
 }
 
-test('homepage renders the approved monumental chapter order', () => {
+test('homepage renders the approved catalogue chapter order', () => {
   const pageSource = source('../app/page.tsx');
 
   assert.equal(order(pageSource, [
     '<HomeHero',
     '<ProductFamilyChooser',
-    '<FeaturedSystems',
+    '<SystemExplorer',
+    '<SpecialistSystems',
+    '<IndustrialServices',
     '<CapabilityStrip',
     '<FeaturedProjects',
     '<PrimaryVideo',
@@ -39,25 +41,27 @@ test('brand frame uses the approved logo and portal hierarchy', () => {
   const footerSource = source('../components/Footer.tsx');
 
   assert.match(heroSource, /data-home-chapter="hero"/);
+  assert.match(heroSource, /hero-ecento-70-mobile/);
   assert.match(headerSource, /brandAssets\.logo/);
   assert.match(headerSource, /Cổng NPP/);
   assert.match(footerSource, /brandAssets\.logo/);
 });
 
 test('product, capability and project chapters expose the approved structure', () => {
-  const familySource = source('../components/home/ProductFamilyChooser.tsx');
-  const featuredSystemsSource = source('../components/home/FeaturedSystems.tsx');
-  const capabilitySource = source('../components/home/CapabilityStrip.tsx');
-  const projectsSource = source('../components/home/FeaturedProjects.tsx');
-  const homeSources = [familySource, featuredSystemsSource, capabilitySource, projectsSource].join('\n');
+  const homeSources = [
+    'ProductFamilyChooser', 'SystemExplorer', 'SpecialistSystems', 'IndustrialServices', 'CapabilityStrip', 'FeaturedProjects',
+  ].map((name) => source(`../components/home/${name}.tsx`)).join('\n');
 
-  for (const chapter of ['families', 'systems', 'industry', 'proof', 'projects']) {
+  for (const chapter of ['families', 'systems', 'specialist', 'industry', 'proof', 'projects']) {
     assert.match(homeSources, new RegExp(`data-home-chapter=["']${chapter}["']`));
   }
-  assert.match(featuredSystemsSource, /homepageCopy\.industrial\.services\.map/);
+  const explorerSource = source('../components/home/SystemExplorer.tsx');
+  assert.match(explorerSource, /role="tablist"/);
+  assert.match(explorerSource, /role="tabpanel"/);
+  assert.match(explorerSource, /<table/);
+  assert.match(source('../components/home/IndustrialServices.tsx'), /homeIndustrialServices\.map/);
   assert.equal(homepageCopy.industrial.services.length, 5);
-  assert.match(projectsSource, /project-section-heading/);
-  assert.match(projectsSource, /project-heading-aside/);
+  assert.doesNotMatch(homeSources, /padStart\(2, '0'\)/, 'no 01 / 02 index numbering on the homepage');
 });
 
 test('video and conversion chapters preserve accessible actions', () => {

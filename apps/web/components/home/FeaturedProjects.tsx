@@ -15,20 +15,30 @@ export function FeaturedProjects({ content }: { content: HomepageContent }) {
   const projects = mergeHomepageProjects(content.projects, fallback);
 
   return (
-    <section className="home-section projects-section" id="projects" data-home-chapter="projects" aria-labelledby="projects-heading">
+    <section className="hp-section hp-projects" id="projects" data-home-chapter="projects" aria-labelledby="projects-heading">
       <div className="container" data-reveal-group>
-        <header className="home-section-heading project-section-heading">
-          <div className="project-heading-title" data-reveal-item>
-            <p className="home-eyebrow">{homepageCopy.projects.eyebrow}</p>
+        <header className="hp-heading" data-reveal-item>
+          <div>
+            <p className="hp-kicker">{homepageCopy.projects.eyebrow}</p>
             <h2 id="projects-heading">{homepageCopy.projects.title}</h2>
           </div>
-          <div className="project-heading-aside" data-reveal-item>
-            <p>{homepageCopy.projects.support}</p>
-            <Link className="home-text-link" href="/du-an">{homepageCopy.projects.action} <ArrowRight size={16} aria-hidden="true" /></Link>
-          </div>
+          <p>{homepageCopy.projects.support} <Link className="hp-text-link" href="/du-an">{homepageCopy.projects.action} <ArrowRight size={16} aria-hidden="true" /></Link></p>
         </header>
-        <div className="project-card-grid">
-          {projects.map((project, index) => <Link className={`project-card${index === 0 ? ' project-card-featured' : ''}`} href={project.href} key={project.slug} data-reveal-item><span>{project.image ? <Image src={project.image} alt={project.title} fill unoptimized sizes="(max-width: 760px) 100vw, 50vw" /> : <span className="home-media-placeholder" aria-hidden="true">EUROHOUSE</span>}</span><div><small>{homepageFamilyLabel(project.family)}</small><h3>{project.title}</h3><p>{project.summary}</p><b>Xem chi tiết <ArrowRight size={16} aria-hidden="true" /></b></div></Link>)}
+        <div className="hp-project-grid">
+          {projects.map((project, index) => (
+            <Link className={`hp-project${index === 0 ? ' hp-project-lead' : ''}`} href={project.href} key={project.slug} data-reveal-item>
+              <span className="hp-project-media">
+                {project.image
+                  ? <Image src={project.image} alt={project.title} fill unoptimized sizes={index === 0 ? '(max-width: 760px) 100vw, 60vw' : '(max-width: 760px) 100vw, 36vw'} />
+                  : null}
+              </span>
+              <span className="hp-project-copy">
+                <small>{homepageFamilyLabel(project.family)}</small>
+                <strong>{project.title}</strong>
+                <span>{project.summary}</span>
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>

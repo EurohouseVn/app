@@ -6,49 +6,39 @@ import { homepageCopy } from '@/lib/homepage-presentation';
 const families = [
   {
     id: 'residential',
-    eyebrow: homepageCopy.residential.eyebrow,
     title: homepageCopy.residential.title,
-    description: homepageCopy.residential.description,
+    description: 'Cửa đi, cửa sổ, vách kính, mặt dựng cho nhà ở, biệt thự và công trình. Có catalog và mặt cắt để chủ nhà, kiến trúc sư và thợ cùng trao đổi.',
     href: '/nhom-dan-dung',
     action: homepageCopy.residential.action,
     image: '/images/v5/project-villa.webp',
-    alt: 'Công trình sử dụng giải pháp nhôm dân dụng EUROHOUSE',
+    alt: 'Biệt thự hiện đại sử dụng hệ cửa nhôm EUROHOUSE',
   },
   {
     id: 'industrial',
-    eyebrow: homepageCopy.industrial.eyebrow,
     title: homepageCopy.industrial.title,
-    description: homepageCopy.industrial.description,
+    description: 'Profile theo bản vẽ, chi tiết máy, khung pin mặt trời, đùn thuê và gia công cho doanh nghiệp sản xuất.',
     href: '/nhom-cong-nghiep',
     action: homepageCopy.industrial.action,
-    image: '/images/v5/factory-coating.webp',
-    alt: 'Dây chuyền phục vụ sản phẩm nhôm công nghiệp EUROHOUSE',
+    image: '/images/v4/factory-coating-line.jpg',
+    alt: 'Dây chuyền sơn profile nhôm công nghiệp tại nhà máy EUROHOUSE',
   },
 ] as const;
 
 export function ProductFamilyChooser() {
   return (
-    <section className="home-section family-chooser" id="families" data-home-chapter="families" aria-labelledby="family-heading">
-      <div className="container family-chooser-layout" data-reveal-group>
-        <header className="family-manifesto" data-reveal-item>
-          <p className="home-eyebrow">{homepageCopy.manifesto.eyebrow}</p>
-          <h2 id="family-heading">{homepageCopy.manifesto.title}</h2>
-          <p>{homepageCopy.manifesto.support}</p>
-        </header>
-        <div className="family-grid">
-          {families.map((family, index) => (
-            <Link className={`family-card family-card-${family.id}`} href={family.href} key={family.id} data-reveal-item>
-              <Image src={family.image} alt={family.alt} fill unoptimized sizes="(max-width: 760px) 100vw, 50vw" />
-              <span className="family-card-shade" />
-              <span className="family-card-content">
-                <small>{String(index + 1).padStart(2, '0')} · {family.eyebrow}</small>
-                <strong>{family.title}</strong>
-                <span>{family.description}</span>
-                <b>{family.action} <ArrowRight size={17} aria-hidden="true" /></b>
-              </span>
-            </Link>
-          ))}
-        </div>
+    <section className="hp-families" id="families" data-home-chapter="families" aria-label="Hai lĩnh vực sản phẩm">
+      <div className="container hp-family-grid" data-reveal-group>
+        {families.map((family) => (
+          <Link className="hp-family-card" href={family.href} key={family.id} data-reveal-item>
+            <span className="hp-family-media"><Image src={family.image} alt={family.alt} fill unoptimized sizes="(max-width: 760px) 34vw, 240px" /></span>
+            <span className="hp-family-copy">
+              <strong>{family.title}</strong>
+              <span>{family.description}</span>
+              <small>{family.action}</small>
+            </span>
+            <span className="hp-arrow" aria-hidden="true"><ArrowRight size={20} /></span>
+          </Link>
+        ))}
       </div>
     </section>
   );

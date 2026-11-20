@@ -33,8 +33,8 @@ test('homepage copy speaks to customers and trades instead of publication workfl
   }
 });
 
-test('monumental homepage copy connects premium systems with industrial capability', () => {
-  assert.equal(homepageCopy.hero.title, 'Định hình không gian. Kiến tạo sản xuất.');
+test('catalogue homepage copy connects premium systems with industrial capability', () => {
+  assert.equal(homepageCopy.hero.title, 'Nhôm của sự thịnh vượng');
   assert.match(homepageCopy.hero.lead, /nhôm hệ cao cấp/i);
   assert.match(homepageCopy.hero.lead, /nhôm định hình/i);
   assert.deepEqual(

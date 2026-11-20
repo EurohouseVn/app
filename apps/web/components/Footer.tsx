@@ -44,6 +44,10 @@ export function Footer() {
         </div>
       </div>
 
+      <div className="container">
+        <p className="footer-slogan">Nhôm của sự thịnh vượng</p>
+      </div>
+
       <div className="container footer-bottom">
         <p>© {new Date().getFullYear()} EUROHOUSE. Pháp nhân phát hành: {site.legalName}.</p>
         <div>{stablePublicRoutes.map((item) => <Link key={item.id} href={item.href}>{item.label}</Link>)}</div>

@@ -5,11 +5,11 @@ export const brandAssets = {
 
 export const homepageCopy = {
   hero: {
-    eyebrow: 'EUROHOUSE · ALUMINIUM SYSTEMS · INDUSTRY · PROJECTS',
-    title: 'Định hình không gian. Kiến tạo sản xuất.',
-    lead: 'EUROHOUSE phát triển nhôm hệ cao cấp cho kiến trúc và giải pháp nhôm định hình cho công nghiệp — kết nối từ thiết kế biên dạng, đùn ép đến hoàn thiện bề mặt và gia công.',
-    primaryAction: 'Khám phá hệ nhôm',
-    secondaryAction: 'Xem năng lực sản xuất',
+    eyebrow: 'Nhôm kiến trúc · Nhôm công nghiệp',
+    title: 'Nhôm của sự thịnh vượng',
+    lead: 'EUROHOUSE sản xuất nhôm hệ cao cấp cho cửa nhà ở và nhôm định hình theo bản vẽ cho công nghiệp, từ đùn ép, sơn phủ đến gia công tại nhà máy.',
+    primaryAction: 'Chọn hệ nhôm',
+    secondaryAction: 'Gửi bản vẽ sản xuất',
     proofs: [
       { value: 'Hai', label: 'dòng sản phẩm cho kiến trúc và công nghiệp' },
       { value: 'Một', label: 'mạch đồng hành từ nhu cầu đến sản phẩm' },
@@ -56,19 +56,19 @@ export const homepageCopy = {
   ],
   projects: {
     eyebrow: 'Công trình & ứng dụng',
-    title: 'Vật liệu chỉ thật sự có ý nghĩa khi đi vào cuộc sống.',
+    title: 'Nhôm Eurohouse trong công trình',
     support: 'Những hình ảnh thực tế giúp đánh giá tỷ lệ, bề mặt, khả năng ứng dụng và cảm giác không gian — thay cho những lời giới thiệu chung chung.',
     action: 'Xem thư viện dự án',
   },
   video: {
-    eyebrow: 'EUROHOUSE Film',
-    title: 'Nhìn thấy hành trình từ phôi nhôm đến công trình.',
+    eyebrow: 'Phim nhà máy',
+    title: 'Từ phôi nhôm đến công trình',
     support: 'Đi qua vật liệu, nhà máy, con người và những ứng dụng đã hoàn thiện để hiểu cách EUROHOUSE biến yêu cầu thành sản phẩm.',
   },
   videoTranscript: 'Video giới thiệu môi trường nhà máy, hệ thống máy và quá trình profile nhôm đi qua một công đoạn xử lý. Khách hàng có nhu cầu sản xuất có thể gửi bản vẽ để trao đổi trực tiếp với đội ngũ EUROHOUSE.',
   conversion: {
     eyebrow: 'Bắt đầu cùng EUROHOUSE',
-    title: 'Chọn hệ nhôm phù hợp, hoặc bắt đầu từ một bản vẽ.',
+    title: 'Chọn hệ nhôm, hoặc bắt đầu từ một bản vẽ',
     support: 'Đội ngũ EUROHOUSE sẵn sàng trao đổi cùng chủ nhà, kiến trúc sư, nhà thầu, nhà phân phối và doanh nghiệp sản xuất.',
     residential: 'Nói với chúng tôi về kiểu cửa, không gian và nhu cầu sử dụng.',
     industrial: 'Gửi bản vẽ profile hoặc chi tiết cần đùn và gia công.',

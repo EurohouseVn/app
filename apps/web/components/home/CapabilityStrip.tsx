@@ -1,29 +1,28 @@
 import Image from 'next/image';
-import { Boxes, ClipboardCheck, Factory, PencilRuler } from 'lucide-react';
-import { homepageCopy } from '@/lib/homepage-presentation';
-
-const capabilities = [
-  { Icon: Factory, ...homepageCopy.capabilities[0] },
-  { Icon: ClipboardCheck, ...homepageCopy.capabilities[1] },
-  { Icon: PencilRuler, ...homepageCopy.capabilities[2] },
-  { Icon: Boxes, ...homepageCopy.capabilities[3] },
-] as const;
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { homeProcessSteps } from '@/lib/homepage-systems';
 
 export function CapabilityStrip() {
   return (
-    <section className="home-section capability-proof" data-home-chapter="proof" aria-labelledby="capability-proof-heading">
-      <div className="container capability-proof-layout" data-reveal-group>
-        <div className="capability-proof-copy" data-reveal-item>
-          <p className="home-eyebrow">Bằng chứng tạo nên niềm tin</p>
-          <h2 id="capability-proof-heading">Chất lượng hiện rõ trong từng công đoạn.</h2>
-          <div className="capability-proof-grid">
-            {capabilities.map(({ Icon, title, text }, index) => <article key={title} data-reveal-item><span><Icon size={21} aria-hidden="true" /></span><small>{String(index + 1).padStart(2, '0')}</small><h3>{title}</h3><p>{text}</p></article>)}
+    <section className="hp-section hp-process" id="nang-luc" data-home-chapter="proof" aria-labelledby="process-heading">
+      <div className="container" data-reveal-group>
+        <header className="hp-heading" data-reveal-item>
+          <div>
+            <p className="hp-kicker">Năng lực sản xuất</p>
+            <h2 id="process-heading">Một nhà máy, trọn quy trình</h2>
           </div>
-        </div>
-        <figure className="capability-proof-media" data-reveal-item>
-          <Image src="/images/v5/factory-coating.webp" alt="Dây chuyền hoàn thiện bề mặt profile nhôm EUROHOUSE" fill unoptimized sizes="(max-width: 860px) 100vw, 42vw" />
-          <figcaption>Dây chuyền hoàn thiện bề mặt EUROHOUSE</figcaption>
-        </figure>
+          <p>Profile EUROHOUSE đi từ phôi nhôm, qua đùn ép và hoàn thiện bề mặt, đến tay thợ cùng mẫu màu và catalog. <Link className="hp-text-link" href="/nang-luc">Xem năng lực <ArrowRight size={16} aria-hidden="true" /></Link></p>
+        </header>
+        <ol className="hp-process-list">
+          {homeProcessSteps.map((step) => (
+            <li key={step.title} data-reveal-item>
+              <span className="hp-process-photo"><Image src={step.image} alt={step.alt} fill unoptimized sizes="(max-width: 760px) 80vw, 25vw" /></span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );

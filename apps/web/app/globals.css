@@ -1922,3 +1922,19 @@ h2 { margin-bottom: 20px; font-size: clamp(32px, 4vw, 54px); max-width: 760px; }
   .search-result-list > a { grid-template-columns: 1fr; }
   .search-result-list b { grid-column: auto; grid-row: auto; margin-top: 10px; }
 }
+
+/* EUROHOUSE v7 · phần dùng chung toàn site (20/11/2026)
+   Phông Inter có subset vietnamese nạp qua next/font trong app/layout.tsx;
+   logo bo góc mềm ở mọi vị trí; khẩu hiệu thương hiệu ở chân trang. */
+body { font-family: var(--font-inter), Inter, "Segoe UI", Arial, sans-serif; }
+.brand, .brand > .brand-landscape { border-radius: 12px; }
+.footer-brand-lockup, .footer-brand-lockup > img { border-radius: 14px; }
+.footer-slogan {
+  margin: 56px 0 0;
+  color: #fff;
+  font-size: clamp(30px, 5.5vw, 78px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -.025em;
+  text-transform: uppercase;
+}

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -26,6 +27,8 @@ export const metadata: Metadata = {
   icons: { icon: '/brand/logo-mark.png', apple: '/brand/logo-mark.png' },
 };
 
+const inter = Inter({ subsets: ['latin', 'vietnamese'], display: 'swap', variable: '--font-inter' });
+
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f47c20' };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -42,7 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   };
 
   return (
-    <html lang="vi">
+    <html lang="vi" className={inter.variable}>
       <body>
         <StructuredData data={organization} />
         <a className="skip-link" href="#main-content">Bỏ qua điều hướng</a>

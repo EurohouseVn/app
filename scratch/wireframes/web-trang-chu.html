@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe · Trang chủ website nhomeurohouse.com</title>
+<style>
+/* Token lấy từ apps/web/app/globals.css + logo gốc (docs/design/brand) */
+:root {
+  --orange: #F47C20; --orange-dark: #C65309; --brand-block: #F9A82F; --gold: #C59A45;
+  --ink: #151A22; --slate: #202A37; --muted: #5E6875; --canvas: #F5F6F7; --tone: #ECEEF1; --surface: #FFFFFF;
+  --r: 8px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, "Segoe UI", system-ui, sans-serif; background: #D9DDE3; color: var(--ink); }
+button { font: inherit; cursor: pointer; }
+img { display: block; max-width: 100%; }
+.tb { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #DFE3E8; font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid #DFE3E8; border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: #fff; padding: 6px 10px; color: var(--muted); font-weight: 600; }
+.seg button[aria-pressed="true"] { background: #101828; color: #fff; }
+.why { max-width: 980px; margin: 14px auto 0; padding: 12px 16px; background: #fff; border: 1px solid #DFE3E8; border-radius: 12px; font-size: 13.5px; line-height: 1.55; }
+.why h2 { margin: 0 0 4px; font-size: 16px; }
+.why ul { margin: 6px 0 0; padding-left: 18px; }
+.rec { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #101828; color: #fff; font-size: 11px; vertical-align: 2px; }
+.stage { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; padding: 18px 12px 60px; }
+.cap { text-align: center; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.desk { width: 1200px; max-width: 100%; background: #fff; overflow: hidden; border-radius: 6px; box-shadow: 0 10px 40px rgba(16,24,40,.15); }
+.mob { width: 390px; background: #fff; overflow: hidden; border-radius: 28px; border: 8px solid #101828; }
+.option { display: none; } .option.on { display: contents; }
+.note { position: relative; }
+.note::after { content: attr(data-note); position: absolute; top: 8px; right: 8px; z-index: 20; max-width: 300px; padding: 4px 8px; border-radius: 6px; background: #7A5AF8; color: #fff; font: 600 11px/1.35 system-ui; }
+
+/* ---- chung ---- */
+.nav { display: flex; align-items: center; gap: 26px; padding: 0 32px; height: 72px; background: #fff; font-size: 14px; font-weight: 600; }
+.nav .logo { height: 44px; }
+.nav .links { display: flex; gap: 22px; margin-left: auto; }
+.nav .cta { background: var(--orange); color: #fff; padding: 11px 18px; border-radius: var(--r); font-weight: 800; }
+.mnav { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 16px; background: #fff; }
+.mnav .logo { height: 36px; }
+.burger { width: 40px; height: 40px; display: grid; place-content: center; gap: 5px; }
+.burger i { display: block; width: 20px; height: 2px; background: var(--ink); }
+.kicker { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--orange-dark); font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.kicker::before { content: ""; width: 24px; height: 2px; background: var(--orange); }
+.kicker.light { color: #FFD09C; } .kicker.light::before { background: var(--orange); }
+.disp { margin: 10px 0 0; font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; line-height: 1.1; }
+.btn { min-height: 48px; display: inline-flex; align-items: center; gap: 8px; padding: 0 20px; border-radius: var(--r); font-weight: 800; font-size: 15px; }
+.btn-primary { background: var(--orange); color: #fff; }
+.btn-line { box-shadow: inset 0 0 0 2px currentColor; }
+.arrow { width: 44px; height: 44px; border-radius: var(--r); background: var(--orange); color: #fff; display: grid; place-items: center; font-weight: 900; flex: none; }
+.ph { background: var(--tone); }
+.cover { width: 100%; height: 100%; object-fit: cover; }
+p { margin: 0; }
+.lead { font-size: 18px; line-height: 1.55; }
+.small { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.footer-word { font-weight: 900; text-transform: uppercase; letter-spacing: -.03em; line-height: 1.05; color: #fff; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs span { padding: 10px 14px; border-radius: var(--r); background: #fff; font-weight: 800; font-size: 14px; }
+.tabs span.on { background: var(--ink); color: #fff; }
+.spec { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; background: #fff; border-radius: var(--r); overflow: hidden; }
+.spec div { padding: 14px 16px; }
+.spec div + div { background: #FAFBFC; }
+.spec b { display: block; font-size: 22px; font-weight: 900; }
+.spec small { color: var(--muted); font-weight: 700; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="tb">
+  <strong>Trang chủ nhomeurohouse.com</strong>
+  <div class="seg" role="group" aria-label="Phương án">
+    <button data-opt="A" aria-pressed="true">A · Catalogue mặt cắt</button>
+    <button data-opt="B" aria-pressed="false">B · Poster khối cam</button>
+    <button data-opt="C" aria-pressed="false">C · Sân khấu chia đôi</button>
+  </div>
+  <span style="color:var(--muted)">Nhãn tím = chú thích wireframe, không lên trang thật.</span>
+</div>
+
+<!-- =================== A =================== -->
+<div class="option on" data-option="A">
+<div class="why">
+  <h2>A · Catalogue mặt cắt <span class="rec">khuyên dùng</span></h2>
+  Sáng, sạch, đúng ngôn ngữ app phương án A: hero ảnh ECENTO 70 (không phủ xanh than), nhãn in hoa có gạch cam, tiêu đề in hoa đậm, thẻ ảnh + nút mũi tên cam, chân trang “Nhôm của sự thịnh vượng”.
+  <ul>
+    <li><b>Ý tưởng riêng:</b> bảng mã profile của catalog (mã · độ dày · tỷ trọng) và mặt cắt kỹ thuật thật trở thành “mẫu vật” của trang. Đối thủ không có đúng mã E701A, 1.6 mm, 1.385 kg/m.</li>
+    <li><b>Thứ người xem bấm được:</b> chọn hệ ECENTO 70 / ECENTO PLUS / 55 VÁT CẠNH / PRECO → đổi ảnh, mặt cắt và số liệu tại chỗ; không có JS vẫn là danh sách 4 hệ có link.</li>
+    <li>Bỏ: chữ EUROHOUSE mờ chạy nền, khối số liệu kính nổi, “01 ·”, thẻ icon năng lực, hai khối xanh than lớn. Xanh than chỉ còn ở chân trang.</li>
+  </ul>
+</div>
+<div class="stage">
+  <div>
+    <div class="cap">Desktop 1440 (thu về 1200)</div>
+    <div class="desk">
+      <div class="nav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt="Eurohouse"><div class="links"><span>Nhôm dân dụng</span><span>Nhôm công nghiệp</span><span>Dự án</span><span>Năng lực</span><span>Tài nguyên</span><span>Cổng NPP ↗</span></div><span class="cta">Nhận tư vấn</span></div>
+      <!-- hero -->
+      <div class="note" data-note="Hero: ảnh ECENTO 70 sáng, chữ trên vùng trời bên trái, chỉ một lớp phủ nhẹ phía trái" style="position:relative;height:600px">
+        <img class="cover" src="web-assets/hero-ecento-70.webp" alt="">
+        <div style="position:absolute;inset:0 50% 0 0;background:rgba(21,26,34,.38)"></div>
+        <div style="position:absolute;left:56px;top:110px;max-width:560px;color:#fff">
+          <p class="kicker light">Nhôm kiến trúc · Nhôm công nghiệp</p>
+          <h1 class="disp" style="font-size:64px">Nhôm của sự thịnh vượng</h1>
+          <p class="lead" style="margin-top:18px">Hệ cửa ECENTO cho nhà ở Việt và nhôm định hình theo bản vẽ, đùn ép và hoàn thiện tại nhà máy EUROHOUSE.</p>
+          <div style="display:flex;gap:12px;margin-top:28px"><span class="btn btn-primary">Chọn hệ nhôm →</span><span class="btn btn-line">Gửi bản vẽ sản xuất</span></div>
+        </div>
+      </div>
+      <!-- 2 cửa vào -->
+      <div class="note" data-note="Hai cửa vào, chồng lên mép dưới hero, giống thẻ app" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 56px;margin-top:-56px;position:relative">
+        <div style="display:grid;grid-template-columns:200px 1fr;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 0 #ECEEF1">
+          <img class="cover" style="height:150px" src="web-assets/project-villa.webp" alt="">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:8px"><b style="font-size:22px;font-weight:900">NHÔM DÂN DỤNG</b><p class="small">Cửa đi, cửa sổ, mặt dựng cho nhà ở và biệt thự.</p><div style="display:flex;justify-content:flex-end;margin-top:auto"><span class="arrow">→</span></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;background:#fff;border-radius:8px;overflow:hidden">
+          <img class="cover" style="height:150px" src="web-assets/factory-coating.webp" alt="">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:8px"><b style="font-size:22px;font-weight:900">NHÔM CÔNG NGHIỆP</b><p class="small">Profile theo bản vẽ, đùn thuê, gia công chi tiết.</p><div style="display:flex;justify-content:flex-end;margin-top:auto"><span class="arrow">→</span></div></div>
+        </div>
+      </div>
+      <!-- specimen -->
+      <div class="note" data-note="Thứ bấm được: chọn hệ → đổi ảnh, mặt cắt, bảng mã" style="background:var(--canvas);margin-top:96px;padding:72px 56px">
+        <p class="kicker">Hệ nhôm dân dụng</p>
+        <h2 class="disp" style="font-size:44px">Chọn hệ, xem mặt cắt</h2>
+        <div class="tabs" style="margin-top:24px"><span class="on">ECENTO 70</span><span>ECENTO PLUS</span><span>55 VÁT CẠNH</span><span>PRECO</span></div>
+        <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:16px;margin-top:16px">
+          <img class="cover" style="height:440px;border-radius:8px" src="web-assets/product-ecento-70.webp" alt="">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="background:#fff;border-radius:8px;padding:16px;flex:1;display:grid;place-items:center"><img style="max-height:230px" src="web-assets/E701A.png" alt=""></div>
+            <div class="spec"><div><small>Mã</small><b>E701A</b></div><div><small>Độ dày</small><b>1.6 mm</b></div><div><small>Tỷ trọng</small><b>1.385 kg/m</b></div></div>
+            <p style="font-size:16px;line-height:1.55">Nhôm đa khoang cho cửa đi, cửa sổ cần kín khít, cách âm và cách nhiệt tốt hơn.</p>
+            <div style="display:flex;gap:12px"><span class="btn btn-primary">Xem ECENTO 70 →</span><span class="btn btn-line">Tải catalog</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- công nghiệp -->
+      <div class="note" data-note="Công nghiệp: ảnh lớn trái, 5 dịch vụ dạng danh sách có mũi tên (không đánh số)" style="display:grid;grid-template-columns:1fr 1fr;gap:56px;padding:120px 56px;align-items:center">
+        <img class="cover" style="height:520px;border-radius:8px" src="web-assets/aluminum-billets.jpg" alt="">
+        <div>
+          <p class="kicker">Nhôm công nghiệp</p>
+          <h2 class="disp" style="font-size:44px">Từ bản vẽ đến sản phẩm</h2>
+          <p class="lead" style="margin-top:14px">Gửi bản vẽ hoặc mô tả ứng dụng. Kỹ sư EUROHOUSE cùng bạn chốt profile, bề mặt và công đoạn gia công.</p>
+          <div style="margin-top:24px;display:grid;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--canvas);padding:14px 16px;border-radius:8px;font-weight:800">Nhôm định hình theo bản vẽ <span style="color:var(--orange)">→</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--canvas);padding:14px 16px;border-radius:8px;font-weight:800">Chi tiết máy và linh kiện <span style="color:var(--orange)">→</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--canvas);padding:14px 16px;border-radius:8px;font-weight:800">Nhôm cho hệ năng lượng mặt trời <span style="color:var(--orange)">→</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--canvas);padding:14px 16px;border-radius:8px;font-weight:800">Nhận đùn profile theo yêu cầu <span style="color:var(--orange)">→</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--canvas);padding:14px 16px;border-radius:8px;font-weight:800">Gia công sản phẩm nhôm <span style="color:var(--orange)">→</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- năng lực: quy trình bằng ảnh -->
+      <div class="note" data-note="Năng lực: một dải 4 ảnh thật theo dòng chảy phôi → đùn → sơn → hoàn thiện" style="padding:0 56px 120px">
+        <h2 class="disp" style="font-size:44px">Một nhà máy, trọn quy trình</h2>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px">
+          <div><img class="cover" style="height:260px;border-radius:8px" src="web-assets/aluminum-billets.jpg" alt=""><b style="display:block;margin-top:12px;font-size:17px">Đùn profile theo ứng dụng</b><p class="small">Hệ cửa, profile kỹ thuật, sản phẩm đặt riêng.</p></div>
+          <div><img class="cover" style="height:260px;border-radius:8px" src="web-assets/factory-coating.webp" alt=""><b style="display:block;margin-top:12px;font-size:17px">Hoàn thiện bề mặt</b><p class="small">Màu và bề mặt theo môi trường sử dụng.</p></div>
+          <div><img class="cover" style="height:260px;border-radius:8px" src="web-assets/finish-wood.webp" alt=""><b style="display:block;margin-top:12px;font-size:17px">Vân gỗ, sơn tĩnh điện</b><p class="small">Bề mặt cho nội, ngoại thất.</p></div>
+          <div><img class="cover" style="height:260px;border-radius:8px" src="web-assets/ecosystem-staff.webp" alt=""><b style="display:block;margin-top:12px;font-size:17px">Gia công sau đùn</b><p class="small">Cắt, khoan, hoàn thiện chi tiết.</p></div>
+        </div>
+      </div>
+      <!-- dự án + video -->
+      <div class="note" data-note="Công trình: một ảnh lớn + video nhà máy cạnh nhau, không tách 2 khối" style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;padding:0 56px 120px">
+        <div style="position:relative"><img class="cover" style="height:460px;border-radius:8px" src="web-assets/project-villa.webp" alt=""><div style="position:absolute;left:0;bottom:0;padding:24px;color:#fff;background:rgba(21,26,34,.55);border-radius:0 8px 0 8px"><b style="font-size:22px;font-weight:900">BIỆT THỰ HIỆN ĐẠI</b><p>Hệ cửa cao cấp · Xem thư viện dự án →</p></div></div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="position:relative;flex:1"><img class="cover" style="height:100%;border-radius:8px" src="web-assets/factory-coating.webp" alt=""><span class="arrow" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%">▶</span></div>
+          <b style="font-size:22px;font-weight:900;text-transform:uppercase">Từ phôi nhôm đến công trình</b><p class="small">Phim nhà máy, có phụ đề và bản chữ.</p>
+        </div>
+      </div>
+      <!-- CTA cam -->
+      <div class="note" data-note="CTA: một dải cam thương hiệu duy nhất trên trang" style="background:var(--orange);color:#fff;padding:56px;display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:center">
+        <h2 class="disp" style="font-size:40px;margin:0">Chọn hệ nhôm, hoặc bắt đầu từ một bản vẽ</h2>
+        <div style="display:grid;gap:10px"><span class="btn" style="background:#fff;color:var(--ink);justify-content:space-between">Tư vấn hệ cửa cho công trình →</span><span class="btn" style="background:var(--ink);color:#fff;justify-content:space-between">Gửi bản vẽ sản xuất →</span></div>
+      </div>
+      <!-- footer -->
+      <div style="background:var(--slate);padding:56px 56px 28px;color:#C9CFD8;font-size:14px">
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:24px"><img style="height:52px" src="web-assets/eurohouse-logo-landscape.png" alt=""><div>Sản phẩm<br>Nhôm dân dụng<br>Nhôm công nghiệp</div><div>Eurohouse<br>Dự án · Năng lực<br>Tài nguyên</div><div>Liên hệ & NPP<br>Hotline · Email<br>Cổng NPP</div></div>
+        <div class="footer-word" style="font-size:96px;margin-top:40px">Nhôm của sự thịnh vượng</div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Mobile 390</div>
+    <div class="mob">
+      <div class="mnav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt=""><span class="burger"><i></i><i></i><i></i></span></div>
+      <div style="position:relative;height:560px"><img class="cover" src="web-assets/hero-ecento-70.webp" style="object-position:72% center" alt=""><div style="position:absolute;inset:0 0 45% 0;background:rgba(21,26,34,.42)"></div>
+        <div style="position:absolute;left:16px;right:16px;top:28px;color:#fff"><p class="kicker light">Nhôm kiến trúc · công nghiệp</p><h1 class="disp" style="font-size:34px">Nhôm của sự thịnh vượng</h1><p style="margin-top:10px;font-size:16px;line-height:1.5">Hệ cửa ECENTO và nhôm định hình theo bản vẽ.</p></div>
+        <div style="position:absolute;left:16px;right:16px;bottom:16px;display:grid;gap:8px"><span class="btn btn-primary" style="justify-content:center">Chọn hệ nhôm →</span><span class="btn" style="background:#fff;justify-content:center">Gửi bản vẽ sản xuất</span></div>
+      </div>
+      <div style="padding:16px;display:grid;gap:10px">
+        <div style="display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;background:var(--canvas);border-radius:8px;overflow:hidden;padding-right:12px"><img class="cover" style="height:90px" src="web-assets/project-villa.webp" alt=""><b style="font-weight:900">NHÔM DÂN DỤNG</b><span class="arrow">→</span></div>
+        <div style="display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;background:var(--canvas);border-radius:8px;overflow:hidden;padding-right:12px"><img class="cover" style="height:90px" src="web-assets/factory-coating.webp" alt=""><b style="font-weight:900">NHÔM CÔNG NGHIỆP</b><span class="arrow">→</span></div>
+      </div>
+      <div style="background:var(--canvas);padding:40px 16px">
+        <p class="kicker">Hệ nhôm dân dụng</p><h2 class="disp" style="font-size:28px">Chọn hệ, xem mặt cắt</h2>
+        <div class="tabs" style="margin-top:14px;flex-wrap:nowrap;overflow:hidden"><span class="on">ECENTO 70</span><span>ECENTO PLUS</span><span>55 VÁT</span></div>
+        <img class="cover" style="height:260px;margin-top:12px;border-radius:8px" src="web-assets/product-ecento-70.webp" alt="">
+        <div style="background:#fff;border-radius:8px;margin-top:10px;padding:12px"><img src="web-assets/E701A.png" alt=""></div>
+        <div class="spec" style="margin-top:10px"><div><small>Mã</small><b style="font-size:17px">E701A</b></div><div><small>Dày</small><b style="font-size:17px">1.6 mm</b></div><div><small>Tỷ trọng</small><b style="font-size:17px">1.385</b></div></div>
+      </div>
+      <div style="padding:48px 16px"><p class="kicker">Nhôm công nghiệp</p><h2 class="disp" style="font-size:28px">Từ bản vẽ đến sản phẩm</h2><img class="cover" style="height:200px;margin-top:14px;border-radius:8px" src="web-assets/aluminum-billets.jpg" alt=""><div style="margin-top:10px;display:grid;gap:6px;font-weight:800;font-size:15px"><div style="background:var(--canvas);padding:13px;border-radius:8px">Nhôm định hình theo bản vẽ →</div><div style="background:var(--canvas);padding:13px;border-radius:8px">Chi tiết máy và linh kiện →</div><div style="background:var(--canvas);padding:13px;border-radius:8px">… 3 dịch vụ nữa</div></div></div>
+      <div style="padding:0 16px 48px"><h2 class="disp" style="font-size:28px">Một nhà máy, trọn quy trình</h2><div style="display:flex;gap:10px;overflow:hidden;margin-top:14px"><img class="cover" style="width:240px;height:180px;border-radius:8px;flex:none" src="web-assets/factory-coating.webp" alt=""><img class="cover" style="width:240px;height:180px;border-radius:8px;flex:none" src="web-assets/finish-wood.webp" alt=""></div></div>
+      <div style="background:var(--orange);color:#fff;padding:32px 16px"><h2 class="disp" style="font-size:26px;margin:0">Chọn hệ nhôm, hoặc gửi bản vẽ</h2><div style="display:grid;gap:8px;margin-top:16px"><span class="btn" style="background:#fff;color:var(--ink)">Tư vấn hệ cửa →</span><span class="btn" style="background:var(--ink);color:#fff">Gửi bản vẽ →</span></div></div>
+      <div style="background:var(--slate);padding:32px 16px"><img style="height:40px" src="web-assets/eurohouse-logo-landscape.png" alt=""><div class="footer-word" style="font-size:40px;margin-top:24px">Nhôm của sự thịnh vượng</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =================== B =================== -->
+<div class="option" data-option="B">
+<div class="why">
+  <h2>B · Poster khối cam</h2>
+  Mượn trực tiếp khối cam của logo làm nền hero: chữ trắng in hoa rất to, ảnh cắt nền ECENTO 70 đặt chồng bên phải. Mạnh, dễ nhớ, giống biển hiệu đại lý ngoài đường.
+  <ul>
+    <li><b>Rủi ro:</b> art direction v6 nói cam chỉ cho nhận diện và điểm nhấn; một khối cam chiếm nửa màn hình đầu đẩy giới hạn đó. Trang dưới phải rất tiết chế để bù.</li>
+    <li>Các phần dưới: nền trắng, số liệu catalog cỡ lớn, lưới ảnh sản phẩm đều nhau.</li>
+  </ul>
+</div>
+<div class="stage">
+  <div>
+    <div class="cap">Desktop 1440 (thu về 1200)</div>
+    <div class="desk">
+      <div class="nav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt=""><div class="links"><span>Nhôm dân dụng</span><span>Nhôm công nghiệp</span><span>Dự án</span><span>Năng lực</span><span>Tài nguyên</span></div><span class="cta" style="background:var(--ink)">Nhận tư vấn</span></div>
+      <div class="note" data-note="Hero: nền cam khối logo, chữ 120px, ảnh cắt nền ECENTO 70" style="display:grid;grid-template-columns:1.2fr 1fr;height:620px">
+        <div style="background:var(--brand-block);padding:80px 56px;color:#fff;display:flex;flex-direction:column;justify-content:space-between">
+          <h1 class="disp" style="font-size:104px;line-height:1;margin:0;color:var(--ink)">Nhôm của sự thịnh vượng</h1>
+          <div><p class="lead" style="color:var(--ink);max-width:460px">Hệ cửa ECENTO cho nhà Việt và nhôm định hình theo bản vẽ.</p><div style="display:flex;gap:12px;margin-top:20px"><span class="btn" style="background:var(--ink);color:#fff">Chọn hệ nhôm →</span><span class="btn btn-line" style="color:var(--ink)">Gửi bản vẽ</span></div></div>
+        </div>
+        <div style="background:var(--canvas);display:grid;place-items:center"><img style="max-height:560px" src="web-assets/ecento-70-cutout.png" alt=""></div>
+      </div>
+      <div class="note" data-note="Dải số liệu catalog cỡ lớn" style="display:grid;grid-template-columns:repeat(4,1fr);padding:72px 56px;gap:24px">
+        <div><b style="font-size:56px;font-weight:900">4</b><p class="small">hệ cửa dân dụng</p></div><div><b style="font-size:56px;font-weight:900">1.6 mm</b><p class="small">độ dày ECENTO 70</p></div><div><b style="font-size:56px;font-weight:900">5</b><p class="small">dịch vụ công nghiệp</p></div><div><b style="font-size:56px;font-weight:900">1</b><p class="small">nhà máy, trọn quy trình</p></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 56px 120px">
+        <div><img class="cover" style="height:300px;background:var(--canvas)" src="web-assets/product-ecento-70.webp" alt=""><b style="display:block;margin-top:10px;font-weight:900">ECENTO 70</b></div>
+        <div><img class="cover" style="height:300px" src="web-assets/product-ecento-plus.webp" alt=""><b style="display:block;margin-top:10px;font-weight:900">ECENTO PLUS</b></div>
+        <div><img class="cover" style="height:300px" src="web-assets/product-he-55.webp" alt=""><b style="display:block;margin-top:10px;font-weight:900">55 VÁT CẠNH</b></div>
+        <div><img class="cover" style="height:300px" src="web-assets/product-preco.webp" alt=""><b style="display:block;margin-top:10px;font-weight:900">PRECO</b></div>
+      </div>
+      <div style="background:var(--ink);color:#fff;padding:72px 56px;display:grid;grid-template-columns:1fr 1fr;gap:40px"><h2 class="disp" style="font-size:48px;margin:0">Từ bản vẽ đến sản phẩm</h2><img class="cover" style="height:300px" src="web-assets/aluminum-billets.jpg" alt=""></div>
+      <div style="padding:40px 56px;background:var(--brand-block)"><div class="footer-word" style="font-size:72px;color:var(--ink)">Eurohouse</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Mobile 390</div>
+    <div class="mob">
+      <div class="mnav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt=""><span class="burger"><i></i><i></i><i></i></span></div>
+      <div style="background:var(--brand-block);padding:32px 16px"><h1 class="disp" style="font-size:48px;line-height:1;margin:0;color:var(--ink)">Nhôm của sự thịnh vượng</h1><p style="margin-top:14px;font-size:16px">Hệ cửa ECENTO và nhôm định hình theo bản vẽ.</p><span class="btn" style="background:var(--ink);color:#fff;margin-top:16px">Chọn hệ nhôm →</span></div>
+      <div style="background:var(--canvas);display:grid;place-items:center;padding:16px"><img style="max-height:300px" src="web-assets/ecento-70-cutout.png" alt=""></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:32px 16px"><div><b style="font-size:36px;font-weight:900">4</b><p class="small">hệ cửa</p></div><div><b style="font-size:36px;font-weight:900">1.6 mm</b><p class="small">ECENTO 70</p></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 40px"><img class="cover" style="height:160px" src="web-assets/product-ecento-70.webp" alt=""><img class="cover" style="height:160px" src="web-assets/product-ecento-plus.webp" alt=""></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- =================== C =================== -->
+<div class="option" data-option="C">
+<div class="why">
+  <h2>C · Sân khấu chia đôi</h2>
+  Desktop: nửa trái là một ảnh đứng yên cả lượt xem và đổi theo chương (ECENTO 70 → nhà máy → công trình); nửa phải là cột chữ cuộn êm. Cảm giác hồ sơ năng lực in, rất điềm tĩnh.
+  <ul>
+    <li><b>Điểm mạnh:</b> sang, dễ đọc, hợp kiến trúc sư và khách dự án.</li>
+    <li><b>Điểm yếu:</b> ít “bán hàng” hơn A; trên điện thoại thành chuỗi ảnh + chữ bình thường; khác app nhiều hơn A.</li>
+  </ul>
+</div>
+<div class="stage">
+  <div>
+    <div class="cap">Desktop 1440 (thu về 1200)</div>
+    <div class="desk">
+      <div class="nav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt=""><div class="links"><span>Nhôm dân dụng</span><span>Nhôm công nghiệp</span><span>Dự án</span><span>Năng lực</span><span>Tài nguyên</span></div><span class="cta">Nhận tư vấn</span></div>
+      <div class="note" data-note="Trái: ảnh dính (sticky) cao 100vh, đổi theo chương. Phải: cột cuộn" style="display:grid;grid-template-columns:1fr 1fr">
+        <div style="height:1500px;position:relative"><img class="cover" style="position:sticky;top:0;height:800px" src="web-assets/hero-ecento-70.webp" alt=""></div>
+        <div style="padding:96px 56px;display:flex;flex-direction:column;gap:140px">
+          <div><p class="kicker">Nhôm kiến trúc · công nghiệp</p><h1 class="disp" style="font-size:60px">Nhôm của sự thịnh vượng</h1><p class="lead" style="margin-top:16px">Hệ cửa ECENTO cho nhà Việt và nhôm định hình theo bản vẽ, đùn ép và hoàn thiện tại nhà máy EUROHOUSE.</p><div style="display:flex;gap:12px;margin-top:24px"><span class="btn btn-primary">Chọn hệ nhôm →</span><span class="btn btn-line">Gửi bản vẽ</span></div></div>
+          <div><p class="kicker">Hệ nhôm dân dụng</p><h2 class="disp" style="font-size:40px">Bốn hệ cửa, một chuẩn</h2><div style="margin-top:18px;display:grid;gap:6px;font-weight:800"><div style="background:var(--canvas);padding:16px;border-radius:8px">ECENTO 70 — đa khoang, kín khít →</div><div style="background:var(--canvas);padding:16px;border-radius:8px">ECENTO PLUS — rãnh K châu Âu →</div><div style="background:var(--canvas);padding:16px;border-radius:8px">55 VÁT CẠNH →</div><div style="background:var(--canvas);padding:16px;border-radius:8px">PRECO →</div></div></div>
+          <div><p class="kicker">Nhôm công nghiệp</p><h2 class="disp" style="font-size:40px">Từ bản vẽ đến sản phẩm</h2><p class="lead" style="margin-top:12px">Năm dịch vụ: định hình theo bản vẽ, chi tiết máy, năng lượng mặt trời, đùn thuê, gia công.</p></div>
+        </div>
+      </div>
+      <div style="background:var(--slate);padding:56px"><div class="footer-word" style="font-size:96px">Nhôm của sự thịnh vượng</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Mobile 390</div>
+    <div class="mob">
+      <div class="mnav"><img class="logo" src="web-assets/eurohouse-logo-landscape.png" alt=""><span class="burger"><i></i><i></i><i></i></span></div>
+      <img class="cover" style="height:300px;object-position:72% center" src="web-assets/hero-ecento-70.webp" alt="">
+      <div style="padding:28px 16px"><p class="kicker">Nhôm kiến trúc · công nghiệp</p><h1 class="disp" style="font-size:34px">Nhôm của sự thịnh vượng</h1><p style="margin-top:10px;font-size:16px;line-height:1.5">Hệ cửa ECENTO và nhôm định hình theo bản vẽ.</p><span class="btn btn-primary" style="margin-top:16px">Chọn hệ nhôm →</span></div>
+      <img class="cover" style="height:240px" src="web-assets/factory-coating.webp" alt="">
+      <div style="padding:28px 16px"><h2 class="disp" style="font-size:28px">Bốn hệ cửa, một chuẩn</h2></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  document.querySelectorAll('.option').forEach((o) => o.classList.toggle('on', o.dataset.option === b.dataset.opt));
+}));
+</script>
+</body>
+</html>
