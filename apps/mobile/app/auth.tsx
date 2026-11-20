@@ -1,9 +1,12 @@
 import { useEffect, useReducer, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { colors } from '@eurohouse/ui';
 import { useAuth } from '../src/lib/auth';
+import { DisplayTitle, Kicker } from '../src/components/ws';
 import { createRegistrationState, registrationReducer, validateRegistrationDraft, type RegistrationDraft } from '../src/lib/authRegistrationState';
+import heroImage from '../assets/brand/hero-ecento-70.jpg';
+import logo from '../assets/logo-mark.png';
 
 type Mode = 'login' | 'register';
 const REMEMBER_LOGIN_KEY = 'eurohouse-remember-login';
@@ -111,50 +114,73 @@ export default function AuthScreen() {
   const isVerify = !isLogin && registrationStage === 'VERIFY';
   const registrationLoading = registration.status === 'SUBMITTING';
   const cooldownSeconds = Math.max(0, Math.ceil((registration.resendAvailableAt - now) / 1_000));
+  const heroKicker = isLogin ? 'Chào mừng trở lại' : isVerify ? 'Xác minh email' : 'Đăng ký cơ sở';
+  const heroTitle = isLogin ? 'Đăng nhập xưởng' : isVerify ? 'Nhập mã 6 số' : 'Tạo tài khoản miễn phí';
+  const heroLead = isLogin
+    ? 'Đăng nhập bằng email hoặc số điện thoại đã xác minh.'
+    : isVerify ? `Mã đã gửi tới ${registration.maskedTarget ?? 'email của bạn'}.`
+    : 'Cho cơ sở nhôm kính, cơ khí và xưởng sản xuất.';
 
-  return <ScrollView style={styles.page} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-    <View style={styles.brandMark}><Text style={styles.brandMarkText}>E</Text></View>
-    <Text style={styles.title}>Eurohouse</Text>
-    <Text style={styles.subtitle}>{isLogin ? 'Đăng nhập bằng email hoặc số điện thoại đã xác minh.' : isVerify ? `Nhập mã 6 số đã gửi tới ${registration.maskedTarget ?? 'định danh của bạn'}.` : 'Tạo tài khoản miễn phí cho cơ sở nhôm kính, cơ khí và xưởng sản xuất.'}</Text>
+  return <ScrollView style={styles.page} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <View style={styles.hero}>
+      <Image source={heroImage} style={styles.heroImage} resizeMode="cover" accessibilityIgnoresInvertColors />
+      <View style={styles.heroShade} />
+      <View style={styles.heroTop}>
+        <View style={styles.logoFrame}><Image source={logo} style={styles.logo} resizeMode="contain" /></View>
+        <View>
+          <Text style={styles.wordmark}>EUROHOUSE</Text>
+          <Text style={styles.wordmarkSub}>WORKSHOP OS</Text>
+        </View>
+      </View>
+      <View style={styles.heroCopy}>
+        <Kicker text={heroKicker} light />
+        <View style={{ marginTop: 6 }}><DisplayTitle text={heroTitle} size={24} light lines={2} /></View>
+        <Text style={styles.heroLead}>{heroLead}</Text>
+      </View>
+    </View>
 
-    {!isVerify ? <View style={styles.segment}>
-      <Pressable onPress={() => setMode('login')} style={[styles.segmentItem, isLogin && styles.segmentActive]}><Text style={[styles.segmentText, isLogin && styles.segmentTextActive]}>Đăng nhập</Text></Pressable>
-      <Pressable onPress={() => setMode('register')} style={[styles.segmentItem, !isLogin && styles.segmentActive]}><Text style={[styles.segmentText, !isLogin && styles.segmentTextActive]}>Đăng ký cơ sở</Text></Pressable>
-    </View> : null}
+    <View style={styles.sheet}>
+      {!isVerify ? <View style={styles.segment}>
+        <Pressable onPress={() => setMode('login')} style={[styles.segmentItem, isLogin && styles.segmentActive]}><Text style={[styles.segmentText, isLogin && styles.segmentTextActive]}>Đăng nhập</Text></Pressable>
+        <Pressable onPress={() => setMode('register')} style={[styles.segmentItem, !isLogin && styles.segmentActive]}><Text style={[styles.segmentText, !isLogin && styles.segmentTextActive]}>Đăng ký cơ sở</Text></Pressable>
+      </View> : null}
 
-    {isLogin ? <>
-      <Field placeholder="Email hoặc số điện thoại" value={identifier} onChangeText={setIdentifier} keyboardType="email-address" />
-      <PasswordInput value={loginPassword} onChangeText={setLoginPassword} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
-      <Pressable style={styles.rememberRow} onPress={() => setRememberPassword((value) => !value)}><View style={[styles.checkbox, rememberPassword && styles.checkboxActive]}>{rememberPassword ? <Text style={styles.checkboxMark}>✓</Text> : null}</View><Text style={styles.rememberText}>{Platform.OS === 'web' ? 'Nhớ email trên thiết bị này' : 'Nhớ đăng nhập an toàn trên thiết bị'}</Text></Pressable>
-      {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
-      <PrimaryButton loading={loginLoading} label="Đăng nhập" onPress={submitLogin} />
-    </> : isVerify ? <View style={styles.verifyCard}>
-      <Text style={styles.fieldLabel}>Mã xác minh</Text>
-      <TextInput value={registration.code} onChangeText={(code) => dispatch({ type: 'SET_CODE', code })} style={styles.codeInput} placeholder="000000" placeholderTextColor="#94A3B8" keyboardType="number-pad" maxLength={6} />
-      {registration.error ? <Text style={styles.error}>{registration.error}</Text> : null}
-      <PrimaryButton loading={registrationLoading} label="Xác minh và vào ứng dụng" onPress={confirmCode} />
-      <Pressable disabled={cooldownSeconds > 0 || registrationLoading} onPress={resendCode} style={styles.secondaryButton}><Text style={[styles.secondaryText, cooldownSeconds > 0 && styles.mutedText]}>{cooldownSeconds > 0 ? `Gửi lại mã sau ${cooldownSeconds}s` : 'Gửi lại mã xác minh'}</Text></Pressable>
-      <Pressable onPress={() => dispatch({ type: 'BACK_TO_FORM' })}><Text style={styles.textAction}>Sửa thông tin đăng ký</Text></Pressable>
-    </View> : <>
-      <Field placeholder="Họ và tên" value={registration.draft.displayName} onChangeText={(value) => updateDraft('displayName', value)} />
-      <Field placeholder="Tên cơ sở / xưởng" value={registration.draft.organizationName} onChangeText={(value) => updateDraft('organizationName', value)} />
-      <Field placeholder="Email (nhận mã xác minh)" value={registration.draft.email} onChangeText={(value) => updateDraft('email', value)} keyboardType="email-address" />
-      <Field placeholder="Số điện thoại (không bắt buộc)" value={registration.draft.phone} onChangeText={(value) => updateDraft('phone', value)} keyboardType="phone-pad" />
-      <PasswordInput value={registration.draft.password} onChangeText={(value) => updateDraft('password', value)} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
-      {registration.error ? <Text style={styles.error}>{registration.error}</Text> : null}
-      <PrimaryButton loading={registrationLoading} label="Tạo tài khoản miễn phí" onPress={submitRegistration} />
-      <Text style={styles.note}>Sau xác minh, bạn dùng ngay báo giá thủ công, công nợ, chấm công và quản lý công trình. Công thức Eurohouse được kích hoạt riêng bằng mã mời NPP.</Text>
-    </>}
-    <View style={styles.guestDivider}><View style={styles.guestLine} /><Text style={styles.guestDividerText}>hoặc</Text><View style={styles.guestLine} /></View>
-    <Pressable style={styles.guestButton} onPress={() => void continueAsGuest()}>
-      <Text style={styles.guestButtonTitle}>Dùng ngay</Text>
-      <Text style={styles.guestButtonText}>Không cần tài khoản · Thời tiết, chấm công, báo giá và thư viện Eurohouse</Text>
-    </Pressable>
+      {isLogin ? <>
+        <Field placeholder="Email hoặc số điện thoại" value={identifier} onChangeText={setIdentifier} keyboardType="email-address" />
+        <PasswordInput value={loginPassword} onChangeText={setLoginPassword} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
+        <Pressable style={styles.rememberRow} onPress={() => setRememberPassword((value) => !value)}><View style={[styles.checkbox, rememberPassword && styles.checkboxActive]}>{rememberPassword ? <Text style={styles.checkboxMark}>✓</Text> : null}</View><Text style={styles.rememberText}>{Platform.OS === 'web' ? 'Nhớ email trên thiết bị này' : 'Nhớ đăng nhập an toàn trên thiết bị'}</Text></Pressable>
+        {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
+        <PrimaryButton loading={loginLoading} label="Đăng nhập" onPress={submitLogin} />
+      </> : isVerify ? <>
+        <Text style={styles.fieldLabel}>Mã xác minh</Text>
+        <TextInput value={registration.code} onChangeText={(code) => dispatch({ type: 'SET_CODE', code })} style={styles.codeInput} placeholder="000000" placeholderTextColor="#98A2B3" keyboardType="number-pad" maxLength={6} />
+        {registration.error ? <Text style={styles.error}>{registration.error}</Text> : null}
+        <PrimaryButton loading={registrationLoading} label="Xác minh và vào ứng dụng" onPress={confirmCode} />
+        <Pressable disabled={cooldownSeconds > 0 || registrationLoading} onPress={resendCode} style={styles.secondaryButton}><Text style={[styles.secondaryText, cooldownSeconds > 0 && styles.mutedText]}>{cooldownSeconds > 0 ? `Gửi lại mã sau ${cooldownSeconds}s` : 'Gửi lại mã xác minh'}</Text></Pressable>
+        <Pressable onPress={() => dispatch({ type: 'BACK_TO_FORM' })}><Text style={styles.textAction}>Sửa thông tin đăng ký</Text></Pressable>
+      </> : <>
+        <Field placeholder="Họ và tên" value={registration.draft.displayName} onChangeText={(value) => updateDraft('displayName', value)} />
+        <Field placeholder="Tên cơ sở / xưởng" value={registration.draft.organizationName} onChangeText={(value) => updateDraft('organizationName', value)} />
+        <Field placeholder="Email (nhận mã xác minh)" value={registration.draft.email} onChangeText={(value) => updateDraft('email', value)} keyboardType="email-address" />
+        <Field placeholder="Số điện thoại (không bắt buộc)" value={registration.draft.phone} onChangeText={(value) => updateDraft('phone', value)} keyboardType="phone-pad" />
+        <PasswordInput value={registration.draft.password} onChangeText={(value) => updateDraft('password', value)} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
+        {registration.error ? <Text style={styles.error}>{registration.error}</Text> : null}
+        <PrimaryButton loading={registrationLoading} label="Tạo tài khoản miễn phí" onPress={submitRegistration} />
+        <Text style={styles.note}>Sau xác minh, bạn dùng ngay báo giá thủ công, công nợ, chấm công và quản lý công trình. Công thức Eurohouse được kích hoạt riêng bằng mã mời NPP.</Text>
+      </>}
+
+      <View style={styles.guestDivider}><View style={styles.guestLine} /><Text style={styles.guestDividerText}>HOẶC</Text><View style={styles.guestLine} /></View>
+      <Pressable style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]} onPress={() => void continueAsGuest()}>
+        <Text style={styles.guestButtonTitle}>Dùng ngay</Text>
+        <Text style={styles.guestButtonText}>Không cần tài khoản · Thời tiết, chấm công, báo giá và thư viện Eurohouse</Text>
+      </Pressable>
+      <Text style={styles.slogan}>NHÔM CỦA SỰ THỊNH VƯỢNG</Text>
+    </View>
   </ScrollView>;
 }
 
 function Field({ placeholder, value, onChangeText, keyboardType }: { placeholder: string; value: string; onChangeText: (value: string) => void; keyboardType?: 'email-address' | 'phone-pad' }) {
-  return <TextInput placeholder={placeholder} autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'} keyboardType={keyboardType} value={value} onChangeText={onChangeText} style={styles.input} placeholderTextColor="#94A3B8" />;
+  return <TextInput placeholder={placeholder} autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'} keyboardType={keyboardType} value={value} onChangeText={onChangeText} style={styles.input} placeholderTextColor="#98A2B3" />;
 }
 
 function PrimaryButton({ loading, label, onPress }: { loading: boolean; label: string; onPress: () => void }) {
@@ -162,19 +188,56 @@ function PrimaryButton({ loading, label, onPress }: { loading: boolean; label: s
 }
 
 function PasswordInput({ value, onChangeText, visible, onToggleVisible }: { value: string; onChangeText: (value: string) => void; visible: boolean; onToggleVisible: () => void }) {
-  return <View style={styles.passwordRow}><TextInput placeholder="Mật khẩu (tối thiểu 6 ký tự)" secureTextEntry={!visible} value={value} onChangeText={onChangeText} style={styles.passwordInput} placeholderTextColor="#94A3B8" /><Pressable style={styles.passwordAction} onPress={onToggleVisible}><Text style={styles.passwordActionText}>{visible ? 'Ẩn' : 'Hiện'}</Text></Pressable></View>;
+  return <View style={styles.passwordRow}><TextInput placeholder="Mật khẩu (tối thiểu 6 ký tự)" secureTextEntry={!visible} value={value} onChangeText={onChangeText} style={styles.passwordInput} placeholderTextColor="#98A2B3" /><Pressable style={styles.passwordAction} onPress={onToggleVisible}><Text style={styles.passwordActionText}>{visible ? 'Ẩn' : 'Hiện'}</Text></Pressable></View>;
 }
 
+const INK = '#151A22';
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFF9F3' }, container: { flexGrow: 1, width: '100%', maxWidth: 520, alignSelf: 'center', paddingHorizontal: 24, paddingVertical: 40, justifyContent: 'center', gap: 14 },
-  brandMark: { width: 48, height: 48, borderRadius: 15, backgroundColor: colors.brandOrange, alignItems: 'center', justifyContent: 'center' }, brandMarkText: { color: colors.white, fontSize: 24, fontWeight: '900' },
-  title: { color: colors.brandBlack.main, fontSize: 32, lineHeight: 38, fontWeight: '900' }, subtitle: { color: colors.brandGrey[600], fontSize: 15, lineHeight: 22, marginBottom: 6 },
-  guestDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }, guestLine: { flex: 1, height: 1, backgroundColor: '#E7D8CA' }, guestDividerText: { color: colors.brandGrey[500], fontSize: 12, fontWeight: '700' },
-  guestButton: { minHeight: 62, borderRadius: 16, borderWidth: 1, borderColor: '#F2A45F', backgroundColor: '#FFF7EF', paddingHorizontal: 16, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' }, guestButtonTitle: { color: colors.brandOrangeText, fontSize: 16, fontWeight: '900' }, guestButtonText: { color: colors.brandGrey[600], fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 3 },
-  segment: { flexDirection: 'row', backgroundColor: colors.brandGrey[100], borderRadius: 16, padding: 4 }, segmentItem: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }, segmentActive: { backgroundColor: colors.white }, segmentText: { color: colors.brandGrey[500], fontWeight: '800' }, segmentTextActive: { color: colors.brandBlack.main },
-  input: { minHeight: 54, borderColor: '#E7D8CA', borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, fontSize: 16, color: colors.brandBlack.main, backgroundColor: colors.white },
-  passwordRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', borderColor: '#E7D8CA', borderWidth: 1, borderRadius: 14, backgroundColor: colors.white, overflow: 'hidden' }, passwordInput: { flex: 1, paddingHorizontal: 16, fontSize: 16, color: colors.brandBlack.main, minWidth: 0 }, passwordAction: { minWidth: 62, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }, passwordActionText: { color: colors.brandOrange, fontWeight: '800', fontSize: 13 },
-  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 }, checkbox: { width: 22, height: 22, borderRadius: 7, borderWidth: 1.5, borderColor: '#D4BDA8', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white }, checkboxActive: { backgroundColor: colors.brandOrange, borderColor: colors.brandOrange }, checkboxMark: { color: colors.white, fontWeight: '900' }, rememberText: { flex: 1, color: colors.brandGrey[600], fontWeight: '600', fontSize: 13, lineHeight: 18 },
-  error: { color: colors.danger, fontWeight: '700', lineHeight: 20 }, primaryButton: { minHeight: 52, backgroundColor: colors.brandOrange, borderRadius: 14, marginTop: 4, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 }, primaryText: { color: colors.white, textAlign: 'center', fontWeight: '900', fontSize: 16 }, disabled: { opacity: 0.6 }, pressed: { opacity: 0.86 }, note: { textAlign: 'center', color: colors.brandGrey[500], marginTop: 4, fontSize: 13, lineHeight: 19 },
-  verifyCard: { backgroundColor: colors.white, borderRadius: 20, padding: 20, gap: 14, borderWidth: 1, borderColor: '#F1E4D8' }, fieldLabel: { color: colors.brandGrey[700], fontWeight: '800', fontSize: 13, marginBottom: 8 }, codeInput: { minHeight: 62, borderColor: '#E7D8CA', borderWidth: 1, borderRadius: 14, backgroundColor: '#FFFDFC', color: colors.brandBlack.main, fontSize: 28, fontWeight: '900', letterSpacing: 10, textAlign: 'center' }, secondaryButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' }, secondaryText: { color: colors.brandOrange, fontWeight: '800' }, mutedText: { color: colors.brandGrey[400] }, textAction: { color: colors.brandGrey[600], textAlign: 'center', fontWeight: '700', paddingVertical: 6 },
+  page: { flex: 1, backgroundColor: '#F5F6F7' },
+  container: { flexGrow: 1, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: '#F5F6F7', paddingBottom: 32 },
+  hero: { minHeight: 250, paddingHorizontal: 20, paddingTop: 48, paddingBottom: 56, overflow: 'hidden', backgroundColor: '#202A37' },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(21,26,34,0.62)' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logoFrame: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F9A82F', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logo: { width: 40, height: 40 },
+  wordmark: { color: '#FFFFFF', fontSize: 15, fontWeight: '900', letterSpacing: 1.6 },
+  wordmarkSub: { color: '#FFD09C', fontSize: 9, fontWeight: '800', letterSpacing: 1.6, marginTop: 1 },
+  heroCopy: { marginTop: 26 },
+  heroLead: { color: '#F3F5F7', fontSize: 14, lineHeight: 21, marginTop: 8, maxWidth: 420 },
+  sheet: { marginTop: -28, marginHorizontal: 14, backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#DFE3E8', padding: 16, gap: 12, shadowColor: '#151A22', shadowOpacity: 0.1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  segment: { flexDirection: 'row', backgroundColor: '#F2F4F7', borderRadius: 8, padding: 3 },
+  segmentItem: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
+  segmentActive: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFE3E8' },
+  segmentText: { color: '#667085', fontWeight: '800', fontSize: 14 },
+  segmentTextActive: { color: INK },
+  input: { minHeight: 52, borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, fontSize: 16, color: INK, backgroundColor: '#FFFFFF' },
+  passwordRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 8, backgroundColor: '#FFFFFF', overflow: 'hidden' },
+  passwordInput: { flex: 1, paddingHorizontal: 14, fontSize: 16, color: INK, minWidth: 0 },
+  passwordAction: { minWidth: 62, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  passwordActionText: { color: '#C65309', fontWeight: '800', fontSize: 13 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: '#D0D5DD', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+  checkboxActive: { backgroundColor: '#F47C20', borderColor: '#F47C20' },
+  checkboxMark: { color: '#FFFFFF', fontWeight: '900' },
+  rememberText: { flex: 1, color: '#475467', fontWeight: '600', fontSize: 13, lineHeight: 18 },
+  error: { color: colors.danger, fontWeight: '700', lineHeight: 20 },
+  primaryButton: { minHeight: 52, backgroundColor: '#F47C20', borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primaryText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '900', fontSize: 15, letterSpacing: 0.4 },
+  disabled: { opacity: 0.6 },
+  pressed: { opacity: 0.86 },
+  note: { textAlign: 'center', color: '#667085', fontSize: 12.5, lineHeight: 18 },
+  fieldLabel: { color: '#344054', fontWeight: '800', fontSize: 13 },
+  codeInput: { minHeight: 62, borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 8, backgroundColor: '#FFFFFF', color: INK, fontSize: 28, fontWeight: '900', letterSpacing: 10, textAlign: 'center' },
+  secondaryButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: '#C65309', fontWeight: '800' },
+  mutedText: { color: '#98A2B3' },
+  textAction: { color: '#475467', textAlign: 'center', fontWeight: '700', paddingVertical: 6 },
+  guestDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
+  guestLine: { flex: 1, height: 1, backgroundColor: '#DFE3E8' },
+  guestDividerText: { color: '#98A2B3', fontSize: 10.5, fontWeight: '800', letterSpacing: 1.4 },
+  guestButton: { minHeight: 60, borderRadius: 8, borderWidth: 1, borderColor: '#FED7AA', backgroundColor: '#FFF2E8', paddingHorizontal: 16, paddingVertical: 11, alignItems: 'center', justifyContent: 'center' },
+  guestButtonTitle: { color: '#C65309', fontSize: 15, fontWeight: '900', letterSpacing: 0.4 },
+  guestButtonText: { color: '#667085', fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 3 },
+  slogan: { textAlign: 'center', color: '#98A2B3', fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginTop: 4 },
 });
