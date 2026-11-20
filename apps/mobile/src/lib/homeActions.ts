@@ -12,32 +12,32 @@ export interface HomeAction {
   /** Tên icon Feather. */
   icon: string;
   href: string;
-  color: string;
-  bg: string;
   group: HomeActionGroup;
+  /** Việc chính của CSSX: tô cam theo bộ nhận diện (cam chỉ dành cho hành động chính). */
+  primary?: boolean;
   /** Quyền Eurohouse cần mở. */
   requires?: 'ordering' | 'formulas';
 }
 
 export const HOME_ACTIONS: HomeAction[] = [
-  { key: 'orders', label: 'Đặt nhôm', icon: 'truck', href: '/orders', color: '#C45513', bg: '#FFF1E8', group: 'production', requires: 'ordering' },
-  { key: 'formulas', label: 'Công thức', icon: 'layout', href: '/formulas', color: '#0F766E', bg: '#E6F6F3', group: 'production', requires: 'formulas' },
-  { key: 'shopFloor', label: 'Việc xưởng', icon: 'clipboard', href: '/shop-floor', color: '#344054', bg: '#EEF0F3', group: 'production' },
-  { key: 'qc', label: 'Kiểm tra QC', icon: 'check-square', href: '/qc', color: '#047857', bg: '#E5F7EF', group: 'production' },
-  { key: 'installations', label: 'Lắp đặt', icon: 'tool', href: '/installations', color: '#B45309', bg: '#FFF4D8', group: 'production' },
-  { key: 'warranty', label: 'Bảo hành', icon: 'maximize', href: '/service-warranty', color: '#0369A1', bg: '#E5F3FA', group: 'production' },
-  { key: 'mediaSync', label: 'Ảnh chờ gửi', icon: 'cloud', href: '/media-sync', color: '#475467', bg: '#F2F4F7', group: 'production' },
-  { key: 'quote', label: 'Báo giá', icon: 'file-text', href: '/quote', color: '#1D4ED8', bg: '#EAF2FF', group: 'business' },
-  { key: 'projects', label: 'Công trình', icon: 'briefcase', href: '/projects', color: '#C45513', bg: '#FFF1E8', group: 'business' },
-  { key: 'workforce', label: 'Quản lý xưởng', icon: 'user-check', href: '/workforce', color: '#047857', bg: '#E5F7EF', group: 'business' },
-  { key: 'reminders', label: 'Nhắc việc', icon: 'calendar', href: '/reminders', color: '#B45309', bg: '#FFF4D8', group: 'business' },
-  { key: 'debts', label: 'Công nợ', icon: 'credit-card', href: '/debts', color: '#BE123C', bg: '#FDE8EF', group: 'business' },
-  { key: 'invoices', label: 'Hoá đơn', icon: 'file-text', href: '/invoices', color: '#5925DC', bg: '#F4F3FF', group: 'business' },
+  { key: 'orders', label: 'Đặt nhôm', icon: 'truck', href: '/orders', group: 'production', requires: 'ordering', primary: true },
+  { key: 'formulas', label: 'Công thức', icon: 'sliders', href: '/formulas', group: 'production', requires: 'formulas' },
+  { key: 'shopFloor', label: 'Việc xưởng', icon: 'clipboard', href: '/shop-floor', group: 'production' },
+  { key: 'qc', label: 'Kiểm tra QC', icon: 'check-square', href: '/qc', group: 'production' },
+  { key: 'installations', label: 'Lắp đặt', icon: 'tool', href: '/installations', group: 'production' },
+  { key: 'warranty', label: 'Bảo hành', icon: 'maximize', href: '/service-warranty', group: 'production' },
+  { key: 'mediaSync', label: 'Ảnh chờ gửi', icon: 'cloud', href: '/media-sync', group: 'production' },
+  { key: 'quote', label: 'Báo giá', icon: 'file-text', href: '/quote', group: 'business', primary: true },
+  { key: 'projects', label: 'Công trình', icon: 'briefcase', href: '/projects', group: 'business' },
+  { key: 'workforce', label: 'Quản lý xưởng', icon: 'users', href: '/workforce', group: 'business' },
+  { key: 'reminders', label: 'Nhắc việc', icon: 'calendar', href: '/reminders', group: 'business' },
+  { key: 'debts', label: 'Công nợ', icon: 'credit-card', href: '/debts', group: 'business' },
+  { key: 'invoices', label: 'Hoá đơn', icon: 'file', href: '/invoices', group: 'business' },
 ];
 
-const ALL_TILE: HomeAction = { key: 'all', label: 'Tất cả', icon: 'grid', href: '', color: '#344054', bg: '#EEF0F3', group: 'business' };
+const ALL_TILE: HomeAction = { key: 'all', label: 'Tất cả', icon: 'grid', href: '', group: 'business' };
 
-const PRIMARY: HomeActionKey[] = ['orders', 'quote', 'formulas', 'projects', 'workforce', 'debts', 'invoices'];
+const PRIMARY: HomeActionKey[] = ['quote', 'orders', 'projects', 'formulas', 'workforce', 'debts', 'invoices'];
 
 export function primaryActions(): HomeAction[] {
   return [...PRIMARY.map((key) => HOME_ACTIONS.find((a) => a.key === key)!), ALL_TILE];
@@ -54,4 +54,12 @@ export function isActionLocked(action: HomeAction, access: { ordering: boolean; 
   if (action.requires === 'ordering') return !access.ordering;
   if (action.requires === 'formulas') return !access.formulas;
   return false;
+}
+
+export type TileTone = 'primary' | 'neutral' | 'locked';
+
+/** Màu ô tiện ích: cam cho việc chính, trung tính cho phần còn lại, xám khi chưa mở quyền. */
+export function tileTone(action: HomeAction, access: { ordering: boolean; formulas: boolean }): TileTone {
+  if (isActionLocked(action, access)) return 'locked';
+  return action.primary ? 'primary' : 'neutral';
 }

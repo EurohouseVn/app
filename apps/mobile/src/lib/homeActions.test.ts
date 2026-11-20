@@ -1,11 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HOME_ACTIONS, actionGroups, isActionLocked, primaryActions } from './homeActions.ts';
+import { HOME_ACTIONS, actionGroups, isActionLocked, primaryActions, tileTone } from './homeActions.ts';
 
-test('8 ô chính: 7 tiện ích dùng nhiều và ô Tất cả ở cuối', () => {
+test('8 ô chính: Báo giá và Đặt nhôm đứng đầu, ô Tất cả ở cuối', () => {
   const tiles = primaryActions();
   assert.equal(tiles.length, 8);
-  assert.deepEqual(tiles.map((a) => a.key), ['orders', 'quote', 'formulas', 'projects', 'workforce', 'debts', 'invoices', 'all']);
+  assert.deepEqual(tiles.map((a) => a.key), ['quote', 'orders', 'projects', 'formulas', 'workforce', 'debts', 'invoices', 'all']);
+});
+
+test('icon theo nhận diện: chỉ hai việc chính dùng cam, còn lại một màu trung tính', () => {
+  const tones = primaryActions().map((a) => tileTone(a, { ordering: true, formulas: true }));
+  assert.deepEqual(tones, ['primary', 'primary', 'neutral', 'neutral', 'neutral', 'neutral', 'neutral', 'neutral']);
+  // Việc chính đang bị khoá thì không tô cam.
+  const orders = HOME_ACTIONS.find((a) => a.key === 'orders')!;
+  assert.equal(tileTone(orders, { ordering: false, formulas: true }), 'locked');
+  // Không còn bảng màu riêng cho từng tiện ích.
+  assert.ok(HOME_ACTIONS.every((a) => !('color' in a) && !('bg' in a)));
 });
 
 test('bảng Tất cả: hai nhóm, đủ mọi tiện ích, không lặp, không có ô Tất cả', () => {

@@ -128,6 +128,34 @@ export function SectionHead({ title, sub, action }: { title: string; sub?: strin
   );
 }
 
+/** Nhãn nhỏ in hoa có gạch cam phía trước (giống website nhomeurohouse.com). */
+export function Kicker({ text, light }: { text: string; light?: boolean }) {
+  return (
+    <View style={s.kickerRow}>
+      <View style={[s.kickerDash, light && s.kickerDashLight]} />
+      <Text style={[s.kicker, light && s.kickerLight]} numberOfLines={1}>{text.toUpperCase()}</Text>
+    </View>
+  );
+}
+
+/** Tiêu đề thương hiệu: in hoa, đậm, leading ≥ 1.1 cho tiếng Việt có dấu. */
+export function DisplayTitle({ text, size = 18, light, lines }: { text: string; size?: number; light?: boolean; lines?: number }) {
+  return <Text style={[s.display, { fontSize: size, lineHeight: Math.round(size * 1.18) }, light && { color: '#FFFFFF' }]} numberOfLines={lines}>{text.toUpperCase()}</Text>;
+}
+
+/** Đầu mục kiểu thương hiệu: nhãn + tiêu đề + liên kết bên phải. */
+export function BrandSectionHead({ kicker, title, action }: { kicker: string; title?: string; action?: ReactNode }) {
+  return (
+    <View style={s.brandHead}>
+      <View style={s.grow}>
+        <Kicker text={kicker} />
+        {title ? <View style={{ marginTop: 4 }}><DisplayTitle text={title} size={17} /></View> : null}
+      </View>
+      {action}
+    </View>
+  );
+}
+
 export function KpiRow({ children }: { children: ReactNode }) {
   return <View style={s.kpiRow}>{children}</View>;
 }
@@ -373,6 +401,13 @@ const s = StyleSheet.create({
   listRowDivider: { borderTopWidth: 1, borderTopColor: ws.lineSoft },
   listRowPressed: { backgroundColor: '#F9FAFB' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 8 },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  kickerDash: { width: 18, height: 2, backgroundColor: ws.orange },
+  kickerDashLight: { backgroundColor: '#FFB46B' },
+  kicker: { color: '#C65309', fontSize: 10.5, lineHeight: 14, fontWeight: '800', letterSpacing: 1.4 },
+  kickerLight: { color: '#FFD09C' },
+  display: { color: '#151A22', fontWeight: '900', letterSpacing: -0.2 },
+  brandHead: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 22, marginBottom: 10 },
   sectionTitle: { color: ws.ink, fontSize: 15, fontWeight: '900' },
   sectionSub: { color: ws.muted, fontSize: 11.5, marginTop: 2 },
   kpiRow: { flexDirection: 'row', gap: 8 },
