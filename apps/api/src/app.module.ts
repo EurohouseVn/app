@@ -20,6 +20,7 @@ import { ProductionModule } from './modules/production/production.module';
 import { ContentModule } from './modules/content/content.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
+import { AiModule } from './modules/ai/ai.module';
 import { TaxInvoiceModule } from './modules/tax-invoice/tax-invoice.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { StorageModule } from './modules/storage/storage.module';
@@ -58,6 +59,7 @@ import { EurohouseAccessModule } from './modules/eurohouse-access/eurohouse-acce
     ContentModule,
     NotificationsModule,
     WorkforceModule,
+    AiModule,
     TaxInvoiceModule,
     ManufacturingModule,
     WorkshopOperationsModule,

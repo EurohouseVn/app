@@ -13,4 +13,5 @@ load DATABASE_URL database_url
 load JWT_SECRET   jwt_secret
 load WEBSITE_PREVIEW_SECRET website_preview_secret
 load RESEND_API_KEY resend_api_key
+load MUSE_BRIDGE_TOKEN muse_bridge_token
 exec "$@"

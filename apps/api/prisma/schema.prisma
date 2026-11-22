@@ -3777,3 +3777,60 @@ model WebsitePublicationAudit {
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
 }
+
+// ── Trợ lý AI theo từng xưởng ──────────────────────────────────────────────
+model AiWorkspaceProfile {
+  id                 String   @id @default(cuid())
+  organizationId     String   @unique
+  enabled            Boolean  @default(true)
+  systemInstructions String   @default("")
+  imageWeeklyLimit   Int      @default(10)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model AiConversation {
+  id             String      @id @default(cuid())
+  organizationId String
+  userId         String
+  kind           String      @default("CHAT") // CHAT | IMAGE
+  title          String      @default("")
+  museThreadId   String?
+  summary        String      @default("")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  messages       AiMessage[]
+
+  @@index([organizationId, userId, kind, updatedAt])
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organizationId String
+  userId         String
+  role           String // USER | ASSISTANT
+  content        String
+  status         String         @default("DONE") // DONE | FAILED
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model AiImage {
+  id              String   @id @default(cuid())
+  organizationId  String
+  userId          String
+  prompt          String
+  status          String   @default("PENDING") // PENDING | DONE | FAILED
+  storageObjectId String?
+  mime            String   @default("")
+  width           Int      @default(0)
+  height          Int      @default(0)
+  error           String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, userId, createdAt])
+}
