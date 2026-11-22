@@ -30,12 +30,14 @@ test('inactive tenant config is an immediate rollback even when individual flags
   assert.equal(Object.entries(flags).filter(([key]) => !['source', 'version'].includes(key)).every(([, value]) => value === false), true);
 });
 
-test('organization without a tenant pilot config stays disabled', async () => {
+test('organization without a tenant pilot config gets the core survey/project module only', async () => {
   const prisma = { workshopPilotConfig: { findUnique: async () => null } };
   const access = { organization: () => 'org-without-config' };
   const service = new WorkshopPilotService(prisma as never, {} as never, access as never);
   const flags = await service.flags(user);
   assert.equal(flags.source, 'NO_TENANT_CONFIG');
   assert.equal(flags.version, 0);
-  assert.equal(Object.entries(flags).filter(([key]) => !['source', 'version'].includes(key)).every(([, value]) => value === false), true);
+  assert.equal(flags.survey, true);
+  const gated = Object.entries(flags).filter(([key]) => !['source', 'version', 'survey'].includes(key));
+  assert.equal(gated.every(([, value]) => value === false), true);
 });

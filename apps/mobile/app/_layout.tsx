@@ -8,6 +8,9 @@ import { tabBarIcon } from '../src/components/Icon';
 import { AuthProvider, useAuth } from '../src/lib/auth';
 import AuthScreen from './auth';
 import { syncOperationsQueue } from '../src/lib/localProjects';
+import { installWebAlert } from '../src/lib/webAlert';
+
+installWebAlert();
 
 // Giữ splash cho tới khi khôi phục xong phiên, tránh nháy màn trắng lúc mở app.
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
