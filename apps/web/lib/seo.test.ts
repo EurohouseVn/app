@@ -12,7 +12,7 @@ test('buildPageMetadata creates one canonical title and page-specific sharing me
     title: 'Nhôm công nghiệp | Eurohouse',
     description: 'Nhôm định hình theo bản vẽ, đùn thuê và gia công cho doanh nghiệp sản xuất.',
     canonicalPath: '/nhom-cong-nghiep',
-    image: '/images/v5/factory-coating.webp',
+    image: '/images/v4/factory-coating-line.jpg',
     imageAlt: 'Nhà máy nhôm công nghiệp Eurohouse',
   });
 
@@ -21,12 +21,12 @@ test('buildPageMetadata creates one canonical title and page-specific sharing me
   assert.equal(metadata.openGraph?.title, 'Nhôm công nghiệp | Eurohouse');
   assert.equal(metadata.openGraph?.description, 'Nhôm định hình theo bản vẽ, đùn thuê và gia công cho doanh nghiệp sản xuất.');
   assert.deepEqual(metadata.openGraph?.images, [{
-    url: 'https://nhomeurohouse.com/images/v5/factory-coating.webp',
+    url: 'https://nhomeurohouse.com/images/v4/factory-coating-line.jpg',
     alt: 'Nhà máy nhôm công nghiệp Eurohouse',
   }]);
   assert.equal(metadata.twitter?.title, 'Nhôm công nghiệp | Eurohouse');
   assert.equal(metadata.twitter?.description, 'Nhôm định hình theo bản vẽ, đùn thuê và gia công cho doanh nghiệp sản xuất.');
-  assert.deepEqual(metadata.twitter?.images, ['https://nhomeurohouse.com/images/v5/factory-coating.webp']);
+  assert.deepEqual(metadata.twitter?.images, ['https://nhomeurohouse.com/images/v4/factory-coating-line.jpg']);
 });
 
 test('buildPageMetadata rejects empty descriptions and foreign canonical origins', () => {

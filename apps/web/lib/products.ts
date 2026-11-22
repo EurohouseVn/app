@@ -27,7 +27,7 @@ export const products: ProductSystem[] = [
     colors: ['Cafe Metallic', 'Xám ngọc trai', 'Vân gỗ Cẩm Lai', 'Vân gỗ Olack'],
     features: ['Cấu trúc đa khoang', 'Cánh cửa đến 190 mm', 'Nhiều lựa chọn nẹp kính', 'Đồng bộ cửa đi và cửa sổ'],
     applications: ['Biệt thự', 'Khách sạn', 'Nhà phố cao cấp', 'Công trình ven biển'],
-    image: '/images/hero-eurohouse.png',
+    image: '/images/v4/hero-house.webp',
     profileImage: '/images/products/ecento-70.jpg',
   },
   {
@@ -102,7 +102,7 @@ export const products: ProductSystem[] = [
     colors: ['Cafe Metallic', 'Xám ngọc trai', 'Vân gỗ'],
     features: ['Không ray nổi dưới sàn', 'Cấu hình 2 và 4 cánh', 'Mở trong hoặc mở ngoài', 'Khẩu độ mở lớn'],
     applications: ['Biệt thự', 'Resort', 'Nhà vườn', 'Không gian thương mại'],
-    image: '/images/hero-eurohouse.png',
+    image: '/images/v4/hero-house.webp',
     profileImage: '/images/products/truot-quay.jpg',
   },
   {
