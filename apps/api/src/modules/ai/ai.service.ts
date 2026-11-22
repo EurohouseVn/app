@@ -15,6 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { AI_PROVIDER, AiProviderError, type AiProviderPort } from './ai-provider';
 import {
+  ASSISTANT_NAME,
   IMAGE_WEEKLY_LIMIT,
   RequestGate,
   buildImagePrompt,
@@ -70,7 +71,7 @@ export class AiService {
     const organizationId = this.organizationId(user);
     const profile = await this.profile(organizationId);
     const quota = imageQuota(await this.imageStamps(organizationId, user.sub), this.clock(), profile.imageWeeklyLimit ?? IMAGE_WEEKLY_LIMIT);
-    return { configured: this.provider.configured, enabled: profile.enabled, imageQuota: quota };
+    return { assistantName: ASSISTANT_NAME, configured: this.provider.configured, enabled: profile.enabled, imageQuota: quota };
   }
 
   async getProfile(user: JwtUser) {

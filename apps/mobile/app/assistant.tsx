@@ -4,10 +4,13 @@ import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressa
 import { Icon } from '../src/components/Icon';
 import { api } from '../src/lib/api';
 import { Banner, Button, Card, EmptyState, Field, Input, Segmented, SubHeader, ws, wsStyles } from '../src/components/ws';
+import avatar from '../assets/brand/assistant-avatar.png';
+
+const DEFAULT_NAME = 'Bé Eu';
 
 type Tab = 'chat' | 'image' | 'setup';
 type Quota = { limit: number; used: number; remaining: number; resetsAt: string | null };
-type AiStatus = { configured: boolean; enabled: boolean; imageQuota: Quota };
+type AiStatus = { assistantName?: string; configured: boolean; enabled: boolean; imageQuota: Quota };
 type Turn = { id: string; role: 'USER' | 'ASSISTANT'; content: string };
 type ImageItem = { id: string; prompt: string; createdAt: string };
 
@@ -46,6 +49,7 @@ export default function AssistantScreen() {
   const [tab, setTab] = useState<Tab>('chat');
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [statusError, setStatusError] = useState('');
+  const name = status?.assistantName ?? DEFAULT_NAME;
 
   const loadStatus = useCallback(async () => {
     try {
@@ -60,7 +64,7 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView style={wsStyles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Stack.Screen options={{ headerShown: false }} />
-      <SubHeader title="Trợ lý AI" subtitle="Riêng cho xưởng của bạn" onBack={() => router.back()}>
+      <SubHeader title={name} subtitle="Trợ lý riêng của xưởng bạn" onBack={() => router.back()} right={<Image source={avatar} style={styles.headerAvatar} accessibilityLabel={name} />}>
         <View style={{ marginTop: 10 }}>
           <Segmented<Tab> items={[['chat', 'Trò chuyện'], ['image', 'Tạo ảnh'], ['setup', 'Xưởng']]} value={tab} onChange={setTab} />
         </View>
@@ -68,14 +72,14 @@ export default function AssistantScreen() {
       {statusError ? <View style={styles.pad}><Banner tone="error" text={statusError} /></View> : null}
       {status && !status.configured ? <View style={styles.pad}><Banner tone="warning" text="Trợ lý AI chưa được bật trên hệ thống. Vui lòng liên hệ quản trị." /></View> : null}
       {status && status.configured && !status.enabled ? <View style={styles.pad}><Banner tone="warning" text="Trợ lý AI của xưởng đang tắt. Bật lại ở tab Xưởng." /></View> : null}
-      {tab === 'chat' ? <ChatTab disabled={!status?.configured || !status?.enabled} /> : null}
+      {tab === 'chat' ? <ChatTab name={name} disabled={!status?.configured || !status?.enabled} /> : null}
       {tab === 'image' ? <ImageTab quota={status?.imageQuota} disabled={!status?.configured || !status?.enabled} onChanged={loadStatus} /> : null}
       {tab === 'setup' ? <SetupTab onSaved={loadStatus} /> : null}
     </KeyboardAvoidingView>
   );
 }
 
-function ChatTab({ disabled }: { disabled: boolean }) {
+function ChatTab({ disabled, name }: { disabled: boolean; name: string }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [text, setText] = useState('');
@@ -91,7 +95,7 @@ function ChatTab({ disabled }: { disabled: boolean }) {
     setTurns((current) => [...current, { id: `local-${Date.now()}`, role: 'USER', content: message }]);
     setText('');
     try {
-      const result = await api.post<{ conversationId: string; messageId: string; reply: string }>('/ai/chat', { conversationId, message });
+      const result = await api.post<{ conversationId: string; messageId: string; reply: string }>('/ai/chat', { conversationId, message }, { timeoutMs: 120_000 });
       setConversationId(result.conversationId);
       setTurns((current) => [...current, { id: result.messageId, role: 'ASSISTANT', content: result.reply }]);
     } catch (sendError) {
@@ -108,13 +112,20 @@ function ChatTab({ disabled }: { disabled: boolean }) {
     <View style={{ flex: 1 }}>
       <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled">
         {turns.length === 0 ? (
-          <EmptyState icon="message-circle" title="Hỏi trợ lý về nhôm kính, báo giá, công trình" text="Trợ lý chỉ phục vụ riêng xưởng của bạn và nhớ nội dung cuộc trò chuyện này." />
+          <View style={styles.hello}>
+            <Image source={avatar} style={styles.helloAvatar} accessibilityLabel={name} />
+            <Text style={styles.helloTitle}>Chào bạn, mình là {name}!</Text>
+            <Text style={styles.helloText}>Hỏi mình về nhôm kính, báo giá, công trình. Mình chỉ phục vụ riêng xưởng của bạn và nhớ nội dung cuộc trò chuyện này.</Text>
+          </View>
         ) : turns.map((turn) => (
-          <View key={turn.id} style={[styles.bubble, turn.role === 'USER' ? styles.bubbleUser : styles.bubbleBot]}>
-            <Text style={[styles.bubbleText, turn.role === 'USER' && { color: '#FFFFFF' }]} selectable>{turn.content}</Text>
+          <View key={turn.id} style={turn.role === 'USER' ? styles.rowUser : styles.rowBot}>
+            {turn.role === 'ASSISTANT' ? <Image source={avatar} style={styles.botAvatar} accessibilityLabel={name} /> : null}
+            <View style={[styles.bubble, turn.role === 'USER' ? styles.bubbleUser : styles.bubbleBot]}>
+              <Text style={[styles.bubbleText, turn.role === 'USER' && { color: '#FFFFFF' }]} selectable>{turn.content}</Text>
+            </View>
           </View>
         ))}
-        {sending ? <View style={[styles.bubble, styles.bubbleBot]}><ActivityIndicator color={ws.orange} /></View> : null}
+        {sending ? <View style={styles.rowBot}><Image source={avatar} style={styles.botAvatar} /><View style={[styles.bubble, styles.bubbleBot]}><ActivityIndicator color={ws.orange} /></View></View> : null}
         {error ? <Banner tone="error" text={error} /> : null}
       </ScrollView>
       <View style={styles.composer}>
@@ -145,7 +156,7 @@ function ImageTab({ quota, disabled, onChanged }: { quota?: Quota; disabled: boo
     setBusy(true);
     setError('');
     try {
-      await api.post('/ai/images', { prompt: prompt.trim() });
+      await api.post('/ai/images', { prompt: prompt.trim() }, { timeoutMs: 200_000 });
       setPrompt('');
       await Promise.all([load(), onChanged()]);
     } catch (createError) {
@@ -228,9 +239,17 @@ function SetupTab({ onSaved }: { onSaved: () => Promise<void> }) {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 14, paddingTop: 10 },
   chatContent: { padding: 14, paddingBottom: 20, gap: 10 },
-  bubble: { maxWidth: '86%', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10 },
-  bubbleUser: { alignSelf: 'flex-end', backgroundColor: ws.orange },
-  bubbleBot: { alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: ws.line },
+  headerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: ws.orangeSoft },
+  hello: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 18 },
+  helloAvatar: { width: 132, height: 132 },
+  helloTitle: { color: ws.ink, fontSize: 18, fontWeight: '900', marginTop: 8 },
+  helloText: { color: ws.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', marginTop: 6, maxWidth: 320 },
+  rowUser: { alignSelf: 'flex-end', maxWidth: '86%' },
+  rowBot: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '92%' },
+  botAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: ws.orangeSoft },
+  bubble: { borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10, flexShrink: 1 },
+  bubbleUser: { backgroundColor: ws.orange },
+  bubbleBot: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: ws.line },
   bubbleText: { color: ws.text, fontSize: 14.5, lineHeight: 21 },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10, paddingBottom: 14, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: ws.line },
   sendButton: { width: 46, height: 46, borderRadius: 12, backgroundColor: ws.orange, alignItems: 'center', justifyContent: 'center' },

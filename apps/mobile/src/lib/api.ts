@@ -39,7 +39,10 @@ export function assetUrl(path?: string): string | undefined {
   return `${SERVER_URL}${path}`;
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+/** Mặc định 30 giây; việc chậm như trợ lý AI đặt `timeoutMs` riêng. */
+type RequestOptions = RequestInit & { timeoutMs?: number };
+
+async function request<T>(path: string, options?: RequestOptions): Promise<T> {
   const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
   const headers: Record<string, string> = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -47,9 +50,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? 30000);
   try {
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: options?.signal ?? controller.signal });
+    const { timeoutMs: _timeoutMs, ...fetchOptions } = options ?? {};
+    const response = await fetch(`${API_URL}${path}`, { ...fetchOptions, headers, signal: fetchOptions.signal ?? controller.signal });
     if (!response.ok) {
       if (response.status === 401) onUnauthorized?.();
       const payload = await response.json().catch(() => null);
@@ -68,7 +72,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown, options?: RequestInit) => request<T>(path, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  post: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>(path, { ...options, method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   upload: <T>(path: string, body: FormData) => request<T>(path, { method: 'POST', body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),

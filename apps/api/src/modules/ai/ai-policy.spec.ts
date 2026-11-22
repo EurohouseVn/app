@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { IMAGE_WEEKLY_LIMIT, RequestGate, buildMusePrompt, imageQuota, sanitizeUserText } from './ai-policy';
+import { ASSISTANT_NAME, IMAGE_WEEKLY_LIMIT, RequestGate, buildImagePrompt, buildMusePrompt, imageQuota, sanitizeUserText } from './ai-policy';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-11-22T10:00:00.000Z');
@@ -87,4 +87,15 @@ test('request gate allows N requests per window and recovers after the window pa
   assert.equal(gate.tryAcquire(), false);
   clock = 60_001;
   assert.equal(gate.tryAcquire(), true);
+});
+
+test('assistant has its own Eurohouse identity and never names the underlying provider', () => {
+  assert.equal(ASSISTANT_NAME, 'Bé Eu');
+  const first = buildMusePrompt({ workshopName: 'Xưởng An', systemInstructions: '', summary: '', history: [], message: 'Bạn là ai?', mode: 'replay' });
+  assert.match(first, /Bé Eu/);
+  assert.match(first, /Eurohouse/);
+  assert.match(first, /không nhắc tới Muse, Meta, Orion/i);
+  const again = buildMusePrompt({ workshopName: 'Xưởng An', systemInstructions: '', summary: '', history: [], message: 'tiếp', mode: 'continue' });
+  assert.match(again, /Bé Eu/);
+  assert.match(buildImagePrompt('Xưởng An', 'cửa sổ'), /Eurohouse/);
 });
