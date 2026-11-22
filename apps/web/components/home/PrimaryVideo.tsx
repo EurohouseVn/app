@@ -5,6 +5,8 @@ import { Play } from 'lucide-react';
 import { useState } from 'react';
 import type { HomepageVideo } from '@/lib/homepage-content';
 import { homepageCopy } from '@/lib/homepage-presentation';
+import { buildVideoSchema } from '@/lib/video-metadata';
+import { StructuredData } from '@/components/StructuredData';
 
 const fallbackVideo: HomepageVideo = {
   id: 'factory-line-2026',
@@ -20,9 +22,11 @@ const fallbackVideo: HomepageVideo = {
 
 export function PrimaryVideo({ video = fallbackVideo }: { video?: HomepageVideo }) {
   const [ready, setReady] = useState(false);
+  const videoSchema = buildVideoSchema({ name: video.title, description: video.summary, thumbnailUrl: video.posterUrl, contentUrl: video.url, transcript: video.transcript });
 
   return (
     <section className="home-section video-section" id="video" data-home-chapter="video" aria-labelledby="video-heading">
+      {videoSchema ? <StructuredData data={videoSchema} /> : null}
       <div className="container video-layout" data-reveal-group>
         <div className="video-copy" data-reveal-item>
           <p className="home-eyebrow">{homepageCopy.video.eyebrow}</p>

@@ -10,7 +10,7 @@ export const site = {
   phoneHref: 'tel:+842213900899',
   email: 'vneurohouse@gmail.com',
   address: 'Km số 2, đường 196, Yên Tập, Mỹ Hào, Hưng Yên',
-  legalName: 'LELOI EXIM GLOBAL',
+  legalName: 'EUROHOUSE VIỆT NAM',
 } as const;
 
 export const navigation = globalNavigationRoutes

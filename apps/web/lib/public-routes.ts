@@ -156,7 +156,7 @@ export const stablePublicRoutes = [
   route('delete-account', 'Xóa tài khoản', '/delete-account', 'support'),
 ] as const satisfies readonly PublicRoute[];
 
-export const publicRouteManifest = [
+export const publicRouteManifest: readonly PublicRoute[] = [
   ...globalNavigationRoutes,
   ...residentialContentRoutes,
   ...industrialContentRoutes,
@@ -165,7 +165,7 @@ export const publicRouteManifest = [
   ...resourceRoutes,
   ...companyRoutes,
   ...stablePublicRoutes,
-] as const satisfies readonly PublicRoute[];
+] as const;
 
 function route(
   id: string,

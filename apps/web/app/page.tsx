@@ -10,6 +10,15 @@ import { SpecialistSystems } from '@/components/home/SpecialistSystems';
 import { SystemExplorer } from '@/components/home/SystemExplorer';
 import { composeHomepageContent, type HomepageContent } from '@/lib/homepage-content';
 import { getPublishedContent, listPublishedContent } from '@/lib/public-api';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Nhôm Eurohouse cho kiến trúc và công nghiệp',
+  description: 'EUROHOUSE cung cấp hệ nhôm kiến trúc cao cấp, nhôm định hình công nghiệp theo bản vẽ, catalog và tư vấn kỹ thuật cho công trình.',
+  canonicalPath: '/',
+  image: '/images/v4/hero-project.jpg',
+  imageAlt: 'Giải pháp nhôm kiến trúc và nhôm công nghiệp Eurohouse',
+});
 
 export default async function HomePage() {
   const content = await loadHomepageContent();
@@ -45,3 +54,4 @@ async function loadHomepageContent(): Promise<HomepageContent> {
     return composeHomepageContent([]);
   }
 }
+import type { Metadata } from 'next';

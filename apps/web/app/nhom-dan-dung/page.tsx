@@ -5,12 +5,13 @@ import { ArrowRight } from 'lucide-react';
 import { PageIntro } from '@/components/PageIntro';
 import { ConsultationCta } from '@/components/content/ConsultationCta';
 import { residentialProducts, residentialSolutions, specialistSystems } from '@/lib/residential-content';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = { title: 'Nhôm dân dụng', description: 'Hệ nhôm EUROHOUSE cho nhà ở, biệt thự, công trình và dự án.', alternates: { canonical: '/nhom-dan-dung' } };
+export const metadata: Metadata = buildPageMetadata({ title: 'Nhôm dân dụng cao cấp', description: 'Khám phá hệ nhôm EUROHOUSE cho nhà phố, biệt thự, khách sạn và dự án: ECENTO 70, ECENTO PLUS, Hệ 55 Vát Cạnh, PRECO và hệ chuyên dụng.', canonicalPath: '/nhom-dan-dung', image: '/images/v5/project-villa.webp', imageAlt: 'Ứng dụng hệ nhôm dân dụng Eurohouse trong công trình' });
 
 export default function ResidentialPage() {
   return <>
-    <PageIntro eyebrow="NHÔM DÂN DỤNG" title="Hệ nhôm cho kiến trúc, nhà ở và dự án." summary="Tra cứu theo dòng sản phẩm, hệ chuyên dụng hoặc loại công trình. Mọi thông số kỹ thuật chỉ được hiển thị khi đã có nguồn công bố." breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Nhôm dân dụng' }]} />
+    <PageIntro eyebrow="NHÔM DÂN DỤNG" title="Chọn hệ nhôm từ cách bạn muốn sống trong không gian." summary="Bắt đầu từ loại công trình, kiểu mở và trải nghiệm mong muốn; sau đó đối chiếu bốn dòng chủ lực, hệ chuyên dụng và catalog EUROHOUSE để chọn phương án phù hợp." breadcrumbs={[{ label: 'Trang chủ', href: '/' }, { label: 'Nhôm dân dụng' }]} />
     <ResidentialGroup id="products" eyebrow="Dòng sản phẩm" title="Bốn nền tảng sản phẩm chủ lực." items={residentialProducts} prefix="/nhom-dan-dung/dong-san-pham" />
     <ResidentialGroup id="specialist" eyebrow="Hệ chuyên dụng" title="Giải pháp theo khẩu độ và cách vận hành." items={specialistSystems} prefix="/nhom-dan-dung/he-chuyen-dung" muted />
     <section className="home-section residential-solutions"><div className="container"><header className="home-section-heading"><p className="home-eyebrow">Theo loại công trình</p><h2>Đi từ nhu cầu sử dụng đến hệ nhôm phù hợp.</h2></header><div className="solution-link-grid">{residentialSolutions.map((item) => <Link href={`/nhom-dan-dung/giai-phap/${item.slug}`} key={item.slug}><strong>{item.title}</strong><span>{item.summary}</span><ArrowRight size={17} aria-hidden="true" /></Link>)}</div><div className="residential-secondary-links"><Link href="/nhom-dan-dung/so-sanh">So sánh hệ nhôm</Link><Link href="/nhom-dan-dung/du-an">Xem dự án dân dụng</Link></div></div></section>

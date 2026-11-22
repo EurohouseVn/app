@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { groupDocumentsByType } from '@/lib/explore-content';
 
 export function DocumentGroups({ documents }: { documents: readonly PublicDocumentProjection[] }) {
-  if (!documents.length) return <EmptyState title="Tài liệu đang được cập nhật" message="Tệp chỉ xuất hiện khi đã có phiên bản, ngày hiệu lực và quyền công khai." action={{ label: 'Liên hệ xác nhận tài liệu', href: '/lien-he' }} />;
+  if (!documents.length) return <EmptyState title="Chưa có tài liệu trong nhóm này" message="Hãy cho EUROHOUSE biết hệ nhôm hoặc mã profile bạn đang tìm để được hỗ trợ nhanh hơn." action={{ label: 'Yêu cầu tài liệu', href: '/lien-he' }} />;
   return <div className="document-groups">{groupDocumentsByType(documents).map((group) => <section key={group.type}><header><FileText size={21} aria-hidden="true" /><h2>{documentTypeLabel(group.type)}</h2></header><div>{group.documents.map((document) => <a href={document.downloadUrl} key={document.id} target="_blank" rel="noreferrer"><span><strong>{document.title}</strong><small>Phiên bản {document.revisionLabel} · Hiệu lực {formatDate(document.effectiveDate)}</small></span><Download size={18} aria-hidden="true" /></a>)}</div></section>)}</div>;
 }
 
