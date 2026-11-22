@@ -355,3 +355,48 @@ a:hover > .hp-arrow { background: var(--hp-orange-dark); transform: translateX(4
   .hp-button:hover, .hp-family-card:hover, .hp-cta-actions a:hover, a:hover > .hp-arrow,
   .hp-family-card:hover .hp-family-media img, .hp-process-list li:hover .hp-process-photo img, .hp-project:hover .hp-project-media img { transform: none; }
 }
+
+/* ---- Tinh chỉnh v8: chữ gọn hơn, nhịp đọc rõ hơn ---- */
+:root { --hp-section: clamp(56px, 6vw, 88px); }
+.hp-kicker { font-size: 13px; letter-spacing: .1em; margin-bottom: 12px; }
+.hp-section h2, .hp-cta h2 { font-size: clamp(26px, 2.7vw, 38px); font-weight: 800; line-height: 1.2; letter-spacing: -.015em; text-transform: none; max-width: 22ch; }
+.hp-heading { margin-bottom: clamp(24px, 3vw, 36px); padding-bottom: clamp(20px, 2.4vw, 28px); border-bottom: 1px solid var(--hp-tone); }
+.hp-heading > p, .hp-lead, .hp-cta-layout > div > p { font-size: 16px; line-height: 1.65; color: var(--hp-muted); max-width: 56ch; }
+.hp-hero h1 { font-size: clamp(34px, 4.6vw, 66px); font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
+.hp-hero-lead { font-size: clamp(16px, 1.25vw, 18px); max-width: 520px; }
+.hp-hero-inner { padding-top: clamp(112px, 14vh, 152px); padding-bottom: 112px; }
+.hp-hero-facts { gap: 10px 36px; }
+.hp-hero-facts dt { font-size: 30px; font-weight: 800; }
+.hp-hero-facts dd { font-size: 14px; font-weight: 600; }
+.hp-button { min-height: 48px; font-size: 15px; }
+.hp-family-copy strong { font-size: clamp(18px, 1.5vw, 22px); font-weight: 800; text-transform: none; }
+.hp-family-copy > span { font-size: 14.5px; }
+.hp-tabs button strong { font-size: 16px; font-weight: 800; }
+.hp-tabs button span { font-size: 13px; }
+.hp-system-body h3 { margin-top: 22px; font-size: clamp(22px, 2vw, 28px); font-weight: 800; text-transform: none; letter-spacing: -.01em; }
+.hp-system-description { font-size: 16px; line-height: 1.65; color: var(--hp-muted); }
+.hp-system-body h4 { font-size: 13px; letter-spacing: .06em; color: var(--hp-muted); }
+.hp-system-lists li { font-size: 15px; }
+.hp-spec dd { font-size: clamp(16px, 1.3vw, 19px); font-weight: 800; }
+.hp-spec dt { font-size: 12.5px; }
+.hp-compare h3 { font-size: 18px; font-weight: 800; text-transform: none; }
+.hp-compare table { font-size: 14px; }
+.hp-specialist-copy strong { font-size: 18px; font-weight: 800; text-transform: none; }
+.hp-specialist-copy > span { font-size: 14.5px; }
+.hp-service-list strong { font-size: 16px; font-weight: 700; }
+.hp-service-list a > span > span { font-size: 14px; }
+.hp-process-list h3 { font-size: 17px; font-weight: 800; text-transform: none; }
+.hp-process-list p { font-size: 14.5px; }
+.hp-project-copy strong { font-size: 18px; font-weight: 800; }
+.hp-project-copy > span { font-size: 14px; }
+.video-section .video-copy h2 { font-size: clamp(24px, 2.4vw, 34px); font-weight: 800; text-transform: none; line-height: 1.2; }
+.video-section .video-copy > p:not(.home-eyebrow) { font-size: 15.5px; color: var(--hp-muted); }
+.hp-cta { padding: clamp(48px, 5vw, 72px) 0; }
+.hp-cta-actions strong { font-size: 17px; font-weight: 800; }
+.hp-cta-actions small { font-size: 14px; }
+@media (max-width: 860px) {
+  .hp-section h2, .hp-cta h2 { font-size: 26px; max-width: none; }
+  .hp-hero h1 { font-size: 34px; }
+  .hp-hero-facts dt { font-size: 22px; }
+}
+.footer-slogan { font-size: clamp(26px, 3.6vw, 52px); font-weight: 800; }
