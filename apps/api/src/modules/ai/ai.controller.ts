@@ -54,6 +54,13 @@ export class AiController {
     return this.service.listImages(user);
   }
 
+  /** Ảnh dạng base64 cho app (web không gắn được tiêu đề đăng nhập vào thẻ ảnh). */
+  @Get('images/:id/data')
+  async imageData(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    const { mime, body } = await this.service.imageFile(user, id);
+    return { mime, base64: Buffer.from(body).toString('base64') };
+  }
+
   @Get('images/:id/file')
   async imageFile(@CurrentUser() user: JwtUser, @Param('id') id: string, @Res() res: any) {
     const { mime, body } = await this.service.imageFile(user, id);

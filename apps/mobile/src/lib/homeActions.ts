@@ -2,7 +2,7 @@
 
 export type HomeActionKey =
   | 'orders' | 'quote' | 'formulas' | 'projects' | 'workforce' | 'debts' | 'invoices'
-  | 'shopFloor' | 'qc' | 'installations' | 'warranty' | 'mediaSync' | 'reminders' | 'all';
+  | 'shopFloor' | 'qc' | 'installations' | 'warranty' | 'mediaSync' | 'reminders' | 'assistant' | 'all';
 
 export type HomeActionGroup = 'production' | 'business';
 
@@ -31,6 +31,7 @@ export const HOME_ACTIONS: HomeAction[] = [
   { key: 'projects', label: 'Công trình', icon: 'briefcase', href: '/projects', group: 'business' },
   { key: 'workforce', label: 'Quản lý xưởng', icon: 'users', href: '/workforce', group: 'business' },
   { key: 'reminders', label: 'Nhắc việc', icon: 'calendar', href: '/reminders', group: 'business' },
+  { key: 'assistant', label: 'Trợ lý AI', icon: 'message-circle', href: '/assistant', group: 'business' },
   { key: 'debts', label: 'Công nợ', icon: 'credit-card', href: '/debts', group: 'business' },
   { key: 'invoices', label: 'Hoá đơn', icon: 'file', href: '/invoices', group: 'business' },
 ];
