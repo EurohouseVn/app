@@ -153,9 +153,13 @@ export class AuthService {
           verifiedAt: null,
         },
       });
-      // Mỗi xưởng có cấu hình riêng, độc lập: chỉ bật nhóm lõi (công trình, thu chi, khách hàng).
+      // Mỗi xưởng có cấu hình riêng, độc lập với xưởng khác; các module vận hành của xưởng được bật sẵn.
       await tx.workshopPilotConfig.create({
-        data: { organizationId: organization.id, active: true, survey: true, version: 1, enabledAt: new Date(), updatedById: created.id },
+        data: {
+          organizationId: organization.id, active: true,
+          survey: true, inventory: true, shopFloor: true, quality: true, installation: true, warranty: true,
+          version: 1, enabledAt: new Date(), updatedById: created.id,
+        },
       });
       return created;
     });

@@ -175,7 +175,7 @@ test('identifier login rejects unverified workshops and accepts normalized email
   assert.equal((await service.login('+84912345678', 'secret123')).user.token, 'signed-jwt');
 });
 
-test('each newly registered workshop gets its own pilot config with only the core survey module on', async () => {
+test('each newly registered workshop gets its own pilot config with every workshop module on', async () => {
   const { service, organizations, pilotConfigs } = fixture();
   await service.registerWorkshop({ displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', email: 'an@example.com' });
   await service.registerWorkshop({ displayName: 'Bình', organizationName: 'Xưởng Bình', password: 'secret123', email: 'binh@example.com' });
@@ -183,7 +183,6 @@ test('each newly registered workshop gets its own pilot config with only the cor
   assert.deepEqual(pilotConfigs.map((config) => config.organizationId), organizations.map((organization) => organization.id));
   for (const config of pilotConfigs) {
     assert.equal(config.active, true);
-    assert.equal(config.survey, true);
-    assert.equal(Boolean(config.inventory || config.shopFloor || config.quality || config.installation || config.warranty), false);
+    for (const key of ['survey', 'inventory', 'shopFloor', 'quality', 'installation', 'warranty']) assert.equal(config[key], true, key);
   }
 });
