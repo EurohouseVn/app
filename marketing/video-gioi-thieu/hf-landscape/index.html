@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=1920, height=1080">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#F5F6F7;font-family:Inter,'Segoe UI',Arial,sans-serif;color:#151A22}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;background:#F5F6F7}
+.scene{position:absolute;inset:0;overflow:hidden;background:#F5F6F7;
+  background-image:linear-gradient(#DFE3E8 1px,transparent 1px),linear-gradient(90deg,#DFE3E8 1px,transparent 1px);background-size:120px 120px;background-position:center}
+.scene.fx::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,rgba(245,246,247,.0),rgba(245,246,247,.55));pointer-events:none;z-index:1}
+.orb{position:absolute;border-radius:50%;background:#F47C20;width:1060px;height:1060px;left:1000px;top:-120px;opacity:.96}
+.head{position:absolute;z-index:3;left:110px;top:150px;width:1000px}
+.tag{display:inline-block;padding:10px 22px;border-radius:8px;background:#FFF1E6;color:#C65309;font-weight:800;letter-spacing:.14em;font-size:24px;text-transform:uppercase;margin-bottom:26px}
+.title{font-weight:800;line-height:1.12;letter-spacing:-.02em;color:#151A22;white-space:normal}
+.title .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.12em}.title .wi{display:inline-block}
+.sub{margin-top:22px;font-size:36px;font-weight:500;color:#475467;line-height:1.35}
+.chips{list-style:none;margin-top:44px;display:flex;flex-direction:column;gap:18px}
+.chips li{display:flex;align-items:center;gap:18px;font-size:34px;font-weight:700;background:#fff;border:2px solid #DFE3E8;border-radius:8px;padding:18px 26px;width:max-content;box-shadow:0 8px 24px rgba(21,26,34,.06)}
+.chips i{width:34px;height:34px;border-radius:50%;background:#F47C20;display:inline-block;position:relative}
+.chips i::after{content:'';position:absolute;left:11px;top:6px;width:9px;height:17px;border:solid #fff;border-width:0 4px 4px 0;transform:rotate(45deg)}
+.phone{position:absolute;z-index:4;background:#151A22;border-radius:48px;box-shadow:0 40px 90px rgba(21,26,34,.35)}
+.screen{position:absolute;overflow:hidden;background:#fff}
+.screen video{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.notch{position:absolute;left:50%;top:16px;width:100px;height:24px;margin-left:-50px;background:#151A22;border-radius:20px;z-index:2}
+.prog{position:absolute;left:110px;bottom:70px;display:flex;gap:8px;z-index:3}
+.prog b{width:34px;height:8px;border-radius:4px;background:#DFE3E8}.prog b.done{background:#F9A82F}.prog b.on{background:#F47C20;width:70px}
+.swipe{position:absolute;inset:0;overflow:hidden;z-index:50}
+.swi{position:absolute;inset:0;background:#F47C20;box-shadow:-60px 0 0 #F9A82F inset}
+.hero{position:absolute;inset:0;overflow:hidden}.hero img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.hero.l{left:1000px;width:920px}
+.intro-panel{position:absolute;left:50px;right:50px;bottom:130px;background:rgba(255,255,255,.92);border-radius:8px;padding:52px 50px 56px;text-align:center;box-shadow:0 30px 80px rgba(21,26,34,.25)}
+.intro-panel .logo{width:420px;border-radius:8px;margin-bottom:36px}
+.textcol{position:absolute;left:110px;top:210px;width:860px}.textcol .logo{width:430px;border-radius:8px;margin-bottom:46px}
+.scene.l .textcol .title{line-height:1.05}
+.outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;text-align:center;z-index:3}
+.logoblock{background:#F9A82F;border-radius:8px;padding:14px;box-shadow:0 20px 60px rgba(244,124,32,.35)}.logoblock img{width:520px;display:block;border-radius:6px}
+.title.big{font-size:100px;white-space:normal}
+.cta{background:#F47C20;color:#fff;font-weight:800;font-size:40px;padding:26px 48px;border-radius:8px;box-shadow:0 18px 40px rgba(244,124,32,.4)}
+.prods{display:flex;gap:22px}.prods img{width:210px;height:280px;object-fit:cover;border-radius:8px;border:2px solid #DFE3E8;background:#fff}
+.note{font-size:26px;color:#475467;font-weight:500}
+.pwa{position:absolute;inset:0;background:#fff;font-family:Inter,sans-serif}
+.pwa .bar{height:70px;margin-top:44px;margin-left:22px;margin-right:22px;background:#F2F4F7;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 22px;font-size:22px;font-weight:600}
+.pwa .site{position:absolute;left:0;right:0;top:157px;bottom:0;overflow:hidden}.pwa .site>img{width:100%;height:100%;object-fit:cover}
+.pwa .siteh{position:absolute;left:8%;right:8%;top:6%}.pwa .siteh img{width:100%;border-radius:8px}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:46%;background:#fff;border-radius:28px 28px 0 0;box-shadow:0 -20px 50px rgba(21,26,34,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px}
+.sheet .ico{width:96px;border-radius:22px}.sheet b{font-size:25px;font-weight:800}.sheet small{font-size:18px;color:#667085}
+.sheet .btn{margin-top:13px;background:#F47C20;color:#fff;font-weight:800;font-size:24px;padding:15px 70px;border-radius:12px}
+.homescr{position:absolute;inset:0;background:linear-gradient(180deg,#FFD8B0,#F9A82F 60%,#F47C20);opacity:0}
+.homescr .grid{position:absolute;left:8%;right:8%;top:12%;display:grid;grid-template-columns:repeat(4,1fr);gap:31px 17px}
+.homescr i{display:block;aspect-ratio:1;border-radius:22%;background:rgba(255,255,255,.55)}
+.homescr u{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none}.homescr u img{width:100%;aspect-ratio:1;border-radius:22%;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.homescr em{font-style:normal;font-size:15px;font-weight:700;color:#151A22}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="160.508" data-width="1920" data-height="1080">
+<div id="s0" class="clip scene l" data-start="0" data-duration="6.693" data-track-index="1"><div class="hero l"><img id="s0-hero" src="assets/brand/hero-ecento-70.jpg"></div>
+<div class="textcol"><img class="logo" id="s0-logo" src="assets/brand/logo-landscape.png"><div class="tag" id="s0-tag">NHÔM CỦA SỰ THỊNH VƯỢNG</div><h1 class="title" id="s0-title" style="font-size:118px"><span class="w"><span class="wi">EUROHOUSE</span></span> <span class="w"><span class="wi">WORKSHOP</span></span> <span class="w"><span class="wi">OS</span></span></h1><p class="sub" id="s0-sub">Cả xưởng nhôm kính trong một chiếc điện thoại</p></div></div>
+<div id="s1" class="clip scene l fx" data-start="6.693" data-duration="13.416" data-track-index="1"><div class="orb" id="s1-orb"></div><div class="head"><div class="tag" id="s1-tag">BƯỚC 1</div><h1 class="title" id="s1-title" style="font-size:112px"><span class="w"><span class="wi">Đăng</span></span> <span class="w"><span class="wi">ký</span></span> <span class="w"><span class="wi">xưởng</span></span></h1><p class="sub" id="s1-sub">Chỉ cần email · xác minh mã 6 số</p><ul class="chips"><li id="s1-chip0"><i></i>Chỉ cần email</li><li id="s1-chip1"><i></i>Xác minh mã 6 số</li></ul></div><div class="phone" id="s1-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s1-v" class="clip scr" src="assets/clips30/c02-register.mp4" data-start="6.813" data-duration="13.296" data-media-start="0.35" data-playback-rate="1.693" data-track-index="5" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s1-prog"><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw1" class="clip swipe" data-start="6.393" data-duration="0.75" data-track-index="90"><div class="swi" id="sw1-i"></div></div>
+<div id="s2" class="clip scene l fx" data-start="20.108" data-duration="8.788" data-track-index="1"><div class="orb" id="s2-orb"></div><div class="head"><div class="tag" id="s2-tag">TRANG CHỦ</div><h1 class="title" id="s2-title" style="font-size:112px"><span class="w"><span class="wi">Trang</span></span> <span class="w"><span class="wi">chủ</span></span> <span class="w"><span class="wi">xưởng</span></span></h1><p class="sub" id="s2-sub">Hôm nay · công cụ · công trình cần chú ý · sản phẩm</p><ul class="chips"><li id="s2-chip0"><i></i>Hôm nay</li><li id="s2-chip1"><i></i>Công cụ</li><li id="s2-chip2"><i></i>Công trình cần chú ý</li><li id="s2-chip3"><i></i>Sản phẩm</li></ul></div><div class="phone" id="s2-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s2-v" class="clip scr" src="assets/clips30/c01-home.mp4" data-start="20.228" data-duration="8.668" data-media-start="0.35" data-playback-rate="1.69" data-track-index="10" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s2-prog"><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw2" class="clip swipe" data-start="19.808" data-duration="0.75" data-track-index="90"><div class="swi" id="sw2-i"></div></div>
+<div id="s3" class="clip scene l fx" data-start="28.896" data-duration="10.533" data-track-index="1"><div class="orb" id="s3-orb"></div><div class="head"><div class="tag" id="s3-tag">BÁO GIÁ</div><h1 class="title" id="s3-title" style="font-size:112px"><span class="w"><span class="wi">Báo</span></span> <span class="w"><span class="wi">giá</span></span></h1><p class="sub" id="s3-sub">Nhiều hạng mục cửa · xuất PDF gửi khách</p><ul class="chips"><li id="s3-chip0"><i></i>Nhiều hạng mục cửa</li><li id="s3-chip1"><i></i>Xuất PDF gửi khách</li></ul></div><div class="phone" id="s3-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s3-v" class="clip scr" src="assets/clips30/c03-quote.mp4" data-start="29.016" data-duration="10.413" data-media-start="0.35" data-playback-rate="1.692" data-track-index="17" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s3-prog"><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw3" class="clip swipe" data-start="28.596" data-duration="0.75" data-track-index="90"><div class="swi" id="sw3-i"></div></div>
+<div id="s4" class="clip scene l fx" data-start="39.43" data-duration="7.004" data-track-index="1"><div class="orb" id="s4-orb"></div><div class="head"><div class="tag" id="s4-tag">ĐẶT NHÔM</div><h1 class="title" id="s4-title" style="font-size:112px"><span class="w"><span class="wi">Đặt</span></span> <span class="w"><span class="wi">nhôm</span></span></h1><p class="sub" id="s4-sub">Chọn màu · hệ nhôm · thanh · số lượng</p><ul class="chips"><li id="s4-chip0"><i></i>Chọn màu</li><li id="s4-chip1"><i></i>Hệ nhôm</li><li id="s4-chip2"><i></i>Thanh</li><li id="s4-chip3"><i></i>Số lượng</li></ul></div><div class="phone" id="s4-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s4-v" class="clip scr" src="assets/clips30/c04-orders.mp4" data-start="39.55" data-duration="6.884" data-media-start="0.35" data-playback-rate="1.687" data-track-index="22" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s4-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw4" class="clip swipe" data-start="39.13" data-duration="0.75" data-track-index="90"><div class="swi" id="sw4-i"></div></div>
+<div id="s5" class="clip scene l fx" data-start="46.434" data-duration="7.984" data-track-index="1"><div class="orb" id="s5-orb"></div><div class="head"><div class="tag" id="s5-tag">CÔNG THỨC CẮT</div><h1 class="title" id="s5-title" style="font-size:112px"><span class="w"><span class="wi">Công</span></span> <span class="w"><span class="wi">thức</span></span> <span class="w"><span class="wi">cắt</span></span></h1><p class="sub" id="s5-sub">Theo từng hệ nhôm · cắt đúng, ít hao</p><ul class="chips"><li id="s5-chip0"><i></i>Theo từng hệ nhôm</li><li id="s5-chip1"><i></i>Cắt đúng, ít hao</li></ul></div><div class="phone" id="s5-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s5-v" class="clip scr" src="assets/clips30/c05-formulas.mp4" data-start="46.554" data-duration="7.864" data-media-start="0.35" data-playback-rate="1.689" data-track-index="29" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s5-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw5" class="clip swipe" data-start="46.134" data-duration="0.75" data-track-index="90"><div class="swi" id="sw5-i"></div></div>
+<div id="s6" class="clip scene l fx" data-start="54.418" data-duration="14.161" data-track-index="1"><div class="orb" id="s6-orb"></div><div class="head"><div class="tag" id="s6-tag">CÔNG TRÌNH</div><h1 class="title" id="s6-title" style="font-size:112px"><span class="w"><span class="wi">Công</span></span> <span class="w"><span class="wi">trình</span></span></h1><p class="sub" id="s6-sub">Thu chi · phiếu thu, phiếu chi · PDF tổng hợp</p><ul class="chips"><li id="s6-chip0"><i></i>Thu chi</li><li id="s6-chip1"><i></i>Phiếu thu, phiếu chi</li><li id="s6-chip2"><i></i>PDF tổng hợp</li></ul></div><div class="phone" id="s6-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s6-v" class="clip scr" src="assets/clips30/c06-projects.mp4" data-start="54.538" data-duration="14.041" data-media-start="0.35" data-playback-rate="1.694" data-track-index="34" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s6-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw6" class="clip swipe" data-start="54.118" data-duration="0.75" data-track-index="90"><div class="swi" id="sw6-i"></div></div>
+<div id="s7" class="clip scene l fx" data-start="68.579" data-duration="9.827" data-track-index="1"><div class="orb" id="s7-orb"></div><div class="head"><div class="tag" id="s7-tag">NHÂN SỰ</div><h1 class="title" id="s7-title" style="font-size:112px"><span class="w"><span class="wi">Quản</span></span> <span class="w"><span class="wi">lý</span></span> <span class="w"><span class="wi">xưởng</span></span></h1><p class="sub" id="s7-sub">Chấm công · việc khoán · lương · bảo hiểm</p><ul class="chips"><li id="s7-chip0"><i></i>Chấm công</li><li id="s7-chip1"><i></i>Việc khoán</li><li id="s7-chip2"><i></i>Lương</li><li id="s7-chip3"><i></i>Bảo hiểm</li></ul></div><div class="phone" id="s7-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s7-v" class="clip scr" src="assets/clips30/c07-workforce.mp4" data-start="68.699" data-duration="9.707" data-media-start="0.35" data-playback-rate="1.691" data-track-index="40" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s7-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw7" class="clip swipe" data-start="68.279" data-duration="0.75" data-track-index="90"><div class="swi" id="sw7-i"></div></div>
+<div id="s8" class="clip scene l fx" data-start="78.406" data-duration="5.2" data-track-index="1"><div class="orb" id="s8-orb"></div><div class="head"><div class="tag" id="s8-tag">CÔNG NỢ</div><h1 class="title" id="s8-title" style="font-size:112px"><span class="w"><span class="wi">Công</span></span> <span class="w"><span class="wi">nợ</span></span></h1><p class="sub" id="s8-sub">Tự ghi nhận từ đơn nhà phân phối</p><ul class="chips"><li id="s8-chip0"><i></i>Tự ghi nhận từ đơn nhà phân phối</li></ul></div><div class="phone" id="s8-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s8-v" class="clip scr" src="assets/clips30/c08-debts.mp4" data-start="78.526" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.506" data-track-index="47" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s8-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw8" class="clip swipe" data-start="78.106" data-duration="0.75" data-track-index="90"><div class="swi" id="sw8-i"></div></div>
+<div id="s9" class="clip scene l fx" data-start="83.606" data-duration="5.631" data-track-index="1"><div class="orb" id="s9-orb"></div><div class="head"><div class="tag" id="s9-tag">HOÁ ĐƠN · THUẾ</div><h1 class="title" id="s9-title" style="font-size:112px"><span class="w"><span class="wi">Hoá</span></span> <span class="w"><span class="wi">đơn</span></span> <span class="w"><span class="wi">điện</span></span> <span class="w"><span class="wi">tử</span></span> <span class="w"><span class="wi">và</span></span> <span class="w"><span class="wi">thuế</span></span></h1><p class="sub" id="s9-sub">Doanh thu · hoá đơn · báo cáo theo quý</p><ul class="chips"><li id="s9-chip0"><i></i>Doanh thu</li><li id="s9-chip1"><i></i>Hoá đơn</li><li id="s9-chip2"><i></i>Báo cáo theo quý</li></ul></div><div class="phone" id="s9-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s9-v" class="clip scr" src="assets/clips30/c09-invoices.mp4" data-start="83.726" data-duration="5.511" data-media-start="0.35" data-playback-rate="1.685" data-track-index="52" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s9-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw9" class="clip swipe" data-start="83.306" data-duration="0.75" data-track-index="90"><div class="swi" id="sw9-i"></div></div>
+<div id="s10" class="clip scene l fx" data-start="89.238" data-duration="5.2" data-track-index="1"><div class="orb" id="s10-orb"></div><div class="head"><div class="tag" id="s10-tag">NHẮC VIỆC</div><h1 class="title" id="s10-title" style="font-size:112px"><span class="w"><span class="wi">Nhắc</span></span> <span class="w"><span class="wi">việc</span></span></h1><p class="sub" id="s10-sub">Giao hàng · gọi khách · mua vật tư</p><ul class="chips"><li id="s10-chip0"><i></i>Giao hàng</li><li id="s10-chip1"><i></i>Gọi khách</li><li id="s10-chip2"><i></i>Mua vật tư</li></ul></div><div class="phone" id="s10-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s10-v" class="clip scr" src="assets/clips30/c10-reminders.mp4" data-start="89.358" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.06" data-track-index="59" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s10-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw10" class="clip swipe" data-start="88.938" data-duration="0.75" data-track-index="90"><div class="swi" id="sw10-i"></div></div>
+<div id="s11" class="clip scene l fx" data-start="94.438" data-duration="5.2" data-track-index="1"><div class="orb" id="s11-orb"></div><div class="head"><div class="tag" id="s11-tag">VIỆC XƯỞNG</div><h1 class="title" id="s11-title" style="font-size:112px"><span class="w"><span class="wi">Việc</span></span> <span class="w"><span class="wi">xưởng</span></span></h1><p class="sub" id="s11-sub">Giao việc · bắt đầu · tạm dừng · hoàn tất</p><ul class="chips"><li id="s11-chip0"><i></i>Giao việc</li><li id="s11-chip1"><i></i>Bắt đầu</li><li id="s11-chip2"><i></i>Tạm dừng</li><li id="s11-chip3"><i></i>Hoàn tất</li></ul></div><div class="phone" id="s11-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s11-v" class="clip scr" src="assets/clips30/c11-shopfloor.mp4" data-start="94.558" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.677" data-track-index="65" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s11-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw11" class="clip swipe" data-start="94.138" data-duration="0.75" data-track-index="90"><div class="swi" id="sw11-i"></div></div>
+<div id="s12" class="clip scene l fx" data-start="99.638" data-duration="5.2" data-track-index="1"><div class="orb" id="s12-orb"></div><div class="head"><div class="tag" id="s12-tag">QC</div><h1 class="title" id="s12-title" style="font-size:112px"><span class="w"><span class="wi">Kiểm</span></span> <span class="w"><span class="wi">tra</span></span> <span class="w"><span class="wi">chất</span></span> <span class="w"><span class="wi">lượng</span></span></h1><p class="sub" id="s12-sub">Danh mục kiểm rõ ràng cho từng lệnh việc</p><ul class="chips"><li id="s12-chip0"><i></i>Danh mục kiểm rõ ràng cho từng lệnh việc</li></ul></div><div class="phone" id="s12-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s12-v" class="clip scr" src="assets/clips30/c12-qc.mp4" data-start="99.758" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.552" data-track-index="72" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s12-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw12" class="clip swipe" data-start="99.338" data-duration="0.75" data-track-index="90"><div class="swi" id="sw12-i"></div></div>
+<div id="s13" class="clip scene l fx" data-start="104.838" data-duration="5.2" data-track-index="1"><div class="orb" id="s13-orb"></div><div class="head"><div class="tag" id="s13-tag">LẮP ĐẶT</div><h1 class="title" id="s13-title" style="font-size:112px"><span class="w"><span class="wi">Lắp</span></span> <span class="w"><span class="wi">đặt</span></span></h1><p class="sub" id="s13-sub">Lịch đội thợ · vật tư · dụng cụ · ảnh nghiệm thu</p><ul class="chips"><li id="s13-chip0"><i></i>Lịch đội thợ</li><li id="s13-chip1"><i></i>Vật tư</li><li id="s13-chip2"><i></i>Dụng cụ</li><li id="s13-chip3"><i></i>Ảnh nghiệm thu</li></ul></div><div class="phone" id="s13-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s13-v" class="clip scr" src="assets/clips30/c13-install.mp4" data-start="104.958" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.585" data-track-index="76" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s13-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw13" class="clip swipe" data-start="104.538" data-duration="0.75" data-track-index="90"><div class="swi" id="sw13-i"></div></div>
+<div id="s14" class="clip scene l fx" data-start="110.038" data-duration="5.2" data-track-index="1"><div class="orb" id="s14-orb"></div><div class="head"><div class="tag" id="s14-tag">BẢO HÀNH</div><h1 class="title" id="s14-title" style="font-size:112px"><span class="w"><span class="wi">Bảo</span></span> <span class="w"><span class="wi">hành</span></span></h1><p class="sub" id="s14-sub">Quét QR · yêu cầu bảo hành xử lý ngay</p><ul class="chips"><li id="s14-chip0"><i></i>Quét QR</li><li id="s14-chip1"><i></i>Yêu cầu bảo hành xử lý ngay</li></ul></div><div class="phone" id="s14-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s14-v" class="clip scr" src="assets/clips30/c14-warranty.mp4" data-start="110.158" data-duration="5.08" data-media-start="0.35" data-playback-rate="1.591" data-track-index="83" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s14-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw14" class="clip swipe" data-start="109.738" data-duration="0.75" data-track-index="90"><div class="swi" id="sw14-i"></div></div>
+<div id="s15" class="clip scene l fx" data-start="115.238" data-duration="6.22" data-track-index="1"><div class="orb" id="s15-orb"></div><div class="head"><div class="tag" id="s15-tag">THỜI TIẾT</div><h1 class="title" id="s15-title" style="font-size:112px"><span class="w"><span class="wi">Thời</span></span> <span class="w"><span class="wi">tiết</span></span> <span class="w"><span class="wi">lắp</span></span> <span class="w"><span class="wi">đặt</span></span></h1><p class="sub" id="s15-sub">Dự báo 7 ngày theo khu vực công trình</p><ul class="chips"><li id="s15-chip0"><i></i>Dự báo 7 ngày theo khu vực công trình</li></ul></div><div class="phone" id="s15-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s15-v" class="clip scr" src="assets/clips30/c15-weather.mp4" data-start="115.358" data-duration="6.1" data-media-start="0.35" data-playback-rate="1.686" data-track-index="88" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s15-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b><b class=""></b></div></div>
+<div id="sw15" class="clip swipe" data-start="114.938" data-duration="0.75" data-track-index="90"><div class="swi" id="sw15-i"></div></div>
+<div id="s16" class="clip scene l fx" data-start="121.457" data-duration="9.161" data-track-index="1"><div class="orb" id="s16-orb"></div><div class="head"><div class="tag" id="s16-tag">CATALOG</div><h1 class="title" id="s16-title" style="font-size:112px"><span class="w"><span class="wi">Catalog</span></span> <span class="w"><span class="wi">và</span></span> <span class="w"><span class="wi">thư</span></span> <span class="w"><span class="wi">viện</span></span></h1><p class="sub" id="s16-sub">Hệ nhôm · mã thanh · mặt cắt · mẫu cửa</p><ul class="chips"><li id="s16-chip0"><i></i>Hệ nhôm</li><li id="s16-chip1"><i></i>Mã thanh</li><li id="s16-chip2"><i></i>Mặt cắt</li><li id="s16-chip3"><i></i>Mẫu cửa</li></ul></div><div class="phone" id="s16-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s16-v" class="clip scr" src="assets/clips30/c16-catalog.mp4" data-start="121.577" data-duration="9.041" data-media-start="0.35" data-playback-rate="1.69" data-track-index="92" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s16-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b><b class=""></b></div></div>
+<div id="sw16" class="clip swipe" data-start="121.157" data-duration="0.75" data-track-index="90"><div class="swi" id="sw16-i"></div></div>
+<div id="s17" class="clip scene l fx" data-start="130.618" data-duration="14.69" data-track-index="1"><div class="orb" id="s17-orb"></div><div class="head"><div class="tag" id="s17-tag">TRỢ LÝ AI</div><h1 class="title" id="s17-title" style="font-size:112px"><span class="w"><span class="wi">Bé</span></span> <span class="w"><span class="wi">Eu</span></span> <span class="w"><span class="wi">·</span></span> <span class="w"><span class="wi">Trợ</span></span> <span class="w"><span class="wi">lý</span></span> <span class="w"><span class="wi">AI</span></span></h1><p class="sub" id="s17-sub">Trò chuyện · tạo ảnh · quy tắc riêng của xưởng</p><ul class="chips"><li id="s17-chip0"><i></i>Trò chuyện</li><li id="s17-chip1"><i></i>Tạo ảnh</li><li id="s17-chip2"><i></i>Quy tắc riêng của xưởng</li></ul></div><div class="phone" id="s17-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><video id="s17-v" class="clip scr" src="assets/clips30/c18-assistant.mp4" data-start="130.738" data-duration="14.57" data-media-start="0.35" data-playback-rate="1.694" data-track-index="99" muted playsinline></video></div><div class="notch"></div></div>
+<div class="prog" id="s17-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b><b class=""></b></div></div>
+<div id="sw17" class="clip swipe" data-start="130.318" data-duration="0.75" data-track-index="90"><div class="swi" id="sw17-i"></div></div>
+<div id="s18" class="clip scene l fx" data-start="145.308" data-duration="8.2" data-track-index="1"><div class="orb" id="s18-orb"></div><div class="head"><div class="tag" id="s18-tag">CÀI ĐẶT</div><h1 class="title" id="s18-title" style="font-size:112px"><span class="w"><span class="wi">Cài</span></span> <span class="w"><span class="wi">như</span></span> <span class="w"><span class="wi">một</span></span> <span class="w"><span class="wi">ứng</span></span> <span class="w"><span class="wi">dụng</span></span></h1><p class="sub" id="s18-sub">app.nhomeurohouse.com</p><ul class="chips"><li id="s18-chip0"><i></i>Mở bằng trình duyệt</li><li id="s18-chip1"><i></i>Chọn Cài đặt ứng dụng</li><li id="s18-chip2"><i></i>Dùng như app thật</li></ul></div><div class="phone" id="s18-phone" style="left:1290px;top:56px;width:459px;height:968px"><div class="screen" style="inset:11px;border-radius:38px"><div class="pwa" id="s18-pwa"><div class="bar"><span>🔒</span> app.nhomeurohouse.com</div><div class="site"><img src="assets/brand/hero-ecento-70.jpg"><div class="siteh"><img src="assets/brand/logo-landscape.png"></div></div>
+<div class="sheet" id="s18-sheet"><img class="ico" src="assets/brand/logo-mark.png"><b>Eurohouse Workshop OS</b><small>app.nhomeurohouse.com</small><div class="btn" id="s18-btn">Cài đặt</div></div>
+<div class="homescr" id="s18-home"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><u id="s18-app"><img src="assets/brand/logo-mark.png"><em>Eurohouse</em></u></div></div></div></div><div class="notch"></div></div>
+<div class="prog" id="s18-prog"><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="done"></b><b class="on"></b></div></div>
+<div id="sw18" class="clip swipe" data-start="145.008" data-duration="0.75" data-track-index="90"><div class="swi" id="sw18-i"></div></div>
+<div id="s19" class="clip scene l" data-start="153.508" data-duration="7" data-track-index="1"><div class="outro l"><div class="logoblock" id="s19-logo"><img src="assets/brand/logo-landscape.png"></div>
+<h1 class="title big" id="s19-title"><span class="w"><span class="wi">Nhôm</span></span> <span class="w"><span class="wi">của</span></span> <span class="w"><span class="wi">sự</span></span> <span class="w"><span class="wi">thịnh</span></span> <span class="w"><span class="wi">vượng</span></span></h1>
+<div class="cta" id="s19-cta">Dùng thử ngay · app.nhomeurohouse.com</div>
+<div class="prods" id="s19-prods"><img src="assets/brand/product-ecento-70.jpg"><img src="assets/brand/product-ecento-plus.jpg"><img src="assets/brand/product-he-55-vat-canh.jpg"><img src="assets/brand/product-preco.jpg"></div>
+<p class="note" id="s19-note">Hình ảnh và số liệu trong video là dữ liệu minh hoạ.</p></div></div>
+<div id="sw19" class="clip swipe" data-start="153.208" data-duration="0.75" data-track-index="90"><div class="swi" id="sw19-i"></div></div>
+<audio id="voice0" class="clip" src="assets/voice/s00-intro.wav" data-start="0.45" data-duration="5.093" data-track-index="2" data-volume="1"></audio>
+<audio id="sfx0" class="clip" src="assets/sfx/riser.wav" data-start="0" data-duration="2" data-track-index="3" data-volume="0.5"></audio>
+<audio id="sfx1" class="clip" src="assets/sfx/impact.wav" data-start="0.8" data-duration="2.6" data-track-index="4" data-volume="0.55"></audio>
+<audio id="voice1" class="clip" src="assets/voice/s01-register.wav" data-start="7.143" data-duration="6.451" data-track-index="6" data-volume="1"></audio>
+<audio id="sfx2" class="clip" src="assets/sfx/pop-b.wav" data-start="7.713" data-duration="0.4" data-track-index="7" data-volume="0.45"></audio>
+<audio id="sfx3" class="clip" src="assets/sfx/pop-a.wav" data-start="8.213" data-duration="0.4" data-track-index="8" data-volume="0.45"></audio>
+<audio id="sfx4" class="clip" src="assets/sfx/whoosh-b.wav" data-start="6.413" data-duration="0.456" data-track-index="9" data-volume="0.85"></audio>
+<audio id="voice2" class="clip" src="assets/voice/s02-home.wav" data-start="20.558" data-duration="5.518" data-track-index="11" data-volume="1"></audio>
+<audio id="sfx5" class="clip" src="assets/sfx/pop-a.wav" data-start="21.128" data-duration="0.4" data-track-index="12" data-volume="0.45"></audio>
+<audio id="sfx6" class="clip" src="assets/sfx/pop-b.wav" data-start="21.628" data-duration="0.4" data-track-index="13" data-volume="0.45"></audio>
+<audio id="sfx7" class="clip" src="assets/sfx/pop-a.wav" data-start="22.128" data-duration="0.4" data-track-index="14" data-volume="0.45"></audio>
+<audio id="sfx8" class="clip" src="assets/sfx/pop-b.wav" data-start="22.628" data-duration="0.4" data-track-index="15" data-volume="0.45"></audio>
+<audio id="sfx9" class="clip" src="assets/sfx/whoosh-c.wav" data-start="19.828" data-duration="0.788" data-track-index="16" data-volume="0.85"></audio>
+<audio id="voice3" class="clip" src="assets/voice/s03-quote.wav" data-start="29.346" data-duration="6.029" data-track-index="18" data-volume="1"></audio>
+<audio id="sfx10" class="clip" src="assets/sfx/pop-b.wav" data-start="29.916" data-duration="0.4" data-track-index="19" data-volume="0.45"></audio>
+<audio id="sfx11" class="clip" src="assets/sfx/pop-a.wav" data-start="30.416" data-duration="0.4" data-track-index="20" data-volume="0.45"></audio>
+<audio id="sfx12" class="clip" src="assets/sfx/whoosh-a.wav" data-start="28.616" data-duration="0.393" data-track-index="21" data-volume="0.85"></audio>
+<audio id="voice4" class="clip" src="assets/voice/s04-orders.wav" data-start="39.88" data-duration="4.248" data-track-index="23" data-volume="1"></audio>
+<audio id="sfx13" class="clip" src="assets/sfx/pop-a.wav" data-start="40.45" data-duration="0.4" data-track-index="24" data-volume="0.45"></audio>
+<audio id="sfx14" class="clip" src="assets/sfx/pop-b.wav" data-start="40.95" data-duration="0.4" data-track-index="25" data-volume="0.45"></audio>
+<audio id="sfx15" class="clip" src="assets/sfx/pop-a.wav" data-start="41.45" data-duration="0.4" data-track-index="26" data-volume="0.45"></audio>
+<audio id="sfx16" class="clip" src="assets/sfx/pop-b.wav" data-start="41.95" data-duration="0.4" data-track-index="27" data-volume="0.45"></audio>
+<audio id="sfx17" class="clip" src="assets/sfx/whoosh-b.wav" data-start="39.15" data-duration="0.456" data-track-index="28" data-volume="0.85"></audio>
+<audio id="voice5" class="clip" src="assets/voice/s05-formulas.wav" data-start="46.884" data-duration="3.735" data-track-index="30" data-volume="1"></audio>
+<audio id="sfx18" class="clip" src="assets/sfx/pop-b.wav" data-start="47.454" data-duration="0.4" data-track-index="31" data-volume="0.45"></audio>
+<audio id="sfx19" class="clip" src="assets/sfx/pop-a.wav" data-start="47.954" data-duration="0.4" data-track-index="32" data-volume="0.45"></audio>
+<audio id="sfx20" class="clip" src="assets/sfx/whoosh-c.wav" data-start="46.154" data-duration="0.788" data-track-index="33" data-volume="0.85"></audio>
+<audio id="voice6" class="clip" src="assets/voice/s06-projects.wav" data-start="54.868" data-duration="6.632" data-track-index="35" data-volume="1"></audio>
+<audio id="sfx21" class="clip" src="assets/sfx/pop-a.wav" data-start="55.438" data-duration="0.4" data-track-index="36" data-volume="0.45"></audio>
+<audio id="sfx22" class="clip" src="assets/sfx/pop-b.wav" data-start="55.938" data-duration="0.4" data-track-index="37" data-volume="0.45"></audio>
+<audio id="sfx23" class="clip" src="assets/sfx/pop-a.wav" data-start="56.438" data-duration="0.4" data-track-index="38" data-volume="0.45"></audio>
+<audio id="sfx24" class="clip" src="assets/sfx/whoosh-a.wav" data-start="54.138" data-duration="0.393" data-track-index="39" data-volume="0.85"></audio>
+<audio id="voice7" class="clip" src="assets/voice/s07-workforce.wav" data-start="69.029" data-duration="4.839" data-track-index="41" data-volume="1"></audio>
+<audio id="sfx25" class="clip" src="assets/sfx/pop-b.wav" data-start="69.599" data-duration="0.4" data-track-index="42" data-volume="0.45"></audio>
+<audio id="sfx26" class="clip" src="assets/sfx/pop-a.wav" data-start="70.099" data-duration="0.4" data-track-index="43" data-volume="0.45"></audio>
+<audio id="sfx27" class="clip" src="assets/sfx/pop-b.wav" data-start="70.599" data-duration="0.4" data-track-index="44" data-volume="0.45"></audio>
+<audio id="sfx28" class="clip" src="assets/sfx/pop-a.wav" data-start="71.099" data-duration="0.4" data-track-index="45" data-volume="0.45"></audio>
+<audio id="sfx29" class="clip" src="assets/sfx/whoosh-b.wav" data-start="68.299" data-duration="0.456" data-track-index="46" data-volume="0.85"></audio>
+<audio id="voice8" class="clip" src="assets/voice/s08-debts.wav" data-start="78.856" data-duration="3.564" data-track-index="48" data-volume="1"></audio>
+<audio id="sfx30" class="clip" src="assets/sfx/pop-a.wav" data-start="79.426" data-duration="0.4" data-track-index="49" data-volume="0.45"></audio>
+<audio id="sfx31" class="clip" src="assets/sfx/coin.wav" data-start="79.606" data-duration="0.888" data-track-index="50" data-volume="0.35"></audio>
+<audio id="sfx32" class="clip" src="assets/sfx/whoosh-c.wav" data-start="78.126" data-duration="0.788" data-track-index="51" data-volume="0.85"></audio>
+<audio id="voice9" class="clip" src="assets/voice/s09-invoices.wav" data-start="84.056" data-duration="4.165" data-track-index="53" data-volume="1"></audio>
+<audio id="sfx33" class="clip" src="assets/sfx/pop-b.wav" data-start="84.626" data-duration="0.4" data-track-index="54" data-volume="0.45"></audio>
+<audio id="sfx34" class="clip" src="assets/sfx/pop-a.wav" data-start="85.126" data-duration="0.4" data-track-index="55" data-volume="0.45"></audio>
+<audio id="sfx35" class="clip" src="assets/sfx/pop-b.wav" data-start="85.626" data-duration="0.4" data-track-index="56" data-volume="0.45"></audio>
+<audio id="sfx36" class="clip" src="assets/sfx/coin.wav" data-start="84.806" data-duration="0.888" data-track-index="57" data-volume="0.35"></audio>
+<audio id="sfx37" class="clip" src="assets/sfx/whoosh-a.wav" data-start="83.326" data-duration="0.393" data-track-index="58" data-volume="0.85"></audio>
+<audio id="voice10" class="clip" src="assets/voice/s10-reminders.wav" data-start="89.688" data-duration="3.473" data-track-index="60" data-volume="1"></audio>
+<audio id="sfx38" class="clip" src="assets/sfx/pop-a.wav" data-start="90.258" data-duration="0.4" data-track-index="61" data-volume="0.45"></audio>
+<audio id="sfx39" class="clip" src="assets/sfx/pop-b.wav" data-start="90.758" data-duration="0.4" data-track-index="62" data-volume="0.45"></audio>
+<audio id="sfx40" class="clip" src="assets/sfx/pop-a.wav" data-start="91.258" data-duration="0.4" data-track-index="63" data-volume="0.45"></audio>
+<audio id="sfx41" class="clip" src="assets/sfx/whoosh-b.wav" data-start="88.958" data-duration="0.456" data-track-index="64" data-volume="0.85"></audio>
+<audio id="voice11" class="clip" src="assets/voice/s11-shopfloor.wav" data-start="94.888" data-duration="3.388" data-track-index="66" data-volume="1"></audio>
+<audio id="sfx42" class="clip" src="assets/sfx/pop-b.wav" data-start="95.458" data-duration="0.4" data-track-index="67" data-volume="0.45"></audio>
+<audio id="sfx43" class="clip" src="assets/sfx/pop-a.wav" data-start="95.958" data-duration="0.4" data-track-index="68" data-volume="0.45"></audio>
+<audio id="sfx44" class="clip" src="assets/sfx/pop-b.wav" data-start="96.458" data-duration="0.4" data-track-index="69" data-volume="0.45"></audio>
+<audio id="sfx45" class="clip" src="assets/sfx/pop-a.wav" data-start="96.958" data-duration="0.4" data-track-index="70" data-volume="0.45"></audio>
+<audio id="sfx46" class="clip" src="assets/sfx/whoosh-c.wav" data-start="94.158" data-duration="0.788" data-track-index="71" data-volume="0.85"></audio>
+<audio id="voice12" class="clip" src="assets/voice/s12-qc.wav" data-start="100.088" data-duration="2.967" data-track-index="73" data-volume="1"></audio>
+<audio id="sfx47" class="clip" src="assets/sfx/pop-a.wav" data-start="100.658" data-duration="0.4" data-track-index="74" data-volume="0.45"></audio>
+<audio id="sfx48" class="clip" src="assets/sfx/whoosh-a.wav" data-start="99.358" data-duration="0.393" data-track-index="75" data-volume="0.85"></audio>
+<audio id="voice13" class="clip" src="assets/voice/s13-install.wav" data-start="105.288" data-duration="3.818" data-track-index="77" data-volume="1"></audio>
+<audio id="sfx49" class="clip" src="assets/sfx/pop-b.wav" data-start="105.858" data-duration="0.4" data-track-index="78" data-volume="0.45"></audio>
+<audio id="sfx50" class="clip" src="assets/sfx/pop-a.wav" data-start="106.358" data-duration="0.4" data-track-index="79" data-volume="0.45"></audio>
+<audio id="sfx51" class="clip" src="assets/sfx/pop-b.wav" data-start="106.858" data-duration="0.4" data-track-index="80" data-volume="0.45"></audio>
+<audio id="sfx52" class="clip" src="assets/sfx/pop-a.wav" data-start="107.358" data-duration="0.4" data-track-index="81" data-volume="0.45"></audio>
+<audio id="sfx53" class="clip" src="assets/sfx/whoosh-b.wav" data-start="104.558" data-duration="0.456" data-track-index="82" data-volume="0.85"></audio>
+<audio id="voice14" class="clip" src="assets/voice/s14-warranty.wav" data-start="110.488" data-duration="4.075" data-track-index="84" data-volume="1"></audio>
+<audio id="sfx54" class="clip" src="assets/sfx/pop-a.wav" data-start="111.058" data-duration="0.4" data-track-index="85" data-volume="0.45"></audio>
+<audio id="sfx55" class="clip" src="assets/sfx/pop-b.wav" data-start="111.558" data-duration="0.4" data-track-index="86" data-volume="0.45"></audio>
+<audio id="sfx56" class="clip" src="assets/sfx/whoosh-c.wav" data-start="109.758" data-duration="0.788" data-track-index="87" data-volume="0.85"></audio>
+<audio id="voice15" class="clip" src="assets/voice/s15-weather.wav" data-start="115.688" data-duration="3.218" data-track-index="89" data-volume="1"></audio>
+<audio id="sfx57" class="clip" src="assets/sfx/pop-b.wav" data-start="116.258" data-duration="0.4" data-track-index="90" data-volume="0.45"></audio>
+<audio id="sfx58" class="clip" src="assets/sfx/whoosh-a.wav" data-start="114.958" data-duration="0.393" data-track-index="91" data-volume="0.85"></audio>
+<audio id="voice16" class="clip" src="assets/voice/s16-catalog.wav" data-start="121.907" data-duration="6.966" data-track-index="93" data-volume="1"></audio>
+<audio id="sfx59" class="clip" src="assets/sfx/pop-a.wav" data-start="122.477" data-duration="0.4" data-track-index="94" data-volume="0.45"></audio>
+<audio id="sfx60" class="clip" src="assets/sfx/pop-b.wav" data-start="122.977" data-duration="0.4" data-track-index="95" data-volume="0.45"></audio>
+<audio id="sfx61" class="clip" src="assets/sfx/pop-a.wav" data-start="123.477" data-duration="0.4" data-track-index="96" data-volume="0.45"></audio>
+<audio id="sfx62" class="clip" src="assets/sfx/pop-b.wav" data-start="123.977" data-duration="0.4" data-track-index="97" data-volume="0.45"></audio>
+<audio id="sfx63" class="clip" src="assets/sfx/whoosh-b.wav" data-start="121.177" data-duration="0.456" data-track-index="98" data-volume="0.85"></audio>
+<audio id="voice17" class="clip" src="assets/voice/s18-ai.wav" data-start="131.068" data-duration="6.887" data-track-index="100" data-volume="1"></audio>
+<audio id="sfx64" class="clip" src="assets/sfx/pop-b.wav" data-start="131.638" data-duration="0.4" data-track-index="101" data-volume="0.45"></audio>
+<audio id="sfx65" class="clip" src="assets/sfx/pop-a.wav" data-start="132.138" data-duration="0.4" data-track-index="102" data-volume="0.45"></audio>
+<audio id="sfx66" class="clip" src="assets/sfx/pop-b.wav" data-start="132.638" data-duration="0.4" data-track-index="103" data-volume="0.45"></audio>
+<audio id="sfx67" class="clip" src="assets/sfx/whoosh-c.wav" data-start="130.338" data-duration="0.788" data-track-index="104" data-volume="0.85"></audio>
+<audio id="voice18" class="clip" src="assets/voice/s19-pwa.wav" data-start="145.758" data-duration="4.412" data-track-index="105" data-volume="1"></audio>
+<audio id="sfx68" class="clip" src="assets/sfx/pop-a.wav" data-start="146.328" data-duration="0.4" data-track-index="106" data-volume="0.45"></audio>
+<audio id="sfx69" class="clip" src="assets/sfx/pop-b.wav" data-start="146.828" data-duration="0.4" data-track-index="107" data-volume="0.45"></audio>
+<audio id="sfx70" class="clip" src="assets/sfx/pop-a.wav" data-start="147.328" data-duration="0.4" data-track-index="108" data-volume="0.45"></audio>
+<audio id="sfx71" class="clip" src="assets/sfx/click-a.wav" data-start="148.358" data-duration="0.157" data-track-index="109" data-volume="0.8"></audio>
+<audio id="sfx72" class="clip" src="assets/sfx/sparkle.wav" data-start="149.408" data-duration="1.829" data-track-index="110" data-volume="0.55"></audio>
+<audio id="sfx73" class="clip" src="assets/sfx/whoosh-a.wav" data-start="145.028" data-duration="0.393" data-track-index="111" data-volume="0.85"></audio>
+<audio id="voice19" class="clip" src="assets/voice/s20-outro.wav" data-start="153.958" data-duration="2.881" data-track-index="112" data-volume="1"></audio>
+<audio id="sfx74" class="clip" src="assets/sfx/jingle.wav" data-start="153.608" data-duration="5.5" data-track-index="113" data-volume="0.6"></audio>
+<audio id="sfx75" class="clip" src="assets/sfx/sparkle.wav" data-start="155.008" data-duration="1.829" data-track-index="114" data-volume="0.6"></audio>
+<audio id="sfx76" class="clip" src="assets/sfx/whoosh-b.wav" data-start="153.228" data-duration="0.456" data-track-index="115" data-volume="0.85"></audio>
+<audio id="bgm1" class="clip" src="assets/music/bgm-519.wav" data-start="0" data-duration="132.049" data-track-index="116" data-volume="0.2" data-fade-out="1.5"></audio>
+<audio id="bgm2" class="clip" src="assets/music/bgm-520.wav" data-start="131.049" data-duration="29.459" data-track-index="117" data-volume="0.2" data-fade-in="1" data-fade-out="3"></audio>
+</div>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#s0-hero',{scale:1.18},{scale:1.02,duration:6.693,ease:'power1.out'},0);
+tl.fromTo('#s0-logo',{y:60,opacity:0,scale:.9},{y:0,opacity:1,scale:1,duration:.7,ease:'back.out(1.6)'},0.25);
+tl.fromTo('#s0-tag',{opacity:0,y:20},{opacity:1,y:0,duration:.4,ease:'power3.out'},0.7);
+tl.fromTo('#s0-title .wi',{yPercent:115},{yPercent:0,duration:.6,stagger:.09,ease:'power4.out'},0.8);
+tl.fromTo('#s0-sub',{opacity:0,y:24},{opacity:1,y:0,duration:.55,ease:'power3.out'},1.5);
+tl.fromTo('#s1-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:13.416,ease:'none'},6.693);
+tl.fromTo('#s1-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},6.792999999999999);
+tl.fromTo('#s1-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},6.893);
+tl.fromTo('#s1-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},7.242999999999999);
+tl.fromTo('#s1-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},6.742999999999999);
+tl.to('#s1-phone',{y:-12,duration:12.416,ease:'sine.inOut'},7.593);
+tl.fromTo('#s1-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},7.693);
+tl.fromTo('#s1-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},8.193);
+tl.fromTo('#s1-prog',{opacity:0},{opacity:1,duration:.4},6.992999999999999);
+tl.fromTo('#sw1-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},6.393);
+tl.to('#sw1-i',{xPercent:104,duration:.38,ease:'power3.out'},6.713);
+tl.fromTo('#s2-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:8.788,ease:'none'},20.108);
+tl.fromTo('#s2-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},20.208000000000002);
+tl.fromTo('#s2-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},20.308);
+tl.fromTo('#s2-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},20.658);
+tl.fromTo('#s2-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},20.158);
+tl.to('#s2-phone',{y:-12,duration:7.788,ease:'sine.inOut'},21.008);
+tl.fromTo('#s2-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},21.108);
+tl.fromTo('#s2-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},21.608);
+tl.fromTo('#s2-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},22.108);
+tl.fromTo('#s2-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},22.608);
+tl.fromTo('#s2-prog',{opacity:0},{opacity:1,duration:.4},20.408);
+tl.fromTo('#sw2-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},19.808);
+tl.to('#sw2-i',{xPercent:104,duration:.38,ease:'power3.out'},20.128);
+tl.fromTo('#s3-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:10.533,ease:'none'},28.896);
+tl.fromTo('#s3-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},28.996000000000002);
+tl.fromTo('#s3-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},29.096);
+tl.fromTo('#s3-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},29.446);
+tl.fromTo('#s3-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},28.946);
+tl.to('#s3-phone',{y:-12,duration:9.533,ease:'sine.inOut'},29.796);
+tl.fromTo('#s3-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},29.896);
+tl.fromTo('#s3-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},30.396);
+tl.fromTo('#s3-prog',{opacity:0},{opacity:1,duration:.4},29.196);
+tl.fromTo('#sw3-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},28.596);
+tl.to('#sw3-i',{xPercent:104,duration:.38,ease:'power3.out'},28.916);
+tl.fromTo('#s4-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:7.004,ease:'none'},39.43);
+tl.fromTo('#s4-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},39.53);
+tl.fromTo('#s4-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},39.63);
+tl.fromTo('#s4-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},39.98);
+tl.fromTo('#s4-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},39.48);
+tl.to('#s4-phone',{y:-12,duration:6.004,ease:'sine.inOut'},40.33);
+tl.fromTo('#s4-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},40.43);
+tl.fromTo('#s4-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},40.93);
+tl.fromTo('#s4-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},41.43);
+tl.fromTo('#s4-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},41.93);
+tl.fromTo('#s4-prog',{opacity:0},{opacity:1,duration:.4},39.73);
+tl.fromTo('#sw4-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},39.13);
+tl.to('#sw4-i',{xPercent:104,duration:.38,ease:'power3.out'},39.45);
+tl.fromTo('#s5-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:7.984,ease:'none'},46.434);
+tl.fromTo('#s5-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},46.534);
+tl.fromTo('#s5-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},46.634);
+tl.fromTo('#s5-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},46.983999999999995);
+tl.fromTo('#s5-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},46.483999999999995);
+tl.to('#s5-phone',{y:-12,duration:6.984,ease:'sine.inOut'},47.333999999999996);
+tl.fromTo('#s5-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},47.434);
+tl.fromTo('#s5-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},47.934);
+tl.fromTo('#s5-prog',{opacity:0},{opacity:1,duration:.4},46.733999999999995);
+tl.fromTo('#sw5-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},46.134);
+tl.to('#sw5-i',{xPercent:104,duration:.38,ease:'power3.out'},46.454);
+tl.fromTo('#s6-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:14.161,ease:'none'},54.418);
+tl.fromTo('#s6-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},54.518);
+tl.fromTo('#s6-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},54.618);
+tl.fromTo('#s6-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},54.967999999999996);
+tl.fromTo('#s6-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},54.467999999999996);
+tl.to('#s6-phone',{y:-12,duration:13.161,ease:'sine.inOut'},55.318);
+tl.fromTo('#s6-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},55.418);
+tl.fromTo('#s6-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},55.918);
+tl.fromTo('#s6-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},56.418);
+tl.fromTo('#s6-prog',{opacity:0},{opacity:1,duration:.4},54.717999999999996);
+tl.fromTo('#sw6-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},54.118);
+tl.to('#sw6-i',{xPercent:104,duration:.38,ease:'power3.out'},54.438);
+tl.fromTo('#s7-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:9.827,ease:'none'},68.579);
+tl.fromTo('#s7-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},68.67899999999999);
+tl.fromTo('#s7-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},68.779);
+tl.fromTo('#s7-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},69.12899999999999);
+tl.fromTo('#s7-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},68.62899999999999);
+tl.to('#s7-phone',{y:-12,duration:8.827,ease:'sine.inOut'},69.479);
+tl.fromTo('#s7-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},69.579);
+tl.fromTo('#s7-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},70.079);
+tl.fromTo('#s7-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},70.579);
+tl.fromTo('#s7-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},71.079);
+tl.fromTo('#s7-prog',{opacity:0},{opacity:1,duration:.4},68.87899999999999);
+tl.fromTo('#sw7-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},68.279);
+tl.to('#sw7-i',{xPercent:104,duration:.38,ease:'power3.out'},68.599);
+tl.fromTo('#s8-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},78.406);
+tl.fromTo('#s8-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},78.506);
+tl.fromTo('#s8-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},78.60600000000001);
+tl.fromTo('#s8-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},78.956);
+tl.fromTo('#s8-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},78.456);
+tl.to('#s8-phone',{y:-12,duration:4.2,ease:'sine.inOut'},79.30600000000001);
+tl.fromTo('#s8-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},79.406);
+tl.fromTo('#s8-prog',{opacity:0},{opacity:1,duration:.4},78.706);
+tl.fromTo('#sw8-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},78.106);
+tl.to('#sw8-i',{xPercent:104,duration:.38,ease:'power3.out'},78.426);
+tl.fromTo('#s9-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.631,ease:'none'},83.606);
+tl.fromTo('#s9-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},83.70599999999999);
+tl.fromTo('#s9-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},83.806);
+tl.fromTo('#s9-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},84.15599999999999);
+tl.fromTo('#s9-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},83.65599999999999);
+tl.to('#s9-phone',{y:-12,duration:4.631,ease:'sine.inOut'},84.506);
+tl.fromTo('#s9-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},84.606);
+tl.fromTo('#s9-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},85.106);
+tl.fromTo('#s9-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},85.606);
+tl.fromTo('#s9-prog',{opacity:0},{opacity:1,duration:.4},83.90599999999999);
+tl.fromTo('#sw9-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},83.306);
+tl.to('#sw9-i',{xPercent:104,duration:.38,ease:'power3.out'},83.626);
+tl.fromTo('#s10-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},89.238);
+tl.fromTo('#s10-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},89.338);
+tl.fromTo('#s10-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},89.438);
+tl.fromTo('#s10-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},89.788);
+tl.fromTo('#s10-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},89.288);
+tl.to('#s10-phone',{y:-12,duration:4.2,ease:'sine.inOut'},90.138);
+tl.fromTo('#s10-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},90.238);
+tl.fromTo('#s10-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},90.738);
+tl.fromTo('#s10-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},91.238);
+tl.fromTo('#s10-prog',{opacity:0},{opacity:1,duration:.4},89.538);
+tl.fromTo('#sw10-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},88.938);
+tl.to('#sw10-i',{xPercent:104,duration:.38,ease:'power3.out'},89.258);
+tl.fromTo('#s11-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},94.438);
+tl.fromTo('#s11-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},94.538);
+tl.fromTo('#s11-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},94.638);
+tl.fromTo('#s11-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},94.988);
+tl.fromTo('#s11-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},94.488);
+tl.to('#s11-phone',{y:-12,duration:4.2,ease:'sine.inOut'},95.33800000000001);
+tl.fromTo('#s11-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},95.438);
+tl.fromTo('#s11-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},95.938);
+tl.fromTo('#s11-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},96.438);
+tl.fromTo('#s11-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},96.938);
+tl.fromTo('#s11-prog',{opacity:0},{opacity:1,duration:.4},94.738);
+tl.fromTo('#sw11-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},94.138);
+tl.to('#sw11-i',{xPercent:104,duration:.38,ease:'power3.out'},94.458);
+tl.fromTo('#s12-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},99.638);
+tl.fromTo('#s12-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},99.738);
+tl.fromTo('#s12-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},99.83800000000001);
+tl.fromTo('#s12-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},100.188);
+tl.fromTo('#s12-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},99.688);
+tl.to('#s12-phone',{y:-12,duration:4.2,ease:'sine.inOut'},100.53800000000001);
+tl.fromTo('#s12-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},100.638);
+tl.fromTo('#s12-prog',{opacity:0},{opacity:1,duration:.4},99.938);
+tl.fromTo('#sw12-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},99.338);
+tl.to('#sw12-i',{xPercent:104,duration:.38,ease:'power3.out'},99.658);
+tl.fromTo('#s13-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},104.838);
+tl.fromTo('#s13-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},104.93799999999999);
+tl.fromTo('#s13-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},105.038);
+tl.fromTo('#s13-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},105.38799999999999);
+tl.fromTo('#s13-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},104.88799999999999);
+tl.to('#s13-phone',{y:-12,duration:4.2,ease:'sine.inOut'},105.738);
+tl.fromTo('#s13-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},105.838);
+tl.fromTo('#s13-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},106.338);
+tl.fromTo('#s13-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},106.838);
+tl.fromTo('#s13-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},107.338);
+tl.fromTo('#s13-prog',{opacity:0},{opacity:1,duration:.4},105.13799999999999);
+tl.fromTo('#sw13-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},104.538);
+tl.to('#sw13-i',{xPercent:104,duration:.38,ease:'power3.out'},104.858);
+tl.fromTo('#s14-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.2,ease:'none'},110.038);
+tl.fromTo('#s14-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},110.13799999999999);
+tl.fromTo('#s14-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},110.238);
+tl.fromTo('#s14-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},110.588);
+tl.fromTo('#s14-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},110.088);
+tl.to('#s14-phone',{y:-12,duration:4.2,ease:'sine.inOut'},110.938);
+tl.fromTo('#s14-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},111.038);
+tl.fromTo('#s14-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},111.538);
+tl.fromTo('#s14-prog',{opacity:0},{opacity:1,duration:.4},110.338);
+tl.fromTo('#sw14-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},109.738);
+tl.to('#sw14-i',{xPercent:104,duration:.38,ease:'power3.out'},110.058);
+tl.fromTo('#s15-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:6.22,ease:'none'},115.238);
+tl.fromTo('#s15-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},115.338);
+tl.fromTo('#s15-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},115.438);
+tl.fromTo('#s15-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},115.788);
+tl.fromTo('#s15-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},115.288);
+tl.to('#s15-phone',{y:-12,duration:5.22,ease:'sine.inOut'},116.138);
+tl.fromTo('#s15-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},116.238);
+tl.fromTo('#s15-prog',{opacity:0},{opacity:1,duration:.4},115.538);
+tl.fromTo('#sw15-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},114.938);
+tl.to('#sw15-i',{xPercent:104,duration:.38,ease:'power3.out'},115.258);
+tl.fromTo('#s16-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:9.161,ease:'none'},121.457);
+tl.fromTo('#s16-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},121.55699999999999);
+tl.fromTo('#s16-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},121.657);
+tl.fromTo('#s16-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},122.00699999999999);
+tl.fromTo('#s16-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},121.50699999999999);
+tl.to('#s16-phone',{y:-12,duration:8.161,ease:'sine.inOut'},122.357);
+tl.fromTo('#s16-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},122.457);
+tl.fromTo('#s16-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},122.957);
+tl.fromTo('#s16-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},123.457);
+tl.fromTo('#s16-chip3',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},123.957);
+tl.fromTo('#s16-prog',{opacity:0},{opacity:1,duration:.4},121.75699999999999);
+tl.fromTo('#sw16-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},121.157);
+tl.to('#sw16-i',{xPercent:104,duration:.38,ease:'power3.out'},121.477);
+tl.fromTo('#s17-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:14.69,ease:'none'},130.618);
+tl.fromTo('#s17-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},130.718);
+tl.fromTo('#s17-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},130.81799999999998);
+tl.fromTo('#s17-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},131.168);
+tl.fromTo('#s17-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},130.668);
+tl.to('#s17-phone',{y:-12,duration:13.69,ease:'sine.inOut'},131.518);
+tl.fromTo('#s17-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},131.618);
+tl.fromTo('#s17-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},132.118);
+tl.fromTo('#s17-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},132.618);
+tl.fromTo('#s17-prog',{opacity:0},{opacity:1,duration:.4},130.918);
+tl.fromTo('#sw17-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},130.318);
+tl.to('#sw17-i',{xPercent:104,duration:.38,ease:'power3.out'},130.638);
+tl.fromTo('#s18-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:8.2,ease:'none'},145.308);
+tl.fromTo('#s18-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.4,ease:'power3.out'},145.408);
+tl.fromTo('#s18-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.07,ease:'power4.out'},145.50799999999998);
+tl.fromTo('#s18-sub',{opacity:0,y:22},{opacity:1,y:0,duration:.5,ease:'power3.out'},145.858);
+tl.fromTo('#s18-phone',{y:300,rotate:3,opacity:0},{y:0,rotate:0,opacity:1,duration:.8,ease:'power4.out'},145.358);
+tl.to('#s18-phone',{y:-12,duration:7.2,ease:'sine.inOut'},146.208);
+tl.fromTo('#s18-chip0',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},146.308);
+tl.fromTo('#s18-chip1',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},146.808);
+tl.fromTo('#s18-chip2',{x:-50,opacity:0},{x:0,opacity:1,duration:.45,ease:'back.out(1.7)'},147.308);
+tl.fromTo('#s18-prog',{opacity:0},{opacity:1,duration:.4},145.608);
+tl.fromTo('#s18-sheet',{yPercent:100},{yPercent:0,duration:.6,ease:'power3.out'},146.708);
+tl.fromTo('#s18-btn',{scale:1},{scale:.92,duration:.15,ease:'power1.in'},148.308);
+tl.to('#s18-btn',{scale:1,duration:.2,ease:'back.out(3)'},148.458);
+tl.to('#s18-sheet',{yPercent:100,duration:.45,ease:'power3.in'},148.808);
+tl.fromTo('#s18-home',{opacity:0},{opacity:1,duration:.4,ease:'power2.out'},149.008);
+tl.fromTo('#s18-app',{scale:0,rotate:-20},{scale:1,rotate:0,duration:.6,ease:'back.out(2.4)'},149.408);
+tl.to('#s18-app',{y:-14,duration:.3,ease:'power2.out'},150.108);
+tl.to('#s18-app',{y:0,duration:.4,ease:'bounce.out'},150.408);
+tl.fromTo('#sw18-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},145.008);
+tl.to('#sw18-i',{xPercent:104,duration:.38,ease:'power3.out'},145.328);
+tl.fromTo('#s19-logo',{scale:.6,opacity:0,rotate:-4},{scale:1,opacity:1,rotate:0,duration:.8,ease:'back.out(1.8)'},153.608);
+tl.fromTo('#s19-title .wi',{yPercent:115},{yPercent:0,duration:.6,stagger:.08,ease:'power4.out'},154.008);
+tl.fromTo('#s19-prods img',{y:140,opacity:0,rotate:6},{y:0,opacity:1,rotate:0,duration:.7,stagger:.12,ease:'power3.out'},154.40800000000002);
+tl.fromTo('#s19-cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.5,ease:'back.out(2)'},155.008);
+tl.to('#s19-cta',{y:-8,duration:.5,ease:'sine.inOut'},155.508);
+tl.to('#s19-cta',{y:0,duration:.5,ease:'sine.inOut'},156.008);
+tl.fromTo('#s19-note',{opacity:0},{opacity:.8,duration:.6},155.508);
+tl.fromTo('#sw19-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},153.208);
+tl.to('#sw19-i',{xPercent:104,duration:.38,ease:'power3.out'},153.528);
+
+window.__timelines["main"] = tl;
+</script></body></html>

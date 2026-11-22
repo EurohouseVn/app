@@ -1,0 +1,159 @@
+[
+ {
+  "id": "s00-intro",
+  "title": "EUROHOUSE WORKSHOP OS",
+  "sub": "Cả xưởng nhôm kính trong một chiếc điện thoại",
+  "tag": "NHÔM CỦA SỰ THỊNH VƯỢNG",
+  "text": "Quản lý cả xưởng nhôm kính, chỉ với một chiếc điện thoại. Giới thiệu Eurohouse Workshop OS."
+ },
+ {
+  "id": "s01-register",
+  "clip": "c02-register",
+  "title": "Đăng ký xưởng",
+  "sub": "Chỉ cần email · xác minh mã 6 số",
+  "tag": "BƯỚC 1",
+  "text": "Đăng ký xưởng chỉ bằng email: nhập tên, tên xưởng, email và mật khẩu. Hệ thống gửi mã sáu số, nhập xong là vào dùng ngay."
+ },
+ {
+  "id": "s02-home",
+  "clip": "c01-home",
+  "title": "Trang chủ xưởng",
+  "sub": "Hôm nay · công cụ · công trình cần chú ý · sản phẩm",
+  "tag": "TRANG CHỦ",
+  "text": "Trang chủ gom mọi thứ: chấm công hôm nay, công cụ nhanh, công trình cần chú ý và sản phẩm Eurohouse."
+ },
+ {
+  "id": "s03-quote",
+  "clip": "c03-quote",
+  "title": "Báo giá",
+  "sub": "Nhiều hạng mục cửa · xuất PDF gửi khách",
+  "tag": "BÁO GIÁ",
+  "text": "Lập báo giá nhiều hạng mục cửa: nhập khách hàng, chọn hệ nhôm, màu, kích thước, rồi xuất PDF gửi khách trong vài phút."
+ },
+ {
+  "id": "s04-orders",
+  "clip": "c04-orders",
+  "title": "Đặt nhôm",
+  "sub": "Chọn màu · hệ nhôm · thanh · số lượng",
+  "tag": "ĐẶT NHÔM",
+  "text": "Đặt nhôm Eurohouse thật nhanh: chọn màu, chọn hệ, chọn thanh và số lượng."
+ },
+ {
+  "id": "s05-formulas",
+  "clip": "c05-formulas",
+  "title": "Công thức cắt",
+  "sub": "Theo từng hệ nhôm · cắt đúng, ít hao",
+  "tag": "CÔNG THỨC CẮT",
+  "text": "Công thức cắt có sẵn theo từng hệ nhôm, cắt đúng, ít hao vật tư."
+ },
+ {
+  "id": "s06-projects",
+  "clip": "c06-projects",
+  "title": "Công trình",
+  "sub": "Thu chi · phiếu thu, phiếu chi · PDF tổng hợp",
+  "tag": "CÔNG TRÌNH",
+  "text": "Quản lý công trình từ lúc báo giá đến khi hoàn tất: theo dõi thu chi, lập phiếu thu, phiếu chi và xuất PDF tổng hợp thu chi."
+ },
+ {
+  "id": "s07-workforce",
+  "clip": "c07-workforce",
+  "title": "Quản lý xưởng",
+  "sub": "Chấm công · việc khoán · lương · bảo hiểm",
+  "tag": "NHÂN SỰ",
+  "text": "Chấm công, việc khoán, bảng lương, phiếu lương PDF và cả bảo hiểm, tất cả trong một màn hình."
+ },
+ {
+  "id": "s08-debts",
+  "clip": "c08-debts",
+  "title": "Công nợ",
+  "sub": "Tự ghi nhận từ đơn nhà phân phối",
+  "tag": "CÔNG NỢ",
+  "text": "Công nợ với nhà phân phối được ghi tự động, nhìn là biết còn nợ bao nhiêu."
+ },
+ {
+  "id": "s09-invoices",
+  "clip": "c09-invoices",
+  "title": "Hoá đơn điện tử và thuế",
+  "sub": "Doanh thu · hoá đơn · báo cáo theo quý",
+  "tag": "HOÁ ĐƠN · THUẾ",
+  "text": "Hoá đơn điện tử và thuế: theo dõi doanh thu, hoá đơn và báo cáo theo quý."
+ },
+ {
+  "id": "s10-reminders",
+  "clip": "c10-reminders",
+  "title": "Nhắc việc",
+  "sub": "Giao hàng · gọi khách · mua vật tư",
+  "tag": "NHẮC VIỆC",
+  "text": "Nhắc việc giao hàng, gọi khách, mua vật tư, không bỏ sót việc nào."
+ },
+ {
+  "id": "s11-shopfloor",
+  "clip": "c11-shopfloor",
+  "title": "Việc xưởng",
+  "sub": "Giao việc · bắt đầu · tạm dừng · hoàn tất",
+  "tag": "VIỆC XƯỞNG",
+  "text": "Giao việc cho từng thợ, theo dõi từ lúc bắt đầu đến khi hoàn tất."
+ },
+ {
+  "id": "s12-qc",
+  "clip": "c12-qc",
+  "title": "Kiểm tra chất lượng",
+  "sub": "Danh mục kiểm rõ ràng cho từng lệnh việc",
+  "tag": "QC",
+  "text": "Kiểm tra chất lượng theo danh mục rõ ràng trước khi giao cửa."
+ },
+ {
+  "id": "s13-install",
+  "clip": "c13-install",
+  "title": "Lắp đặt",
+  "sub": "Lịch đội thợ · vật tư · dụng cụ · ảnh nghiệm thu",
+  "tag": "LẮP ĐẶT",
+  "text": "Lịch lắp đặt cho từng đội, đủ vật tư, đủ dụng cụ, có ảnh nghiệm thu."
+ },
+ {
+  "id": "s14-warranty",
+  "clip": "c14-warranty",
+  "title": "Bảo hành",
+  "sub": "Quét QR · yêu cầu bảo hành xử lý ngay",
+  "tag": "BẢO HÀNH",
+  "text": "Bảo hành quét mã QR, khách yêu cầu là xử lý ngay, hồ sơ lưu đầy đủ."
+ },
+ {
+  "id": "s15-weather",
+  "clip": "c15-weather",
+  "title": "Thời tiết lắp đặt",
+  "sub": "Dự báo 7 ngày theo khu vực công trình",
+  "tag": "THỜI TIẾT",
+  "text": "Xem thời tiết bảy ngày theo khu vực để chọn ngày lắp đặt phù hợp."
+ },
+ {
+  "id": "s16-catalog",
+  "clip": "c16-catalog",
+  "title": "Catalog và thư viện",
+  "sub": "Hệ nhôm · mã thanh · mặt cắt · mẫu cửa",
+  "tag": "CATALOG",
+  "text": "Catalog và thư viện Eurohouse luôn trong túi: nhiều hệ nhôm, hàng trăm mã thanh, kèm mặt cắt rõ nét để tra cứu ngay tại xưởng."
+ },
+ {
+  "id": "s18-ai",
+  "clip": "c18-assistant",
+  "title": "Bé Eu · Trợ lý AI",
+  "sub": "Trò chuyện · tạo ảnh · quy tắc riêng của xưởng",
+  "tag": "TRỢ LÝ AI",
+  "text": "Bé Eu, trợ lý AI riêng cho từng xưởng: trò chuyện soạn lời chào khách, tạo ảnh phối cảnh cửa, và ghi nhớ quy tắc riêng của xưởng bạn."
+ },
+ {
+  "id": "s19-pwa",
+  "title": "Cài như một ứng dụng",
+  "sub": "app.nhomeurohouse.com",
+  "tag": "CÀI ĐẶT",
+  "text": "Cài như một ứng dụng ngay trên điện thoại, chỉ cần mở app chấm nhom euro house chấm com."
+ },
+ {
+  "id": "s20-outro",
+  "title": "EUROHOUSE",
+  "sub": "Nhôm của sự thịnh vượng",
+  "tag": "app.nhomeurohouse.com",
+  "text": "Eurohouse Workshop OS. Nhôm của sự thịnh vượng."
+ }
+]
