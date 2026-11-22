@@ -1,9 +1,9 @@
 import { ImageBackground, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@eurohouse/ui';
 import { Icon } from './Icon';
-// Logo (nền trong suốt) + ảnh nhà hiện đại cho header
+// Logo (nền trong suốt) + ảnh dây chuyền sơn tĩnh điện Eurohouse cho header
 import logo from '../../assets/logo.png';
-import headerBg from '../../assets/header-house.jpg';
+import headerBg from '../../assets/header-coating-line.jpg';
 
 export function AppHeader({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack?: () => void }) {
   return (

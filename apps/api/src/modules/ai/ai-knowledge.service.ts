@@ -86,8 +86,11 @@ export class AiKnowledgeService implements OnModuleInit, OnModuleDestroy {
     });
     const colors = await this.prisma.colorCode.findMany({ orderBy: { code: 'asc' }, select: { code: true, name: true } });
     const catalog = buildCatalogKnowledge({ systems, colors });
+    // Bài kiến thức đã đăng ở màn "Kiến thức" cũng là nguồn cho trợ lý.
+    const articles = (await this.prisma.knowledgeArticle.findMany({ where: { isShared: true }, select: { id: true, title: true, content: true } }))
+      .map((article: { id: string; title: string; content: string }): KnowledgeEntry => ({ key: `article:${article.id}`, topic: 'Bài kiến thức', title: article.title, content: article.content, priority: 4 }));
     let written = 0;
-    for (const [origin, entries] of [['GENERAL', GENERAL_KNOWLEDGE], ['CATALOG', catalog]] as const) {
+    for (const [origin, entries] of [['GENERAL', GENERAL_KNOWLEDGE], ['CATALOG', catalog], ['ARTICLE', articles]] as const) {
       for (const entry of entries) {
         await this.prisma.aiKnowledge.upsert({
           where: { key: entry.key },

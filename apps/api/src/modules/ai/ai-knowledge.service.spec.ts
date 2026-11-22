@@ -18,6 +18,7 @@ function fixture(replies: Array<AiProviderResult | AiProviderError> = []) {
       }],
     },
     colorCode: { findMany: async () => [{ code: 'W', name: 'Trắng' }] },
+    knowledgeArticle: { findMany: async () => [{ id: 'art1', title: 'Cách chống thấm chân cửa', content: 'Kiểm tra lỗ thoát nước, keo khe tường và gioăng theo thứ tự trước khi nghi ngờ kính.' }] },
     aiKnowledge: {
       count: async () => knowledge.length,
       findMany: async ({ where }: any = {}) => knowledge.filter((row) => !where || Object.entries(where).every(([key, value]) => row[key] === value)),
@@ -78,6 +79,8 @@ test('seed writes the general knowledge and the Eurohouse catalog and retrieval 
   const system = await service.retrieve('hệ 70 Ecento có mã thanh C3225 không');
   assert.match(system.join('\n'), /C3225/);
   assert.deepEqual(await service.retrieve('thời tiết hôm nay'), []);
+  assert.ok(knowledge.some((row) => row.key === 'article:art1' && row.origin === 'ARTICLE'));
+  assert.match((await service.retrieve('chống thấm chân cửa'))[0], /lỗ thoát nước/);
 });
 
 test('research stores a note with its sources and refuses answers that are too short', async () => {

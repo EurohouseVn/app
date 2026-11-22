@@ -36,7 +36,7 @@ export const profileToolGroups: ProfileToolGroup[] = [
     tools: [
       { label: 'Bảo hành QR', href: '/warranty', icon: 'maximize', desc: 'Kích hoạt bảo hành cho khách', fg: '#047857', bg: '#E5F7EF' },
       { label: 'Zalo hỗ trợ', href: 'https://zalo.me/eurohouse', icon: 'message-circle', desc: 'Hỗ trợ kỹ thuật', fg: '#1D4ED8', bg: '#EAF2FF', external: true },
-      { label: 'Cộng đồng Facebook', href: 'https://www.facebook.com/eurohouse', icon: 'facebook', desc: 'Hỏi đáp kỹ thuật', fg: '#1D4ED8', bg: '#EAF2FF', external: true },
+      { label: 'Cộng đồng Facebook', href: 'https://www.facebook.com/eurohousemister', icon: 'facebook', desc: 'Hỏi đáp kỹ thuật', fg: '#1D4ED8', bg: '#EAF2FF', external: true },
     ],
   },
 ];
