@@ -38,14 +38,15 @@ export class AiKnowledgeService implements OnModuleInit, OnModuleDestroy {
     this.timers.push(setTimeout(() => {
       void (async () => {
         try {
-          if ((await this.prisma.aiKnowledge.count()) === 0) await this.seed();
+          await this.seed();
           await this.pushPrimer();
         } catch (error) {
           this.logger.warn(`khởi tạo kiến thức lỗi: ${String((error as Error)?.message ?? error)}`);
         }
       })();
     }, 5000));
-    this.timers.push(setInterval(() => { void this.pushPrimer().catch(() => undefined); }, 10 * 60 * 1000));
+    // Đồng bộ lại định kỳ: danh mục, bài kiến thức mới đăng, rồi đẩy mồi mới nếu nội dung đổi.
+    this.timers.push(setInterval(() => { void this.seed().then(() => this.pushPrimer()).catch(() => undefined); }, 10 * 60 * 1000));
     if (process.env.AI_RESEARCH_SCHEDULE === 'true') {
       const perRun = Number(process.env.AI_RESEARCH_PER_RUN ?? 3);
       this.timers.push(setInterval(() => { void this.researchNext(perRun).catch(() => undefined); }, 6 * 60 * 60 * 1000));
