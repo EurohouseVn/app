@@ -1,0 +1,204 @@
+# ỨNG DỤNG EUROHOUSE trên MINI02 (192.168.1.141): api + admin + npp + web + app di động (PWA) + bộ định tuyến nội bộ.
+# Postgres KHÔNG nằm ở đây: nó ở gói `eurohouse-db` (project `eurodb`, container `eurodb-pg`). Compose này chỉ NỐI vào mạng `eurodb_net` của nó
+# (api + migrate), nên chỉ hai dịch vụ này thấy được CSDL; web/admin/npp nằm mạng nội bộ riêng không có đường tới CSDL.
+# Ra Internet: Cloudflare Tunnel (dịch vụ `cloudflared` trên máy) nối vào cổng 127.0.0.1:3300 của `edge`.
+# Bí mật là Docker secrets (tệp) do install-eurohouse-app.sh sinh; không có mật khẩu nào trong tệp này.
+name: euroapp
+
+x-log: &log
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+x-app: &app
+  image: "eurohouse/app:${APP_TAG:?đặt APP_TAG trong .env}"
+  user: "2000:2000"
+  restart: unless-stopped
+  init: false                        # ảnh đã có tini
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  # Không đặt read_only: Next.js ghi cache ISR vào .next/ khi chạy.
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+  logging: *log
+  pids_limit: 512
+  environment: &app-env
+    NODE_ENV: production
+    NEXT_TELEMETRY_DISABLED: "1"
+    HOME: /tmp
+  volumes:
+    - ./entry.sh:/entry.sh:ro
+
+secrets:
+  database_url_owner: { file: "${SECRETS_DIR:?}/database_url_owner" }
+  database_url_app:   { file: "${SECRETS_DIR:?}/database_url_app" }
+  jwt_secret:         { file: "${SECRETS_DIR:?}/jwt_secret" }
+  website_preview_secret: { file: "${SECRETS_DIR:?}/website_preview_secret" }
+  admin_password:     { file: "${SECRETS_DIR:?}/admin_password" }
+  resend_api_key:     { file: "${SECRETS_DIR:?}/resend_api_key" }   # khoá Resend gửi mã xác minh email
+
+services:
+  migrate:
+    <<: *app
+    restart: "no"
+    working_dir: /app/apps/api
+    secrets:
+      - { source: database_url_owner, target: database_url }
+      - admin_password                  # chỉ để create-admin.cjs đọc (chạy bằng `compose run`)
+    # Migration chạy bằng euro_owner (chủ database). Công thức cắt chuẩn (seed-managed-*) do install script chạy sau khi có danh mục gốc.
+    command:
+      - /bin/sh
+      - /entry.sh
+      - sh
+      - -c
+      - |
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          node_modules/.bin/prisma migrate deploy && exit 0
+          echo "migrate lần $$i lỗi, thử lại sau 5 giây"; sleep 5
+        done
+        exit 1
+    mem_limit: 1536m                  # việc chạy một lần; script seed bằng ts-node cần nhiều RAM (768m từng bị hết bộ nhớ V8)
+    networks: [eurodb_net]
+
+  api:
+    <<: *app
+    working_dir: /app/apps/api
+    environment:
+      <<: *app-env
+      PORT: "3001"
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: /app/apps/api/public/uploads   # được phục vụ công khai qua /static/uploads/…
+      CORS_ORIGIN: "https://${EURO_DOMAIN},https://www.${EURO_DOMAIN},https://app.${EURO_DOMAIN},https://admin.${EURO_DOMAIN},https://npp.${EURO_DOMAIN}"
+      WORKSHOP_EVENT_WORKER_ENABLED: "true"
+      WORKSHOP_EVENT_WORKER_INTERVAL_MS: "15000"
+      RESEND_FROM_EMAIL: "${RESEND_FROM_EMAIL:?đặt RESEND_FROM_EMAIL trong .env, ví dụ Eurohouse <no-reply@mail.nhomeurohouse.com>}"
+    secrets:
+      - { source: database_url_app, target: database_url }
+      - jwt_secret
+      - resend_api_key                # bắt buộc ở production: thiếu thì API không khởi động
+      - website_preview_secret        # bắt buộc ≥32 ký tự ở production (website-preview-token.ts); thiếu thì API không khởi động
+    volumes:
+      - ./entry.sh:/entry.sh:ro
+      # Hai nơi API ghi tệp (cả hai phải bền vững):
+      - "${DATA_DIR:?}/uploads/public:/app/apps/api/public/uploads"   # kho tệp (ảnh, PDF); API trả về /static/uploads/…
+      - "${DATA_DIR:?}/uploads/work:/app/apps/api/uploads"            # Excel công thức theo hệ + multer
+    command: ["/bin/sh", "/entry.sh", "node", "dist/apps/api/src/main.js"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    stop_grace_period: 20s
+    mem_limit: 1g
+    cpus: 1.5
+    networks: [eurodb_net, euroapp_back]
+
+  web:
+    <<: *app
+    working_dir: /app/apps/web
+    environment:
+      <<: *app-env
+      API_URL: http://api:3001/api            # gọi từ máy chủ Next tới API qua mạng nội bộ
+    command: ["/bin/sh", "/entry.sh", "node_modules/.bin/next", "start", "-p", "3007", "-H", "0.0.0.0"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3007/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [euroapp_back]
+
+  admin:
+    <<: *app
+    working_dir: /app/apps/admin
+    command: ["/bin/sh", "/entry.sh", "node_modules/.bin/next", "start", "-p", "3005", "-H", "0.0.0.0"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3005/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [euroapp_back]
+
+  npp:
+    <<: *app
+    working_dir: /app/apps/npp
+    command: ["/bin/sh", "/entry.sh", "node_modules/.bin/next", "start", "-p", "3002", "-H", "0.0.0.0"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [euroapp_back]
+
+  # Việc chạy MỘT lần mỗi lần `up`: chép bản web của app di động (Expo export) vào volume cho edge phục vụ.
+  mobile-dist:
+    <<: *app
+    user: "0:0"
+    restart: "no"
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE]
+    command: ["sh", "-c", "rm -rf /out/* /out/.[!.]* 2>/dev/null; cp -r /app/apps/mobile/dist/. /out/ && chmod -R a+rX /out && echo mobile-dist: $$(find /out -type f | wc -l) files"]
+    volumes:
+      - mobile-dist:/out
+    mem_limit: 128m
+    networks: [euroapp_back]
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    logging: *log
+    environment:
+      EURO_DOMAIN: ${EURO_DOMAIN:?đặt EURO_DOMAIN trong .env}
+    volumes:
+      - ./Caddyfile.edge:/etc/caddy/Caddyfile:ro
+      - mobile-dist:/srv/mobile:ro
+      - edge-data:/data
+      - edge-config:/config
+    ports:
+      - "${EDGE_BIND:-127.0.0.1:3300}:80"     # chỉ localhost; Cloudflare Tunnel (cloudflared trên máy) trỏ vào đây
+    depends_on:
+      mobile-dist: { condition: service_completed_successfully }
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+      admin: { condition: service_healthy }
+      npp: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:80/__edge_ok"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    mem_limit: 128m
+    cpus: 0.5
+    networks: [euroapp_back, euroapp_edge]
+
+volumes:
+  mobile-dist:
+  edge-data:
+  edge-config:
+
+networks:
+  eurodb_net:
+    external: true
+    name: eurodb_net            # tạo bởi gói eurohouse-db; phải cài eurohouse-db trước
+  euroapp_back:
+    name: euroapp_back
+    internal: true
+  euroapp_edge:
+    name: euroapp_edge
