@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=1080, height=1920">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#F5F6F7;font-family:Inter,'Segoe UI',Arial,sans-serif;color:#151A22}
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;background:#F5F6F7}
+.scene{position:absolute;inset:0;overflow:hidden;background:#F5F6F7}
+.scene.fx{background-image:linear-gradient(#DFE3E8 1px,transparent 1px),linear-gradient(90deg,#DFE3E8 1px,transparent 1px);background-size:90px 90px;background-position:center}
+.scene.fx::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,rgba(245,246,247,0),rgba(245,246,247,.55));pointer-events:none;z-index:1}
+.scene.pain{background:#F47C20}
+.stripes{position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.07) 0 40px,rgba(255,255,255,0) 40px 80px)}
+.bignum{position:absolute;right:-20px;bottom:120px;font-size:1100px;font-weight:900;line-height:1;color:rgba(255,255,255,.22);letter-spacing:-.05em}
+.ptag{position:absolute;left:70px;top:200px;background:#fff;color:#151A22;font-weight:800;letter-spacing:.14em;font-size:30px;padding:12px 24px;border-radius:8px}
+.pstack{position:absolute;left:60px;right:60px;top:660px;display:flex;flex-direction:column;gap:14px}
+.pl{font-weight:800;line-height:1.12;letter-spacing:0;white-space:nowrap}
+.pl.ink{color:#151A22}.pl.white{color:#fff}
+.flash{position:absolute;inset:0;background:#fff;z-index:20;opacity:0}
+.cut{position:absolute;inset:0;z-index:60}.cuti{position:absolute;inset:0;background:#fff;opacity:0}
+.orb{position:absolute;border-radius:50%;background:#F47C20;width:1100px;height:1100px;left:-10px;top:680px;opacity:.96}
+.head{position:absolute;z-index:3;left:60px;right:60px;top:188px;text-align:center}
+.tag{display:inline-block;padding:10px 22px;border-radius:8px;background:#FFF1E6;color:#C65309;font-weight:800;letter-spacing:.14em;font-size:26px;text-transform:uppercase;margin-bottom:16px}
+.title{font-weight:800;line-height:1.12;letter-spacing:-.005em;color:#151A22;white-space:nowrap}
+.title .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.12em}.title .wi{display:inline-block}
+.sub{margin-top:14px;font-size:36px;font-weight:500;color:#475467;line-height:1.35}
+.chips{list-style:none;display:flex;gap:16px}
+.chips.l{flex-direction:column;margin-top:40px;gap:16px}
+.chips.p{flex-wrap:wrap;justify-content:center;margin-top:20px;gap:12px 14px}
+.chips li{display:flex;align-items:center;gap:14px;font-weight:700;background:#fff;border:2px solid #DFE3E8;border-radius:8px;box-shadow:0 8px 24px rgba(21,26,34,.08)}
+.chips.l li{font-size:34px;padding:18px 26px;width:max-content}
+.chips.p li{font-size:29px;padding:12px 20px}
+.chips i{width:30px;height:30px;border-radius:50%;background:#F47C20;display:inline-block;position:relative;flex:none}
+.chips i::after{content:'';position:absolute;left:10px;top:5px;width:8px;height:16px;border:solid #fff;border-width:0 4px 4px 0;transform:rotate(45deg)}
+.phone{position:absolute;z-index:4;background:#151A22;border-radius:64px;box-shadow:0 40px 90px rgba(21,26,34,.35)}
+.screen{position:absolute;overflow:hidden;background:#fff}
+.screen video{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.notch{position:absolute;left:50%;top:22px;width:150px;height:34px;margin-left:-75px;background:#151A22;border-radius:20px;z-index:2}
+.mascot{position:absolute;z-index:6;left:40px;top:1290px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.mascot img{width:250px;filter:drop-shadow(0 18px 30px rgba(21,26,34,.3))}
+.bubble{background:#fff;border:3px solid #151A22;border-radius:18px 18px 18px 4px;padding:14px 22px;font-weight:800;font-size:32px;margin-left:30px;box-shadow:0 10px 24px rgba(21,26,34,.15)}
+.prog{position:absolute;left:110px;bottom:70px;display:flex;gap:8px;z-index:3}
+.prog b{width:30px;height:8px;border-radius:4px;background:#DFE3E8}.prog b.done{background:#F9A82F}.prog b.on{background:#F47C20;width:64px}
+.swipe{position:absolute;inset:0;overflow:hidden;z-index:50}
+.swi{position:absolute;inset:0;background:#F47C20;box-shadow:-60px 0 0 #F9A82F inset}
+.hero{position:absolute;inset:0;overflow:hidden}.hero img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.hero.l{left:160px;width:920px}
+.intro-panel{position:absolute;left:50px;right:50px;bottom:130px;background:rgba(255,255,255,.94);border-radius:8px;padding:52px 50px 56px;text-align:center;box-shadow:0 30px 80px rgba(21,26,34,.25)}
+.intro-panel .logo{display:block;width:420px;border-radius:8px;margin:0 auto 36px}
+.textcol{position:absolute;left:110px;top:210px;width:860px}.textcol .logo{width:430px;border-radius:8px;margin-bottom:46px}
+.scene.l .textcol .title{line-height:1.05}
+.outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;text-align:center;z-index:3}
+.logoblock{background:#F9A82F;border-radius:8px;padding:14px;box-shadow:0 20px 60px rgba(244,124,32,.35)}.logoblock img{width:640px;display:block;border-radius:6px}
+.title.big{font-size:92px;white-space:normal}
+.cta{background:#F47C20;color:#fff;font-weight:800;font-size:44px;padding:26px 48px;border-radius:8px;box-shadow:0 18px 40px rgba(244,124,32,.4)}
+.prods{display:flex;gap:22px}.prods img{width:200px;height:266px;object-fit:cover;border-radius:8px;border:2px solid #DFE3E8;background:#fff}
+.note{font-size:26px;color:#475467;font-weight:500}
+.pwa{position:absolute;inset:0;background:#fff}
+.pwa .bar{height:108px;margin-top:68px;margin-left:34px;margin-right:34px;background:#F2F4F7;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 34px;font-size:34px;font-weight:600}
+.pwa .site{position:absolute;left:0;right:0;top:243px;bottom:0;overflow:hidden}.pwa .site>img{width:100%;height:100%;object-fit:cover}
+.pwa .siteh{position:absolute;left:8%;right:8%;top:6%}.pwa .siteh img{width:100%;border-radius:8px}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:46%;background:#fff;border-radius:28px 28px 0 0;box-shadow:0 -20px 50px rgba(21,26,34,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.sheet .ico{width:149px;border-radius:22px}.sheet b{font-size:39px;font-weight:800}.sheet small{font-size:28px;color:#667085}
+.sheet .btn{margin-top:20px;background:#F47C20;color:#fff;font-weight:800;font-size:37px;padding:24px 108px;border-radius:12px}
+.homescr{position:absolute;inset:0;background:linear-gradient(180deg,#FFD8B0,#F9A82F 60%,#F47C20);opacity:0}
+.homescr .grid{position:absolute;left:8%;right:8%;top:12%;display:grid;grid-template-columns:repeat(4,1fr);gap:47px 27px}
+.homescr i{display:block;aspect-ratio:1;border-radius:22%;background:rgba(255,255,255,.55)}
+.homescr u{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none}.homescr u img{width:100%;aspect-ratio:1;border-radius:22%;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.homescr em{font-style:normal;font-size:24px;font-weight:700;color:#151A22}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="43.779" data-width="1080" data-height="1920">
+<div id="s0" class="clip scene p pain" data-start="0" data-duration="3.2" data-track-index="1"><div class="stripes"></div>
+<div class="ptag" id="s0-tag">CHỦ XƯỞNG NHÔM KÍNH</div>
+<div class="pstack" id="s0-stack"><div class="pl ink" id="s0-l0" style="font-size:132px">KHÓ KHĂN</div><div class="pl white" id="s0-l1" style="font-size:132px">NHẤT</div><div class="pl ink" id="s0-l2" style="font-size:132px">CỦA XƯỞNG?</div></div></div>
+<div id="s1" class="clip scene p pain" data-start="3.2" data-duration="4.178" data-track-index="1"><div class="stripes"></div>
+<div class="ptag" id="s1-tag">NỖI ĐAU</div>
+<div class="pstack" id="s1-stack"><div class="pl ink" id="s1-l0" style="font-size:132px">BÁO GIÁ SAI</div><div class="pl white" id="s1-l1" style="font-size:98px">ĐẦU THỪA VỨT ĐI</div><div class="pl ink" id="s1-l2" style="font-size:106px">KHO KHÔNG BIẾT</div></div></div>
+<div id="sw1" class="clip cut" data-start="3.14" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw1-i"></div></div>
+<div id="s2" class="clip scene p pain" data-start="7.378" data-duration="3.335" data-track-index="1"><div class="stripes"></div>
+<div class="ptag" id="s2-tag">NỖI ĐAU</div>
+<div class="pstack" id="s2-stack"><div class="pl ink" id="s2-l0" style="font-size:87px">CHẤM CÔNG BẰNG SỔ</div><div class="pl white" id="s2-l1" style="font-size:92px">CÔNG NỢ QUÊN ĐÒI</div><div class="pl ink" id="s2-l2" style="font-size:132px">TRỄ HẸN</div></div></div>
+<div id="sw2" class="clip cut" data-start="7.318" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw2-i"></div></div>
+<div id="s3" class="clip scene p " data-start="10.713" data-duration="5.6" data-track-index="1"><div class="hero"><img id="s3-hero" src="assets/brand/hero-ecento-70.jpg"></div><div class="flash" id="s3-flash"></div>
+<div class="panel intro-panel"><img class="logo" id="s3-logo" src="assets/brand/logo-landscape.png"><div class="tag" id="s3-tag">GIẢI PHÁP</div><h1 class="title" id="s3-title" style="font-size:80px;white-space:normal"><span class="w"><span class="wi">EUROHOUSE</span></span> <span class="w"><span class="wi">WORKSHOP</span></span> <span class="w"><span class="wi">OS</span></span></h1><p class="sub" id="s3-sub">Cả xưởng trong một chiếc điện thoại</p></div></div>
+<div id="sw3" class="clip cut" data-start="10.653" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw3-i"></div></div>
+<div id="s4" class="clip scene p fx" data-start="16.313" data-duration="6.25" data-track-index="1"><div class="orb" id="s4-orb"></div><div class="head"><div class="tag" id="s4-tag">CẮT NHÔM</div><h1 class="title" id="s4-title" style="font-size:79px"><span class="w"><span class="wi">Tận</span></span> <span class="w"><span class="wi">dụng</span></span> <span class="w"><span class="wi">đầu</span></span> <span class="w"><span class="wi">cắt</span></span> <span class="w"><span class="wi">thừa</span></span></h1>
+<ul class="chips p"><li id="s4-chip0"><i></i>Công thức cắt</li><li id="s4-chip1"><i></i>Tối ưu hao hụt</li></ul></div><div class="phone" id="s4-phone" style="left:188px;top:560px;width:704px;height:1491px"><div class="screen" style="inset:14px;border-radius:50px"><video id="s4-v" class="clip scr" src="assets/clips30/c21-cutplan.mp4" data-start="16.433" data-duration="6.13" data-media-start="0.35" data-playback-rate="3.956" data-track-index="26" muted playsinline></video></div><div class="notch"></div></div>
+</div>
+<div id="sw4" class="clip swipe" data-start="16.013" data-duration="0.75" data-track-index="90"><div class="swi" id="sw4-i"></div></div>
+<div id="s5" class="clip scene p fx" data-start="22.563" data-duration="5.067" data-track-index="1"><div class="orb" id="s5-orb"></div><div class="head"><div class="tag" id="s5-tag">TỒN KHO</div><h1 class="title" id="s5-title" style="font-size:79px"><span class="w"><span class="wi">Kho</span></span> <span class="w"><span class="wi">nhôm</span></span> <span class="w"><span class="wi">nhìn</span></span> <span class="w"><span class="wi">là</span></span> <span class="w"><span class="wi">biết</span></span></h1>
+<ul class="chips p"><li id="s5-chip0"><i></i>Cây nguyên</li><li id="s5-chip1"><i></i>Đoạn đề-xê</li><li id="s5-chip2"><i></i>Phế liệu</li></ul></div><div class="phone" id="s5-phone" style="left:188px;top:560px;width:704px;height:1491px"><div class="screen" style="inset:14px;border-radius:50px"><video id="s5-v" class="clip scr" src="assets/clips30/c20-inventory.mp4" data-start="22.683" data-duration="4.947" data-media-start="0.35" data-playback-rate="3.945" data-track-index="33" muted playsinline></video></div><div class="notch"></div></div>
+</div>
+<div id="sw5" class="clip swipe" data-start="22.263" data-duration="0.75" data-track-index="90"><div class="swi" id="sw5-i"></div></div>
+<div id="s6" class="clip scene p fx" data-start="27.629" data-duration="4.292" data-track-index="1"><div class="orb" id="s6-orb"></div><div class="head"><div class="tag" id="s6-tag">QUẢN LÝ XƯỞNG</div><h1 class="title" id="s6-title" style="font-size:62px"><span class="w"><span class="wi">Chấm</span></span> <span class="w"><span class="wi">công</span></span> <span class="w"><span class="wi">·</span></span> <span class="w"><span class="wi">lương</span></span> <span class="w"><span class="wi">·</span></span> <span class="w"><span class="wi">bảo</span></span> <span class="w"><span class="wi">hiểm</span></span></h1>
+<ul class="chips p"><li id="s6-chip0"><i></i>Tự tính hết</li><li id="s6-chip1"><i></i>Hết đau đầu</li></ul></div><div class="phone" id="s6-phone" style="left:188px;top:560px;width:704px;height:1491px"><div class="screen" style="inset:14px;border-radius:50px"><video id="s6-v" class="clip scr" src="assets/clips30/c07-workforce.mp4" data-start="27.749" data-duration="4.172" data-media-start="0.35" data-playback-rate="3.935" data-track-index="42" muted playsinline></video></div><div class="notch"></div></div>
+</div>
+<div id="sw6" class="clip swipe" data-start="27.329" data-duration="0.75" data-track-index="90"><div class="swi" id="sw6-i"></div></div>
+<div id="s7" class="clip scene p fx" data-start="31.921" data-duration="6.358" data-track-index="1"><div class="orb" id="s7-orb"></div><div class="head"><div class="tag" id="s7-tag">TRỢ LÝ AI</div><h1 class="title" id="s7-title" style="font-size:97px"><span class="w"><span class="wi">Bé</span></span> <span class="w"><span class="wi">Eu</span></span> <span class="w"><span class="wi">·</span></span> <span class="w"><span class="wi">trợ</span></span> <span class="w"><span class="wi">lý</span></span> <span class="w"><span class="wi">AI</span></span></h1>
+<ul class="chips p"><li id="s7-chip0"><i></i>Trò chuyện</li><li id="s7-chip1"><i></i>Tạo ảnh phối cảnh</li></ul></div><div class="phone" id="s7-phone" style="left:188px;top:560px;width:704px;height:1491px"><div class="screen" style="inset:14px;border-radius:50px"><video id="s7-v" class="clip scr" src="assets/clips30/c18-assistant.mp4" data-start="32.041" data-duration="6.238" data-media-start="0.35" data-playback-rate="3.957" data-track-index="49" muted playsinline></video></div><div class="notch"></div></div><div class="mascot" id="s7-mascot"><img src="assets/brand/assistant-avatar.png"><div class="bubble">Xin chào! Mình là Bé Eu</div></div>
+</div>
+<div id="sw7" class="clip swipe" data-start="31.621" data-duration="0.75" data-track-index="90"><div class="swi" id="sw7-i"></div></div>
+<div id="s8" class="clip scene p " data-start="38.279" data-duration="5.5" data-track-index="1"><div class="outro p"><div class="logoblock" id="s8-logo"><img src="assets/brand/logo-landscape.png"></div>
+<h1 class="title big" id="s8-title"><span class="w"><span class="wi">Nhôm</span></span> <span class="w"><span class="wi">của</span></span> <span class="w"><span class="wi">sự</span></span> <span class="w"><span class="wi">thịnh</span></span> <span class="w"><span class="wi">vượng</span></span></h1>
+<div class="cta" id="s8-cta">Dùng thử ngay · app.nhomeurohouse.com</div>
+<div class="prods" id="s8-prods"><img src="assets/brand/product-ecento-70.jpg"><img src="assets/brand/product-ecento-plus.jpg"><img src="assets/brand/product-he-55-vat-canh.jpg"><img src="assets/brand/product-preco.jpg"></div>
+<p class="note" id="s8-note">Hình ảnh và số liệu trong video là dữ liệu minh hoạ.</p></div></div>
+<div id="sw8" class="clip swipe" data-start="37.979" data-duration="0.75" data-track-index="90"><div class="swi" id="sw8-i"></div></div>
+<audio id="voice0" class="clip" src="assets/voice2/t00-hook.wav" data-start="0.25" data-duration="2.147" data-track-index="2" data-volume="1"></audio>
+<audio id="sfx0" class="clip" src="assets/sfx/boom.wav" data-start="0.27" data-duration="1.2" data-track-index="3" data-volume="0.85" ></audio>
+<audio id="sfx1" class="clip" src="assets/sfx/boom.wav" data-start="0.914" data-duration="1.2" data-track-index="4" data-volume="0.65" ></audio>
+<audio id="sfx2" class="clip" src="assets/sfx/boom.wav" data-start="1.558" data-duration="1.2" data-track-index="5" data-volume="0.65" ></audio>
+<audio id="sfx3" class="clip" src="assets/sfx/glitch-a.wav" data-start="1.788" data-duration="0.7" data-track-index="6" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx4" class="clip" src="assets/sfx/heart.wav" data-start="0" data-duration="3.2" data-track-index="7" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="voice1" class="clip" src="assets/voice2/t01-pain.wav" data-start="3.45" data-duration="3.428" data-track-index="8" data-volume="1"></audio>
+<audio id="sfx5" class="clip" src="assets/sfx/boom.wav" data-start="3.47" data-duration="1.2" data-track-index="9" data-volume="0.85" ></audio>
+<audio id="sfx6" class="clip" src="assets/sfx/boom.wav" data-start="4.498" data-duration="1.2" data-track-index="10" data-volume="0.65" ></audio>
+<audio id="sfx7" class="clip" src="assets/sfx/boom.wav" data-start="5.527" data-duration="1.2" data-track-index="11" data-volume="0.65" ></audio>
+<audio id="sfx8" class="clip" src="assets/sfx/glitch-a.wav" data-start="5.757" data-duration="0.7" data-track-index="12" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx9" class="clip" src="assets/sfx/heart.wav" data-start="3.2" data-duration="4.178" data-track-index="13" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx10" class="clip" src="assets/sfx/glitch-b.wav" data-start="3.14" data-duration="0.5" data-track-index="14" data-volume="0.5" data-fade-out="0.2"></audio>
+<audio id="voice2" class="clip" src="assets/voice2/t02-pain.wav" data-start="7.628" data-duration="2.585" data-track-index="15" data-volume="1"></audio>
+<audio id="sfx11" class="clip" src="assets/sfx/boom.wav" data-start="7.648" data-duration="1.2" data-track-index="16" data-volume="0.85" ></audio>
+<audio id="sfx12" class="clip" src="assets/sfx/boom.wav" data-start="8.424" data-duration="1.2" data-track-index="17" data-volume="0.65" ></audio>
+<audio id="sfx13" class="clip" src="assets/sfx/boom.wav" data-start="9.199" data-duration="1.2" data-track-index="18" data-volume="0.65" ></audio>
+<audio id="sfx14" class="clip" src="assets/sfx/glitch-a.wav" data-start="9.429" data-duration="0.7" data-track-index="19" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx15" class="clip" src="assets/sfx/heart.wav" data-start="7.378" data-duration="3.335" data-track-index="20" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx16" class="clip" src="assets/sfx/glitch-b.wav" data-start="7.318" data-duration="0.5" data-track-index="21" data-volume="0.5" data-fade-out="0.2"></audio>
+<audio id="voice3" class="clip" src="assets/voice2/t03-turn.wav" data-start="11.113" data-duration="3.507" data-track-index="22" data-volume="1"></audio>
+<audio id="sfx17" class="clip" src="assets/sfx/riser.wav" data-start="8.413" data-duration="2.5" data-track-index="23" data-volume="0.7" ></audio>
+<audio id="sfx18" class="clip" src="assets/sfx/impact.wav" data-start="10.713" data-duration="3" data-track-index="24" data-volume="0.8" ></audio>
+<audio id="sfx19" class="clip" src="assets/sfx/sparkle.wav" data-start="11.213" data-duration="1.829" data-track-index="25" data-volume="0.6" ></audio>
+<audio id="voice4" class="clip" src="assets/voice2/t04-cut.wav" data-start="16.613" data-duration="2.786" data-track-index="27" data-volume="1"></audio>
+<audio id="sfx20" class="clip" src="assets/sfx/ting-a.wav" data-start="16.913" data-duration="1" data-track-index="28" data-volume="0.95" ></audio>
+<audio id="sfx21" class="clip" src="assets/sfx/ting-c.wav" data-start="17.053" data-duration="0.72" data-track-index="29" data-volume="0.7" ></audio>
+<audio id="sfx22" class="clip" src="assets/sfx/ting-b.wav" data-start="17.233" data-duration="1" data-track-index="30" data-volume="0.95" ></audio>
+<audio id="sfx23" class="clip" src="assets/sfx/ting-c.wav" data-start="17.373" data-duration="0.72" data-track-index="31" data-volume="0.7" ></audio>
+<audio id="sfx24" class="clip" src="assets/sfx/whoosh-b.wav" data-start="16.033" data-duration="0.456" data-track-index="32" data-volume="0.85" ></audio>
+<audio id="voice5" class="clip" src="assets/voice2/t05-stock.wav" data-start="22.863" data-duration="2.359" data-track-index="34" data-volume="1"></audio>
+<audio id="sfx25" class="clip" src="assets/sfx/ting-b.wav" data-start="23.163" data-duration="1" data-track-index="35" data-volume="0.95" ></audio>
+<audio id="sfx26" class="clip" src="assets/sfx/ting-c.wav" data-start="23.303" data-duration="0.72" data-track-index="36" data-volume="0.7" ></audio>
+<audio id="sfx27" class="clip" src="assets/sfx/ting-a.wav" data-start="23.483" data-duration="1" data-track-index="37" data-volume="0.95" ></audio>
+<audio id="sfx28" class="clip" src="assets/sfx/ting-c.wav" data-start="23.623" data-duration="0.72" data-track-index="38" data-volume="0.7" ></audio>
+<audio id="sfx29" class="clip" src="assets/sfx/ting-b.wav" data-start="23.803" data-duration="1" data-track-index="39" data-volume="0.95" ></audio>
+<audio id="sfx30" class="clip" src="assets/sfx/ting-c.wav" data-start="23.943" data-duration="0.72" data-track-index="40" data-volume="0.7" ></audio>
+<audio id="sfx31" class="clip" src="assets/sfx/whoosh-c.wav" data-start="22.283" data-duration="0.788" data-track-index="41" data-volume="0.85" ></audio>
+<audio id="voice6" class="clip" src="assets/voice2/t07-work.wav" data-start="27.929" data-duration="2.294" data-track-index="43" data-volume="1"></audio>
+<audio id="sfx32" class="clip" src="assets/sfx/ting-a.wav" data-start="28.229" data-duration="1" data-track-index="44" data-volume="0.95" ></audio>
+<audio id="sfx33" class="clip" src="assets/sfx/ting-c.wav" data-start="28.369" data-duration="0.72" data-track-index="45" data-volume="0.7" ></audio>
+<audio id="sfx34" class="clip" src="assets/sfx/ting-b.wav" data-start="28.549" data-duration="1" data-track-index="46" data-volume="0.95" ></audio>
+<audio id="sfx35" class="clip" src="assets/sfx/ting-c.wav" data-start="28.689" data-duration="0.72" data-track-index="47" data-volume="0.7" ></audio>
+<audio id="sfx36" class="clip" src="assets/sfx/whoosh-a.wav" data-start="27.349" data-duration="0.393" data-track-index="48" data-volume="0.85" ></audio>
+<audio id="voice7" class="clip" src="assets/voice2/t08-ai.wav" data-start="32.221" data-duration="2.153" data-track-index="50" data-volume="1"></audio>
+<audio id="sfx37" class="clip" src="assets/sfx/ting-b.wav" data-start="32.521" data-duration="1" data-track-index="51" data-volume="0.95" ></audio>
+<audio id="sfx38" class="clip" src="assets/sfx/ting-c.wav" data-start="32.661" data-duration="0.72" data-track-index="52" data-volume="0.7" ></audio>
+<audio id="sfx39" class="clip" src="assets/sfx/ting-a.wav" data-start="32.841" data-duration="1" data-track-index="53" data-volume="0.95" ></audio>
+<audio id="sfx40" class="clip" src="assets/sfx/ting-c.wav" data-start="32.981" data-duration="0.72" data-track-index="54" data-volume="0.7" ></audio>
+<audio id="sfx41" class="clip" src="assets/sfx/pop-a.wav" data-start="33.171" data-duration="0.44" data-track-index="55" data-volume="0.6" ></audio>
+<audio id="sfx42" class="clip" src="assets/sfx/whoosh-b.wav" data-start="31.641" data-duration="0.456" data-track-index="56" data-volume="0.85" ></audio>
+<audio id="voice8" class="clip" src="assets/voice2/t09-outro.wav" data-start="38.679" data-duration="1.728" data-track-index="57" data-volume="1"></audio>
+<audio id="sfx43" class="clip" src="assets/sfx/jingle.wav" data-start="38.379" data-duration="5" data-track-index="58" data-volume="0.6" ></audio>
+<audio id="sfx44" class="clip" src="assets/sfx/ting-b.wav" data-start="39.579" data-duration="1" data-track-index="59" data-volume="0.95" ></audio>
+<audio id="sfx45" class="clip" src="assets/sfx/ting-c.wav" data-start="39.719" data-duration="0.72" data-track-index="60" data-volume="0.7" ></audio>
+<audio id="sfx46" class="clip" src="assets/sfx/whoosh-c.wav" data-start="37.999" data-duration="0.788" data-track-index="61" data-volume="0.85" ></audio>
+<audio id="bgm0" class="clip" src="assets/music/bgm-459.wav" data-start="0" data-duration="10.863" data-track-index="62" data-volume="0.32" data-fade-out="0.25"></audio>
+<audio id="bgm1" class="clip" src="assets/music/bgm-526.wav" data-start="10.713" data-duration="33.066" data-track-index="63" data-volume="0.24" data-fade-out="3"></audio>
+</div>
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+tl.fromTo('#s0-tag',{opacity:0,y:-30},{opacity:1,y:0,duration:.3,ease:'power3.out'},0.05);
+tl.fromTo('#s0-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},0.25);
+tl.fromTo('#s0-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},0.31);
+tl.to('#s0-stack',{x:-10,y:6,duration:.05,ease:'none'},0.36);
+tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},0.41);
+tl.fromTo('#s0-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},0.894);
+tl.fromTo('#s0-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},0.954);
+tl.to('#s0-stack',{x:10,y:-6,duration:.05,ease:'none'},1.004);
+tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},1.054);
+tl.fromTo('#s0-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},1.538);
+tl.fromTo('#s0-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},1.598);
+tl.to('#s0-stack',{x:-10,y:6,duration:.05,ease:'none'},1.648);
+tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},1.698);
+tl.fromTo('#s1-tag',{opacity:0,y:-30},{opacity:1,y:0,duration:.3,ease:'power3.out'},3.25);
+tl.fromTo('#s1-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},3.45);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},3.5100000000000002);
+tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},3.56);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},3.61);
+tl.fromTo('#s1-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},4.478);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},4.537999999999999);
+tl.to('#s1-stack',{x:10,y:-6,duration:.05,ease:'none'},4.588);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},4.638);
+tl.fromTo('#s1-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},5.507);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},5.566999999999999);
+tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},5.617);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},5.667);
+tl.fromTo('#sw1-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},3.14);
+tl.to('#sw1-i',{opacity:0,duration:.2,ease:'power2.out'},3.22);
+tl.fromTo('#s2-tag',{opacity:0,y:-30},{opacity:1,y:0,duration:.3,ease:'power3.out'},7.428);
+tl.fromTo('#s2-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},7.628);
+tl.fromTo('#s2-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},7.688);
+tl.to('#s2-stack',{x:-10,y:6,duration:.05,ease:'none'},7.738);
+tl.to('#s2-stack',{x:0,y:0,duration:.1,ease:'power2.out'},7.788);
+tl.fromTo('#s2-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},8.404);
+tl.fromTo('#s2-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},8.464);
+tl.to('#s2-stack',{x:10,y:-6,duration:.05,ease:'none'},8.514);
+tl.to('#s2-stack',{x:0,y:0,duration:.1,ease:'power2.out'},8.564);
+tl.fromTo('#s2-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},9.179);
+tl.fromTo('#s2-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},9.239);
+tl.to('#s2-stack',{x:-10,y:6,duration:.05,ease:'none'},9.289);
+tl.to('#s2-stack',{x:0,y:0,duration:.1,ease:'power2.out'},9.339);
+tl.fromTo('#sw2-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},7.318);
+tl.to('#sw2-i',{opacity:0,duration:.2,ease:'power2.out'},7.398);
+tl.fromTo('#s3-flash',{opacity:1},{opacity:0,duration:.5,ease:'power2.out'},10.713);
+tl.fromTo('#s3-hero',{scale:1.2},{scale:1.02,duration:5.6,ease:'power1.out'},10.713);
+tl.fromTo('#s3-logo',{y:60,opacity:0,scale:.9},{y:0,opacity:1,scale:1,duration:.6,ease:'back.out(1.6)'},10.913);
+tl.fromTo('#s3-tag',{opacity:0,y:20},{opacity:1,y:0,duration:.35,ease:'power3.out'},11.213);
+tl.fromTo('#s3-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.09,ease:'power4.out'},11.313);
+tl.fromTo('#s3-sub',{opacity:0,y:24},{opacity:1,y:0,duration:.5,ease:'power3.out'},12.013);
+tl.fromTo('#sw3-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},10.653);
+tl.to('#sw3-i',{opacity:0,duration:.2,ease:'power2.out'},10.733);
+tl.fromTo('#s4-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:6.25,ease:'none'},16.313);
+tl.fromTo('#s4-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},16.393);
+tl.fromTo('#s4-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},16.463);
+tl.fromTo('#s4-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},16.353);
+tl.to('#s4-phone',{y:-12,duration:5.35,ease:'sine.inOut'},17.113);
+tl.fromTo('#s4-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},16.863);
+tl.fromTo('#s4-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},17.183);
+tl.fromTo('#sw4-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},16.013);
+tl.to('#sw4-i',{xPercent:104,duration:.38,ease:'power3.out'},16.333);
+tl.fromTo('#s5-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.067,ease:'none'},22.563);
+tl.fromTo('#s5-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},22.643);
+tl.fromTo('#s5-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},22.713);
+tl.fromTo('#s5-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},22.603);
+tl.to('#s5-phone',{y:-12,duration:4.167,ease:'sine.inOut'},23.363);
+tl.fromTo('#s5-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.113);
+tl.fromTo('#s5-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.433);
+tl.fromTo('#s5-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.753);
+tl.fromTo('#sw5-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},22.263);
+tl.to('#sw5-i',{xPercent:104,duration:.38,ease:'power3.out'},22.583);
+tl.fromTo('#s6-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:4.292,ease:'none'},27.629);
+tl.fromTo('#s6-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},27.709);
+tl.fromTo('#s6-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},27.779);
+tl.fromTo('#s6-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},27.669);
+tl.to('#s6-phone',{y:-12,duration:3.392,ease:'sine.inOut'},28.429);
+tl.fromTo('#s6-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},28.179);
+tl.fromTo('#s6-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},28.499);
+tl.fromTo('#sw6-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},27.329);
+tl.to('#sw6-i',{xPercent:104,duration:.38,ease:'power3.out'},27.649);
+tl.fromTo('#s7-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:6.358,ease:'none'},31.921);
+tl.fromTo('#s7-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},32.001);
+tl.fromTo('#s7-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},32.071);
+tl.fromTo('#s7-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},31.961);
+tl.to('#s7-phone',{y:-12,duration:5.458,ease:'sine.inOut'},32.721);
+tl.fromTo('#s7-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},32.471);
+tl.fromTo('#s7-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},32.791);
+tl.fromTo('#s7-mascot',{scale:0,rotate:-15,opacity:0},{scale:1,rotate:0,opacity:1,duration:.6,ease:'back.out(2.2)'},33.121);
+tl.fromTo('#sw7-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},31.621);
+tl.to('#sw7-i',{xPercent:104,duration:.38,ease:'power3.out'},31.941);
+tl.fromTo('#s8-logo',{scale:.6,opacity:0,rotate:-4},{scale:1,opacity:1,rotate:0,duration:.7,ease:'back.out(1.8)'},38.379);
+tl.fromTo('#s8-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.08,ease:'power4.out'},38.729);
+tl.fromTo('#s8-prods img',{y:140,opacity:0,rotate:6},{y:0,opacity:1,rotate:0,duration:.6,stagger:.1,ease:'power3.out'},39.079);
+tl.fromTo('#s8-cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.45,ease:'back.out(2)'},39.579);
+tl.to('#s8-cta',{y:-8,duration:.45,ease:'sine.inOut'},40.079);
+tl.to('#s8-cta',{y:0,duration:.45,ease:'sine.inOut'},40.529);
+tl.fromTo('#s8-note',{opacity:0},{opacity:.8,duration:.5},40.079);
+tl.fromTo('#sw8-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},37.979);
+tl.to('#sw8-i',{xPercent:104,duration:.38,ease:'power3.out'},38.299);
+
+window.__timelines["main"] = tl;
+</script></body></html>

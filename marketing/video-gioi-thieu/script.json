@@ -1,159 +1,294 @@
 [
  {
-  "id": "s00-intro",
+  "id": "p00-hook",
+  "kind": "pain",
+  "tag": "CÂU HỎI CHO CHỦ XƯỞNG",
+  "lines": [
+   [
+    "KHÓ KHĂN",
+    "ink"
+   ],
+   [
+    "NHẤT",
+    "white"
+   ],
+   [
+    "CỦA XƯỞNG?",
+    "ink"
+   ]
+  ],
+  "text": "Chủ xưởng nhôm kính ơi! Khó khăn nhất của xưởng mình là gì? Và bạn đang quản lý nó ra sao?",
+  "bg": "orange"
+ },
+ {
+  "id": "p01-quote",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 1",
+  "lines": [
+   [
+    "BÁO GIÁ SAI",
+    "ink"
+   ],
+   [
+    "MỘT CON SỐ",
+    "white"
+   ],
+   [
+    "LỖ CẢ CÔNG TRÌNH",
+    "ink"
+   ]
+  ],
+  "text": "Báo giá sai chỉ một con số, lỗ cả công trình!",
+  "bg": "orange"
+ },
+ {
+  "id": "p02-waste",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 2",
+  "lines": [
+   [
+    "NHÔM HAO HỤT",
+    "ink"
+   ],
+   [
+    "ĐẦU THỪA VỨT ĐI",
+    "white"
+   ],
+   [
+    "KHO CÒN BAO NHIÊU?",
+    "ink"
+   ]
+  ],
+  "text": "Nhôm hao hụt. Đầu thừa cắt xong vứt bỏ. Còn kho thì còn bao nhiêu thanh? Không ai biết!",
+  "bg": "orange"
+ },
+ {
+  "id": "p03-money",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 3",
+  "lines": [
+   [
+    "CHẤM CÔNG BẰNG SỔ",
+    "ink"
+   ],
+   [
+    "CÔNG NỢ QUÊN ĐÒI",
+    "white"
+   ],
+   [
+    "THU CHI LẪN LỘN",
+    "ink"
+   ]
+  ],
+  "text": "Cuối tháng ngồi cộng công, tính lương bằng tay. Công nợ khách quên đòi. Thu chi lẫn lộn, lời hay lỗ cũng chẳng rõ!",
+  "bg": "orange"
+ },
+ {
+  "id": "p04-late",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 4",
+  "lines": [
+   [
+    "CÔNG TRÌNH TRỄ HẸN",
+    "ink"
+   ],
+   [
+    "KHÔNG AI NẮM",
+    "white"
+   ],
+   [
+    "KẸT Ở KHÂU NÀO?",
+    "ink"
+   ]
+  ],
+  "text": "Công trình trễ hẹn, mà chẳng ai biết đang kẹt ở khâu nào. Sổ tay, bảng tính, nhóm chat, đến bao giờ?",
+  "bg": "orange"
+ },
+ {
+  "id": "p05-turn",
+  "kind": "turn",
+  "tag": "GIẢI PHÁP",
   "title": "EUROHOUSE WORKSHOP OS",
   "sub": "Cả xưởng nhôm kính trong một chiếc điện thoại",
-  "tag": "NHÔM CỦA SỰ THỊNH VƯỢNG",
-  "text": "Quản lý cả xưởng nhôm kính, chỉ với một chiếc điện thoại. Giới thiệu Eurohouse Workshop OS."
+  "text": "Dừng lại! Có một cách gọn hơn nhiều. Eurohouse Workshop OS: cả xưởng nhôm kính, gói gọn trong một chiếc điện thoại!"
  },
  {
-  "id": "s01-register",
+  "id": "f01-register",
+  "kind": "feat",
   "clip": "c02-register",
-  "title": "Đăng ký xưởng",
-  "sub": "Chỉ cần email · xác minh mã 6 số",
-  "tag": "BƯỚC 1",
-  "text": "Đăng ký xưởng chỉ bằng email: nhập tên, tên xưởng, email và mật khẩu. Hệ thống gửi mã sáu số, nhập xong là vào dùng ngay."
+  "tag": "BẮT ĐẦU",
+  "title": "Đăng ký trong một phút",
+  "sub": "Email · mã 6 số · vào dùng ngay",
+  "text": "Đăng ký bằng email, nhập mã sáu số, và vào dùng ngay! Một phút là xong."
  },
  {
-  "id": "s02-home",
+  "id": "f02-home",
+  "kind": "feat",
   "clip": "c01-home",
-  "title": "Trang chủ xưởng",
-  "sub": "Hôm nay · công cụ · công trình cần chú ý · sản phẩm",
   "tag": "TRANG CHỦ",
-  "text": "Trang chủ gom mọi thứ: chấm công hôm nay, công cụ nhanh, công trình cần chú ý và sản phẩm Eurohouse."
+  "title": "Mở app là thấy hết",
+  "sub": "Chấm công · việc gấp · công trình còn thu tiền",
+  "text": "Mở app lên là thấy hết: ai đi làm, việc nào gấp, công trình nào còn phải thu tiền!"
  },
  {
-  "id": "s03-quote",
+  "id": "f03-quote",
+  "kind": "feat",
   "clip": "c03-quote",
-  "title": "Báo giá",
-  "sub": "Nhiều hạng mục cửa · xuất PDF gửi khách",
   "tag": "BÁO GIÁ",
-  "text": "Lập báo giá nhiều hạng mục cửa: nhập khách hàng, chọn hệ nhôm, màu, kích thước, rồi xuất PDF gửi khách trong vài phút."
+  "title": "Báo giá chuẩn, gửi ngay",
+  "sub": "Nhiều hạng mục cửa · xuất PDF gửi khách",
+  "text": "Báo giá chuẩn từng hạng mục, xuất PDF gửi khách trong vài phút. Hết cảnh báo giá theo cảm tính!"
  },
  {
-  "id": "s04-orders",
+  "id": "f04-orders",
+  "kind": "feat",
   "clip": "c04-orders",
-  "title": "Đặt nhôm",
-  "sub": "Chọn màu · hệ nhôm · thanh · số lượng",
   "tag": "ĐẶT NHÔM",
-  "text": "Đặt nhôm Eurohouse thật nhanh: chọn màu, chọn hệ, chọn thanh và số lượng."
+  "title": "Đặt nhôm Eurohouse",
+  "sub": "Chọn màu · hệ nhôm · thanh · số lượng",
+  "text": "Đặt nhôm Eurohouse thật nhanh: chọn màu, chọn hệ, chọn thanh, chốt số lượng. Đơn đi là công nợ tự ghi!"
  },
  {
-  "id": "s05-formulas",
-  "clip": "c05-formulas",
-  "title": "Công thức cắt",
-  "sub": "Theo từng hệ nhôm · cắt đúng, ít hao",
+  "id": "f05-cut",
+  "kind": "feat",
+  "clip": "c21-cutplan",
   "tag": "CÔNG THỨC CẮT",
-  "text": "Công thức cắt có sẵn theo từng hệ nhôm, cắt đúng, ít hao vật tư."
+  "title": "Cắt đúng, ít hao",
+  "sub": "Công thức theo hệ · tận dụng đầu cắt thừa",
+  "text": "Nhập kích thước cửa, app tính ngay công thức cắt: cây nào cắt gì, dài bao nhiêu. Và phần ăn tiền nhất: ưu tiên tận dụng đầu cắt thừa trong kho! Ví dụ này, hai mươi bảy cây mới, ba mươi mốt đoạn tận dụng. Tiết kiệm từng cân nhôm!"
  },
  {
-  "id": "s06-projects",
+  "id": "f06-stock",
+  "kind": "feat",
+  "clip": "c20-inventory",
+  "tag": "TỒN KHO",
+  "title": "Kho nhôm nhìn là biết",
+  "sub": "Cây nguyên · đoạn đề-xê · phế liệu",
+  "text": "Tồn kho cây nguyên, đoạn đề-xê và phế liệu, nhìn là biết! Nhận kho, xuất kho chỉ một chạm. Đầu cắt từ một mét được lưu lại để dùng lần sau, đoạn quá ngắn mới tính phế liệu. Hết cảnh mua thừa, hết cảnh vứt tiền!"
+ },
+ {
+  "id": "f07-projects",
+  "kind": "feat",
   "clip": "c06-projects",
-  "title": "Công trình",
-  "sub": "Thu chi · phiếu thu, phiếu chi · PDF tổng hợp",
   "tag": "CÔNG TRÌNH",
-  "text": "Quản lý công trình từ lúc báo giá đến khi hoàn tất: theo dõi thu chi, lập phiếu thu, phiếu chi và xuất PDF tổng hợp thu chi."
+  "title": "Mỗi công trình một sổ thu chi",
+  "sub": "Phiếu thu · phiếu chi · PDF tổng hợp",
+  "text": "Mỗi công trình một bảng thu chi riêng. Phiếu thu, phiếu chi rõ ràng, xuất PDF tổng hợp. Lời bao nhiêu, lỗ ở đâu, biết ngay!"
  },
  {
-  "id": "s07-workforce",
+  "id": "f08-workforce",
+  "kind": "feat",
   "clip": "c07-workforce",
-  "title": "Quản lý xưởng",
+  "tag": "QUẢN LÝ XƯỞNG",
+  "title": "Chấm công, lương, bảo hiểm",
   "sub": "Chấm công · việc khoán · lương · bảo hiểm",
-  "tag": "NHÂN SỰ",
-  "text": "Chấm công, việc khoán, bảng lương, phiếu lương PDF và cả bảo hiểm, tất cả trong một màn hình."
+  "text": "Chấm công một chạm. Việc khoán chia đều cho thợ. Lương, phiếu lương PDF, bảo hiểm, app tự tính hết. Cuối tháng hết đau đầu!"
  },
  {
-  "id": "s08-debts",
+  "id": "f09-debts",
+  "kind": "feat",
   "clip": "c08-debts",
-  "title": "Công nợ",
-  "sub": "Tự ghi nhận từ đơn nhà phân phối",
   "tag": "CÔNG NỢ",
-  "text": "Công nợ với nhà phân phối được ghi tự động, nhìn là biết còn nợ bao nhiêu."
+  "title": "Công nợ rõ từng đồng",
+  "sub": "Tự ghi từ đơn nhà phân phối",
+  "text": "Công nợ với nhà phân phối tự ghi từ đơn hàng. Còn nợ bao nhiêu, hạn nào, nhìn là rõ!"
  },
  {
-  "id": "s09-invoices",
+  "id": "f10-invoices",
+  "kind": "feat",
   "clip": "c09-invoices",
+  "tag": "HOÁ ĐƠN · THUẾ",
   "title": "Hoá đơn điện tử và thuế",
   "sub": "Doanh thu · hoá đơn · báo cáo theo quý",
-  "tag": "HOÁ ĐƠN · THUẾ",
-  "text": "Hoá đơn điện tử và thuế: theo dõi doanh thu, hoá đơn và báo cáo theo quý."
+  "text": "Hoá đơn điện tử và thuế: theo dõi doanh thu, hoá đơn và báo cáo theo quý, không lo chạm ngưỡng mà không biết!"
  },
  {
-  "id": "s10-reminders",
+  "id": "f11-remind",
+  "kind": "feat",
   "clip": "c10-reminders",
-  "title": "Nhắc việc",
-  "sub": "Giao hàng · gọi khách · mua vật tư",
   "tag": "NHẮC VIỆC",
-  "text": "Nhắc việc giao hàng, gọi khách, mua vật tư, không bỏ sót việc nào."
+  "title": "Không bỏ sót việc nào",
+  "sub": "Giao hàng · gọi khách · mua vật tư",
+  "text": "Nhắc việc giao hàng, gọi khách, mua vật tư. Không bỏ sót việc nào!"
  },
  {
-  "id": "s11-shopfloor",
+  "id": "f12-shop",
+  "kind": "feat",
   "clip": "c11-shopfloor",
-  "title": "Việc xưởng",
-  "sub": "Giao việc · bắt đầu · tạm dừng · hoàn tất",
   "tag": "VIỆC XƯỞNG",
-  "text": "Giao việc cho từng thợ, theo dõi từ lúc bắt đầu đến khi hoàn tất."
+  "title": "Thợ biết làm gì, quản lý biết ở đâu",
+  "sub": "Bắt đầu · tạm dừng · hoàn tất",
+  "text": "Giao việc cho từng thợ, theo dõi từ lúc bắt đầu đến khi hoàn tất. Công trình hết cảnh trễ hẹn!"
  },
  {
-  "id": "s12-qc",
+  "id": "f13-qc",
+  "kind": "feat",
   "clip": "c12-qc",
-  "title": "Kiểm tra chất lượng",
-  "sub": "Danh mục kiểm rõ ràng cho từng lệnh việc",
-  "tag": "QC",
-  "text": "Kiểm tra chất lượng theo danh mục rõ ràng trước khi giao cửa."
+  "tag": "KIỂM TRA CHẤT LƯỢNG",
+  "title": "Kiểm từng bước trước khi giao",
+  "sub": "Danh mục kiểm rõ ràng",
+  "text": "Kiểm tra chất lượng theo danh mục rõ ràng, trước khi giao cửa cho khách!"
  },
  {
-  "id": "s13-install",
+  "id": "f14-install",
+  "kind": "feat",
   "clip": "c13-install",
-  "title": "Lắp đặt",
-  "sub": "Lịch đội thợ · vật tư · dụng cụ · ảnh nghiệm thu",
   "tag": "LẮP ĐẶT",
-  "text": "Lịch lắp đặt cho từng đội, đủ vật tư, đủ dụng cụ, có ảnh nghiệm thu."
+  "title": "Lịch lắp đặt cho từng đội",
+  "sub": "Vật tư · dụng cụ · ảnh nghiệm thu",
+  "text": "Lịch lắp đặt cho từng đội, đủ vật tư, đủ dụng cụ, có ảnh nghiệm thu!"
  },
  {
-  "id": "s14-warranty",
+  "id": "f15-warranty",
+  "kind": "feat",
   "clip": "c14-warranty",
-  "title": "Bảo hành",
-  "sub": "Quét QR · yêu cầu bảo hành xử lý ngay",
   "tag": "BẢO HÀNH",
-  "text": "Bảo hành quét mã QR, khách yêu cầu là xử lý ngay, hồ sơ lưu đầy đủ."
+  "title": "Bảo hành quét mã QR",
+  "sub": "Yêu cầu xử lý ngay · hồ sơ đầy đủ",
+  "text": "Bảo hành chỉ cần quét mã QR. Khách yêu cầu là xử lý ngay, hồ sơ lưu đầy đủ!"
  },
  {
-  "id": "s15-weather",
+  "id": "f16-weather",
+  "kind": "feat",
   "clip": "c15-weather",
-  "title": "Thời tiết lắp đặt",
-  "sub": "Dự báo 7 ngày theo khu vực công trình",
   "tag": "THỜI TIẾT",
-  "text": "Xem thời tiết bảy ngày theo khu vực để chọn ngày lắp đặt phù hợp."
+  "title": "Chọn ngày lắp đặt đẹp trời",
+  "sub": "Dự báo 7 ngày theo khu vực",
+  "text": "Xem thời tiết bảy ngày theo khu vực, chọn đúng ngày lắp đặt đẹp trời!"
  },
  {
-  "id": "s16-catalog",
+  "id": "f17-catalog",
+  "kind": "feat",
   "clip": "c16-catalog",
-  "title": "Catalog và thư viện",
-  "sub": "Hệ nhôm · mã thanh · mặt cắt · mẫu cửa",
   "tag": "CATALOG",
-  "text": "Catalog và thư viện Eurohouse luôn trong túi: nhiều hệ nhôm, hàng trăm mã thanh, kèm mặt cắt rõ nét để tra cứu ngay tại xưởng."
+  "title": "Catalog trong túi",
+  "sub": "Hệ nhôm · mã thanh · mặt cắt",
+  "text": "Catalog và thư viện Eurohouse luôn trong túi: hệ nhôm, mã thanh, mặt cắt rõ nét, tra cứu ngay tại xưởng!"
  },
  {
-  "id": "s18-ai",
+  "id": "f18-ai",
+  "kind": "feat",
   "clip": "c18-assistant",
-  "title": "Bé Eu · Trợ lý AI",
-  "sub": "Trò chuyện · tạo ảnh · quy tắc riêng của xưởng",
   "tag": "TRỢ LÝ AI",
-  "text": "Bé Eu, trợ lý AI riêng cho từng xưởng: trò chuyện soạn lời chào khách, tạo ảnh phối cảnh cửa, và ghi nhớ quy tắc riêng của xưởng bạn."
+  "title": "Bé Eu · trợ lý AI của xưởng bạn",
+  "sub": "Trò chuyện · tạo ảnh · quy tắc riêng",
+  "text": "Và đây là Bé Eu, trợ lý AI riêng của từng xưởng! Hỏi gì đáp nấy, soạn lời chào khách, tạo ảnh phối cảnh, và nhớ quy tắc riêng của xưởng bạn!",
+  "mascot": true
  },
  {
-  "id": "s19-pwa",
+  "id": "f19-pwa",
+  "kind": "pwa",
   "title": "Cài như một ứng dụng",
   "sub": "app.nhomeurohouse.com",
   "tag": "CÀI ĐẶT",
-  "text": "Cài như một ứng dụng ngay trên điện thoại, chỉ cần mở app chấm nhom euro house chấm com."
+  "text": "Cài như một ứng dụng ngay trên điện thoại. Mở a, p, p, chấm nhom euro house chấm com, là dùng được liền!"
  },
  {
-  "id": "s20-outro",
+  "id": "f20-outro",
+  "kind": "outro",
   "title": "EUROHOUSE",
   "sub": "Nhôm của sự thịnh vượng",
   "tag": "app.nhomeurohouse.com",
-  "text": "Eurohouse Workshop OS. Nhôm của sự thịnh vượng."
+  "text": "Eurohouse Workshop OS. Quản lý xưởng gọn trong tay! Nhôm của sự thịnh vượng!"
  }
 ]

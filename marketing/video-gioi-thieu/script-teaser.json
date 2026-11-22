@@ -1,0 +1,122 @@
+[
+ {
+  "id": "t00-hook",
+  "kind": "pain",
+  "tag": "CHỦ XƯỞNG NHÔM KÍNH",
+  "lines": [
+   [
+    "KHÓ KHĂN",
+    "ink"
+   ],
+   [
+    "NHẤT",
+    "white"
+   ],
+   [
+    "CỦA XƯỞNG?",
+    "ink"
+   ]
+  ],
+  "text": "Chủ xưởng nhôm kính! Khó khăn nhất của xưởng là gì?",
+  "bg": "orange"
+ },
+ {
+  "id": "t01-pain",
+  "kind": "pain",
+  "tag": "NỖI ĐAU",
+  "lines": [
+   [
+    "BÁO GIÁ SAI",
+    "ink"
+   ],
+   [
+    "ĐẦU THỪA VỨT ĐI",
+    "white"
+   ],
+   [
+    "KHO KHÔNG BIẾT",
+    "ink"
+   ]
+  ],
+  "text": "Báo giá sai, lỗ cả công trình. Đầu thừa vứt đi, kho còn bao nhiêu không ai biết!",
+  "bg": "orange"
+ },
+ {
+  "id": "t02-pain",
+  "kind": "pain",
+  "tag": "NỖI ĐAU",
+  "lines": [
+   [
+    "CHẤM CÔNG BẰNG SỔ",
+    "ink"
+   ],
+   [
+    "CÔNG NỢ QUÊN ĐÒI",
+    "white"
+   ],
+   [
+    "TRỄ HẸN",
+    "ink"
+   ]
+  ],
+  "text": "Chấm công bằng sổ, công nợ quên đòi, công trình trễ hẹn!",
+  "bg": "orange"
+ },
+ {
+  "id": "t03-turn",
+  "kind": "turn",
+  "tag": "GIẢI PHÁP",
+  "title": "EUROHOUSE WORKSHOP OS",
+  "sub": "Cả xưởng trong một chiếc điện thoại",
+  "text": "Dừng lại! Eurohouse Workshop OS, cả xưởng trong một chiếc điện thoại!"
+ },
+ {
+  "id": "t04-cut",
+  "kind": "feat",
+  "clip": "c21-cutplan",
+  "tag": "CẮT NHÔM",
+  "title": "Tận dụng đầu cắt thừa",
+  "sub": "Công thức cắt · tối ưu hao hụt",
+  "text": "Tính công thức cắt, tận dụng đầu cắt thừa, tiết kiệm từng cân nhôm!",
+  "short": true
+ },
+ {
+  "id": "t05-stock",
+  "kind": "feat",
+  "clip": "c20-inventory",
+  "tag": "TỒN KHO",
+  "title": "Kho nhôm nhìn là biết",
+  "sub": "Cây nguyên · đoạn đề-xê · phế liệu",
+  "text": "Tồn kho rõ ràng, hết cảnh mua thừa, hết cảnh vứt tiền!",
+  "short": true
+ },
+ {
+  "id": "t07-work",
+  "kind": "feat",
+  "clip": "c07-workforce",
+  "tag": "QUẢN LÝ XƯỞNG",
+  "title": "Chấm công · lương · bảo hiểm",
+  "sub": "Tự tính hết · hết đau đầu",
+  "text": "Chấm công, lương, bảo hiểm, app tự tính hết!",
+  "short": true
+ },
+ {
+  "id": "t08-ai",
+  "kind": "feat",
+  "clip": "c18-assistant",
+  "tag": "TRỢ LÝ AI",
+  "title": "Bé Eu · trợ lý AI",
+  "sub": "Trò chuyện · tạo ảnh phối cảnh",
+  "text": "Thêm Bé Eu, trợ lý AI riêng cho xưởng bạn!",
+  "short": true,
+  "mascot": true
+ },
+ {
+  "id": "t09-outro",
+  "kind": "outro",
+  "title": "EUROHOUSE",
+  "sub": "Nhôm của sự thịnh vượng",
+  "tag": "app.nhomeurohouse.com",
+  "text": "Dùng thử ngay! Nhôm của sự thịnh vượng!"
+ }
+]

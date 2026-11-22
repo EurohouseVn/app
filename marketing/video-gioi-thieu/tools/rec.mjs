@@ -24,7 +24,7 @@ export async function record(name, fn, { auth = true, w = 390, h = 844 } = {}) {
     wait: (ms) => page.waitForTimeout(ms),
     scroll: async (px, ms = 900) => { const steps = Math.max(1, Math.round(ms / 16)); const per = px / steps; await page.mouse.move(w / 2, h / 2); for (let i = 0; i < steps; i++) { await page.mouse.wheel(0, per); await page.waitForTimeout(16); } },
     tap: async (target, opts = {}) => { const loc = typeof target === 'string' ? page.getByText(target, { exact: opts.exact ?? true }).nth(opts.nth ?? 0) : target; try { await loc.waitFor({ timeout: 3000 }); await loc.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {}); const b = await loc.boundingBox({ timeout: 2000 }); if (b) { await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 }); await page.waitForTimeout(120); await page.mouse.down(); await page.mouse.up(); return true; } } catch { console.log('  (bỏ qua, không thấy)', typeof target === 'string' ? target : 'locator'); } return false; },
-    type: async (loc, text, delay = 70) => { await loc.click(); await page.keyboard.type(text, { delay }); },
+    type: async (loc, text, delay = 70) => { await loc.click(); await page.keyboard.press('Control+A'); await page.keyboard.type(text, { delay }); },
   };
   // làm nóng: tải trước để app dựng xong rồi mới bắt đầu ghi
   await fn.warm?.(page, helpers);
