@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Eurohouse CSSX",
+  "name": "Eurohouse Workshop OS",
   "short_name": "Eurohouse",
-  "description": "Đặt hàng và quản lý công trình dành cho cơ sở sản xuất Eurohouse.",
+  "description": "Ứng dụng quản lý xưởng và đặt nhôm Eurohouse: báo giá, công trình, chấm công, công nợ.",
   "lang": "vi",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
+  "background_color": "#F5F6F7",
   "theme_color": "#F47C20",
   "icons": [
     {
@@ -26,14 +26,23 @@
   ],
   "shortcuts": [
     {
-      "name": "Đặt hàng",
-      "short_name": "Đặt hàng",
+      "name": "Báo giá",
+      "short_name": "Báo giá",
+      "url": "/quote"
+    },
+    {
+      "name": "Đặt nhôm",
+      "short_name": "Đặt nhôm",
       "url": "/orders"
     },
     {
-      "name": "Công thức cắt",
-      "short_name": "Công thức",
-      "url": "/formulas"
+      "name": "Chấm công",
+      "short_name": "Chấm công",
+      "url": "/workforce"
     }
+  ],
+  "categories": [
+    "business",
+    "productivity"
   ]
 }

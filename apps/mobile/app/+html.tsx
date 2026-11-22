@@ -7,7 +7,7 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-        <title>Eurohouse CSSX</title>
+        <title>Eurohouse Workshop OS</title>
         <meta name="description" content="Ứng dụng đặt hàng và quản lý công trình dành cho cơ sở sản xuất Eurohouse." />
         <meta name="theme-color" content="#F47C20" />
         <meta name="mobile-web-app-capable" content="yes" />
