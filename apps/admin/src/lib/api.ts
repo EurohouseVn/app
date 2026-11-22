@@ -17,10 +17,18 @@ function authHeaders(base: Record<string, string> = {}): Record<string, string> 
   return token ? { ...base, Authorization: `Bearer ${token}` } : base;
 }
 
+export class AuthenticationError extends Error {
+  constructor() {
+    super('Phiên đăng nhập đã hết hạn.');
+    this.name = 'AuthenticationError';
+  }
+}
+
 function handleUnauthorized(status: number) {
   if (status === 401) {
     clearSession();
-    if (typeof window !== 'undefined') window.location.reload();
+    if (typeof window !== 'undefined') window.location.replace('/');
+    throw new AuthenticationError();
   }
 }
 
@@ -48,6 +56,15 @@ export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' 
     throw new Error(payload?.message ?? `Lỗi ${path} (${response.status})`);
   }
   return (await response.json()) as T;
+}
+
+export function apiGetQuery<T>(path: string, params: Record<string, string | undefined>): Promise<T> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return apiGet<T>(`${path}${suffix}`);
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {

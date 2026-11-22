@@ -77,3 +77,70 @@ input::placeholder, select::placeholder, textarea::placeholder {
   opacity: 0.65 !important;
   font-weight: 400 !important;
 }
+
+.formula-access-cards {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .admin-shell {
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
+
+  .admin-sidebar {
+    position: static !important;
+    height: auto !important;
+    min-width: 0;
+    padding: 12px 14px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ui-border) !important;
+    overflow: hidden !important;
+  }
+
+  .admin-brand {
+    padding: 0 2px !important;
+  }
+
+  .admin-user-card,
+  .admin-logout {
+    display: none !important;
+  }
+
+  .admin-nav {
+    flex-direction: row !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+    overflow-x: auto !important;
+    padding: 0 0 3px !important;
+    scrollbar-width: none;
+  }
+
+  .admin-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-nav > div {
+    flex: 0 0 auto;
+    min-width: 168px;
+  }
+
+  .admin-content {
+    padding: 20px 14px 28px !important;
+    max-width: 100% !important;
+    min-width: 0;
+  }
+
+  .formula-access-table {
+    display: none !important;
+  }
+
+  .formula-access-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .formula-access-filters {
+    grid-template-columns: 1fr !important;
+  }
+}

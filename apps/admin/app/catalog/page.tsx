@@ -25,7 +25,7 @@ export default function CatalogPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiGet<CatalogSystem[]>('/catalog/systems')
+    apiGet<CatalogSystem[]>('/catalog/company-pricing/systems')
       .then((data) => {
         setSystems(data);
         setActiveId((current) => current || data[0]?.id || '');

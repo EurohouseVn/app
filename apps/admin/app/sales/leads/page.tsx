@@ -9,6 +9,9 @@ interface Lead {
   address: string;
   province: string;
   phone: string;
+  email?: string;
+  message?: string;
+  source?: string;
   currentBrand: string;
   scale: string;
   potentialRating: number;
@@ -118,7 +121,7 @@ export default function LeadsPage() {
             <tr>
               <th style={tableHeadStyle}>Tên Cơ Sở</th>
               <th style={tableHeadStyle}>Khu vực</th>
-              <th style={tableHeadStyle}>Hãng đang làm</th>
+              <th style={tableHeadStyle}>Nhu cầu / Nguồn</th>
               <th style={{ ...tableHeadStyle, textAlign: 'center' }}>Đánh giá</th>
               <th style={{ ...tableHeadStyle, textAlign: 'center' }}>Trạng thái</th>
               <th style={tableHeadStyle}>NVKD Phụ trách</th>
@@ -135,9 +138,14 @@ export default function LeadsPage() {
                 <td style={{ ...tableCellStyle, fontWeight: 700, color: ui.brandText }}>
                   {l.name}
                   <div style={{ fontSize: 12, color: ui.textMuted, fontWeight: 400, marginTop: 4 }}>{l.phone}</div>
+                  {l.email ? <div style={{ fontSize: 12, color: ui.textMuted, fontWeight: 400, marginTop: 2 }}>{l.email}</div> : null}
                 </td>
                 <td style={tableCellStyle}>{l.province || '-'}</td>
-                <td style={tableCellStyle}>{l.currentBrand || '-'}</td>
+                <td style={tableCellStyle}>
+                  <strong style={{ display: 'block', fontSize: 13 }}>{l.scale || l.currentBrand || '-'}</strong>
+                  <span style={{ display: 'block', marginTop: 3, color: ui.textMuted, fontSize: 11 }}>{l.source === 'WEBSITE' ? 'nhomeurohouse.com' : 'Nhập từ WebAdmin'}</span>
+                  {l.message ? <span style={{ display: 'block', maxWidth: 260, marginTop: 5, color: ui.textMuted, fontSize: 11, lineHeight: 1.4 }}>{l.message}</span> : null}
+                </td>
                 <td style={{ ...tableCellStyle, textAlign: 'center', color: ui.warning, fontSize: 16 }}>
                   {'★'.repeat(l.potentialRating)}{'☆'.repeat(5 - l.potentialRating)}
                 </td>

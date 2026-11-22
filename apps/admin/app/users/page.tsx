@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, ShieldCheck, UserCog, X } from 'lucide-react';
+import { Check, LockKeyhole, Plus, ShieldCheck, UserCog, X } from 'lucide-react';
 import {
-  ADMIN_MODULES,
   type AdjustPointsInput,
   type AdminUserItem,
   type CreateNppInput,
@@ -14,6 +13,15 @@ import {
   type UserRole,
 } from '@eurohouse/types';
 import { AdminPage } from '../../src/AdminPage';
+import {
+  ACCESS_SCOPE_META,
+  ACCESS_SCOPE_ORDER,
+  SCOPED_MODULES,
+  allowedModuleKeysForRole,
+  modulesAfterRoleChange,
+  scopeForRole,
+  type AccessScope,
+} from '../../src/accessScopes';
 import { apiGet, apiSend } from '../../src/lib/api';
 import {
   eyebrowStyle,
@@ -124,7 +132,7 @@ function UsersRbac() {
       departmentId: u.departmentId ?? '',
       jobTitle: u.jobTitle,
       isCeo: u.isCeo,
-      modules: [...u.modules],
+      modules: modulesAfterRoleChange(u.modules, u.role),
       password: '',
     });
   }
@@ -275,7 +283,9 @@ function UsersTable({
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {users.map((user) => {
+              const scope = scopeForRole(user.role);
+              return (
               <tr key={user.id}>
                 <td style={{ ...tableCellStyle, fontWeight: 700 }}>
                   {user.displayName}
@@ -292,11 +302,19 @@ function UsersTable({
                   {user.isCeo ? (
                     <span style={{ color: ui.danger, fontWeight: 700, fontSize: 12 }}>Toàn quyền</span>
                   ) : user.modules.length === 0 ? (
-                    <span style={{ color: ui.textFaint, fontSize: 12 }}>Chưa cấp</span>
+                    <div style={{ display: 'grid', gap: 5, justifyItems: 'start' }}>
+                      <span style={{ background: ui.surfaceMuted, color: ui.textMuted, borderRadius: 999, padding: '3px 8px', fontSize: 11, fontWeight: 700 }}>
+                        {ACCESS_SCOPE_META[scope].label}
+                      </span>
+                      <span style={{ color: ui.textFaint, fontSize: 12 }}>Chưa cấp quyền</span>
+                    </div>
                   ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 320 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 360 }}>
+                      <span style={{ background: ui.brandSoft, color: ui.brandText, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>
+                        {ACCESS_SCOPE_META[scope].label}
+                      </span>
                       {user.modules.map((key) => {
-                        const m = ADMIN_MODULES.find((x) => x.key === key);
+                        const m = SCOPED_MODULES.find((x) => x.key === key);
                         return (
                           <span key={key} style={{ background: ui.tealSoft, color: ui.teal, borderRadius: 6, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>
                             {m?.label ?? key}
@@ -320,7 +338,8 @@ function UsersTable({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -445,6 +464,9 @@ function UserFormModal({
   onSubmit: () => void;
 }) {
   const isEdit = Boolean(form.id);
+  const activeScope = scopeForRole(form.role);
+  const activeModules = SCOPED_MODULES.filter((module) => module.scope === activeScope);
+  const selectedCount = form.modules.filter((key) => activeModules.some((module) => module.key === key)).length;
 
   function toggleModule(key: string) {
     const has = form.modules.includes(key);
@@ -452,7 +474,7 @@ function UserFormModal({
   }
 
   function selectAllModules() {
-    setForm({ ...form, modules: ADMIN_MODULES.map((m) => m.key) });
+    setForm({ ...form, modules: allowedModuleKeysForRole(form.role) });
   }
 
   return (
@@ -472,7 +494,7 @@ function UserFormModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ ...panelStyle, width: '100%', maxWidth: 560, padding: 0 }}
+        style={{ ...panelStyle, width: '100%', maxWidth: 760, padding: 0 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: `1px solid ${ui.border}` }}>
           <h2 style={{ ...panelTitleStyle, margin: 0 }}>
@@ -509,7 +531,19 @@ function UserFormModal({
             </label>
             <label style={labelStyle}>
               Vai trò hệ thống
-              <select style={inputStyle} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}>
+              <select
+                style={inputStyle}
+                value={form.role}
+                onChange={(e) => {
+                  const nextRole = e.target.value as UserRole;
+                  setForm({
+                    ...form,
+                    role: nextRole,
+                    isCeo: scopeForRole(nextRole) === 'INTERNAL' ? form.isCeo : false,
+                    modules: modulesAfterRoleChange(form.modules, nextRole),
+                  });
+                }}
+              >
                 {roleOptions.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
@@ -538,7 +572,7 @@ function UserFormModal({
             <input style={inputStyle} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
           </label>
 
-          <label
+          {activeScope === 'INTERNAL' ? <label
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -555,40 +589,31 @@ function UserFormModal({
               <strong style={{ color: ui.text, fontSize: 14 }}>CEO — toàn quyền</strong>
               <span style={{ display: 'block', color: ui.textMuted, fontSize: 12 }}>Bỏ qua mọi kiểm tra quyền module. Chỉ cấp cho lãnh đạo.</span>
             </span>
-          </label>
+          </label> : null}
 
           {!form.isCeo ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ ...labelStyle, margin: 0 }}>Quyền truy cập module</span>
+                <div>
+                  <span style={{ ...labelStyle, margin: 0 }}>Phạm vi quyền truy cập</span>
+                  <span style={{ display: 'block', color: ui.textMuted, fontSize: 12, marginTop: 4 }}>
+                    {selectedCount}/{activeModules.length} quyền trong khu vực {ACCESS_SCOPE_META[activeScope].label}
+                  </span>
+                </div>
                 <button type="button" style={{ ...ghostButtonStyle, padding: '4px 10px', fontSize: 12 }} onClick={selectAllModules}>
-                  Chọn tất cả
+                  Chọn toàn bộ khu vực
                 </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {ADMIN_MODULES.map((m) => {
-                  const checked = form.modules.includes(m.key);
-                  return (
-                    <label
-                      key={m.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '9px 12px',
-                        borderRadius: 10,
-                        border: `1px solid ${checked ? ui.teal : ui.border}`,
-                        background: checked ? ui.tealSoft : ui.surface,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        color: ui.text,
-                      }}
-                    >
-                      <input type="checkbox" checked={checked} onChange={() => toggleModule(m.key)} />
-                      {m.label}
-                    </label>
-                  );
-                })}
+              <div style={{ display: 'grid', gap: 10 }}>
+                {ACCESS_SCOPE_ORDER.map((scope) => (
+                  <PermissionScopePanel
+                    key={scope}
+                    scope={scope}
+                    activeScope={activeScope}
+                    modules={form.modules}
+                    onToggle={toggleModule}
+                  />
+                ))}
               </div>
             </div>
           ) : null}
@@ -602,6 +627,71 @@ function UserFormModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function PermissionScopePanel({
+  scope,
+  activeScope,
+  modules,
+  onToggle,
+}: {
+  scope: AccessScope;
+  activeScope: AccessScope;
+  modules: string[];
+  onToggle: (key: string) => void;
+}) {
+  const active = scope === activeScope;
+  const scopedModules = SCOPED_MODULES.filter((module) => module.scope === scope);
+  const selected = scopedModules.filter((module) => modules.includes(module.key)).length;
+  const grouped = Array.from(new Set(scopedModules.map((module) => module.group)));
+
+  return (
+    <section
+      style={{
+        border: `1px solid ${active ? ui.brand : ui.border}`,
+        borderRadius: 14,
+        background: active ? ui.brandSoft : ui.surfaceMuted,
+        padding: active ? 14 : '11px 14px',
+        opacity: active ? 1 : 0.68,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: active ? ui.brand : ui.surface, color: active ? '#fff' : ui.textMuted }}>
+            {active ? <Check size={15} /> : <LockKeyhole size={14} />}
+          </span>
+          <div>
+            <strong style={{ display: 'block', color: ui.text, fontSize: 14 }}>{ACCESS_SCOPE_META[scope].label}</strong>
+            <span style={{ color: ui.textMuted, fontSize: 11 }}>{ACCESS_SCOPE_META[scope].description}</span>
+          </div>
+        </div>
+        <span style={{ color: active ? ui.brandText : ui.textFaint, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          {active ? `${selected}/${scopedModules.length} đã chọn` : 'Không áp dụng'}
+        </span>
+      </div>
+
+      {active ? (
+        <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
+          {grouped.map((group) => (
+            <div key={group}>
+              <p style={{ margin: '0 0 7px', color: ui.textMuted, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{group}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 7 }}>
+                {scopedModules.filter((module) => module.group === group).map((module) => {
+                  const checked = modules.includes(module.key);
+                  return (
+                    <label key={module.key} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 10px', borderRadius: 10, border: `1px solid ${checked ? ui.teal : ui.border}`, background: checked ? ui.tealSoft : ui.surface, cursor: 'pointer', fontSize: 13, color: ui.text }}>
+                      <input type="checkbox" checked={checked} onChange={() => onToggle(module.key)} />
+                      {module.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
