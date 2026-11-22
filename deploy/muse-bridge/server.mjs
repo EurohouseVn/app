@@ -55,23 +55,19 @@ async function status() {
   return { url, loggedIn, title: await page.title().catch(() => ''), pool: poolFor(state.primer.version).length, primerVersion: state.primer.version };
 }
 
-/** Số bong bóng chat hiện có; chờ ngắn cho trang ổn định để không đếm nhầm lịch sử cũ là tin mới. */
-async function settledBubbles() {
-  const count = () => page.evaluate(() => document.querySelectorAll('.hatch-chat-groupable-bubble').length);
-  let previous = await count();
-  let calm = 0;
-  for (let attempt = 0; attempt < 12 && calm < 2; attempt += 1) {
-    await page.waitForTimeout(300);
-    const current = await count();
-    calm = current === previous ? calm + 1 : 0;
-    previous = current;
-  }
-  return previous;
-}
-
-const agentTextAfter = (base) => page.evaluate((from) => [...document.querySelectorAll('.hatch-chat-groupable-bubble')].slice(from)
-  .filter((bubble) => /agent-bubble/.test(bubble.className))
-  .map((bubble) => (bubble.innerText || '').trim()).filter(Boolean), base);
+/** Đọc các bong bóng sau tin nhắn của mình (nhận ra bằng đoạn cuối câu lệnh), tránh phụ thuộc vào việc đếm lịch sử cũ. */
+const readAfterMine = (probe) => page.evaluate((needle) => {
+  const bubbles = [...document.querySelectorAll('.hatch-chat-groupable-bubble')];
+  const isAgent = (bubble) => /agent-bubble/.test(bubble.className);
+  let mine = -1;
+  let userMatches = 0;
+  bubbles.forEach((bubble, index) => {
+    if (!isAgent(bubble) && (bubble.innerText || '').includes(needle)) { mine = index; userMatches += 1; }
+  });
+  const after = mine >= 0 ? bubbles.slice(mine + 1) : [];
+  const agents = after.filter(isAgent).map((bubble) => (bubble.innerText || '').trim()).filter(Boolean);
+  return { userMatches, found: mine >= 0, agents, chars: agents.reduce((sum, text) => sum + text.length, 0), bubbles: after.length };
+}, probe);
 
 async function runAsk({ threadId, prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   if (typeof prompt !== 'string' || !prompt.trim()) throw Object.assign(new Error('PROMPT_REQUIRED'), { status: 400 });
@@ -88,7 +84,8 @@ async function runAsk({ threadId, prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
     throw Object.assign(new Error('NOT_LOGGED_IN_OR_UI_CHANGED'), { status: 503 });
   }
   if (threadId && page.url() !== target) throw Object.assign(new Error('THREAD_LOST'), { status: 409 });
-  const before = await settledBubbles();
+  const probe = prompt.trim().slice(-60);
+  const before = await readAfterMine(probe);
   await page.locator(INPUT).fill(prompt);
   await page.keyboard.press('Enter');
 
@@ -99,21 +96,15 @@ async function runAsk({ threadId, prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   while (Date.now() < deadline) {
     await page.waitForTimeout(350);
     const busy = await page.locator(BUSY).count();
-    const now = await page.evaluate(() => {
-      const bubbles = [...document.querySelectorAll('.hatch-chat-groupable-bubble')];
-      return {
-        bubbles: bubbles.length,
-        chars: bubbles.filter((bubble) => /agent-bubble/.test(bubble.className)).reduce((sum, bubble) => sum + (bubble.innerText || '').length, 0),
-      };
-    });
-    const progressed = now.bubbles > before + 1;
+    const now = await readAfterMine(probe);
+    // Tin của mình đã hiện (số bong bóng khớp tăng thêm một) và đã có câu trả lời của trợ lý sau nó.
+    const sent = now.userMatches > before.userMatches;
     const signature = `${now.bubbles}:${now.chars}`;
-    diagnostic = `busy=${busy} bubbles=${before}->${now.bubbles} chars=${now.chars}`;
+    diagnostic = `busy=${busy} sent=${sent} agents=${now.agents.length} chars=${now.chars}`;
     if (signature !== lastSignature) { lastSignature = signature; stableSince = Date.now(); }
-    if (!busy && progressed && Date.now() - stableSince >= 1200) {
-      const texts = await agentTextAfter(before);
+    if (sent && !busy && now.agents.length > 0 && Date.now() - stableSince >= 1200) {
       const url = page.url();
-      return { threadId: THREAD_URL.test(url) ? url.split('/').pop() : threadId ?? null, text: texts.join('\n\n'), images: [] };
+      return { threadId: THREAD_URL.test(url) ? url.split('/').pop() : threadId ?? null, text: now.agents.join('\n\n'), images: [] };
     }
   }
   throw Object.assign(new Error(`TIMEOUT ${diagnostic}`), { status: 504 });
