@@ -85,9 +85,21 @@ async function runAsk({ threadId, prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   }
   if (threadId && page.url() !== target) throw Object.assign(new Error('THREAD_LOST'), { status: 409 });
   const probe = prompt.trim().slice(-60);
+  // Trang vừa mở có thể chưa gắn xong sự kiện: chờ một nhịp rồi gửi, và gửi lại nếu tin chưa hiện lên.
+  await page.waitForTimeout(900);
   const before = await readAfterMine(probe);
-  await page.locator(INPUT).fill(prompt);
-  await page.keyboard.press('Enter');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.locator(INPUT).fill(prompt);
+    await page.keyboard.press('Enter');
+    const shownBy = Date.now() + 4000;
+    let shown = false;
+    while (Date.now() < shownBy) {
+      await page.waitForTimeout(300);
+      if ((await readAfterMine(probe)).userMatches > before.userMatches) { shown = true; break; }
+    }
+    if (shown) break;
+    if (attempt === 2) throw Object.assign(new Error('SEND_FAILED'), { status: 503 });
+  }
 
   const deadline = Date.now() + timeoutMs;
   let lastSignature = '';
