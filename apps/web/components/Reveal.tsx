@@ -42,7 +42,7 @@ export function RevealPageSections() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
 
     const sections = Array.from(document.querySelectorAll<HTMLElement>('main > section, main > article, main > div'))
-      .filter((element) => !element.matches('#top, .page-hero, .page-intro'));
+      .filter((element) => !element.matches('#top, .page-hero, .page-intro, [data-no-reveal]'));
     const mobile = window.matchMedia('(max-width: 600px)').matches;
     const delayStep = mobile ? 45 : 75;
     const observer = new IntersectionObserver((entries) => {
