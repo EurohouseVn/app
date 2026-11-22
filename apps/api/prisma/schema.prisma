@@ -3834,3 +3834,20 @@ model AiImage {
 
   @@index([organizationId, userId, createdAt])
 }
+
+// Kiến thức ngành nhôm dùng chung cho trợ lý (không thuộc xưởng nào): từ danh mục Eurohouse, kiến thức nền, và bộ tự nghiên cứu.
+model AiKnowledge {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  topic     String   @default("")
+  title     String
+  content   String   @db.Text
+  sources   Json?
+  origin    String   @default("MANUAL") // CATALOG | GENERAL | RESEARCH | MANUAL
+  status    String   @default("APPROVED") // APPROVED | REJECTED
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, priority])
+}

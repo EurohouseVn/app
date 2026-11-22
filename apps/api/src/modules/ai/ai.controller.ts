@@ -1,16 +1,17 @@
-import { Body, Controller, Get, Param, Post, Put, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { CurrentUser, type JwtUser } from '../../auth/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { RolesGuard } from '../../auth/roles.guard';
+import { AiKnowledgeService } from './ai-knowledge.service';
 import { AiService } from './ai.service';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard, RolesGuard, ThrottlerGuard)
 @Roles('ADMIN', 'STAFF', 'FACTORY', 'DAILY')
 export class AiController {
-  constructor(private readonly service: AiService) {}
+  constructor(private readonly service: AiService, private readonly knowledge: AiKnowledgeService) {}
 
   @Get('status')
   status(@CurrentUser() user: JwtUser) {
@@ -23,7 +24,7 @@ export class AiController {
   }
 
   @Put('profile')
-  updateProfile(@CurrentUser() user: JwtUser, @Body() body: { enabled?: boolean; systemInstructions?: string; imageWeeklyLimit?: number }) {
+  updateProfile(@CurrentUser() user: JwtUser, @Body() body: { enabled?: boolean; systemInstructions?: string }) {
     return this.service.updateProfile(user, body ?? {});
   }
 
@@ -43,28 +44,25 @@ export class AiController {
     return this.service.chat(user, body ?? ({} as { message: string }));
   }
 
-  @Post('images')
-  @Throttle({ default: { limit: 4, ttl: 60_000 } })
-  createImage(@CurrentUser() user: JwtUser, @Body() body: { prompt: string }) {
-    return this.service.createImage(user, body ?? ({} as { prompt: string }));
+  // ── Kho kiến thức ngành nhôm (chỉ quản trị hệ thống) ──
+  @Get('knowledge')
+  knowledgeList(@CurrentUser() user: JwtUser) {
+    return this.knowledge.list(user);
   }
 
-  @Get('images')
-  images(@CurrentUser() user: JwtUser) {
-    return this.service.listImages(user);
+  @Post('knowledge/seed')
+  knowledgeSeed(@CurrentUser() user: JwtUser) {
+    return this.knowledge.adminSeed(user);
   }
 
-  /** Ảnh dạng base64 cho app (web không gắn được tiêu đề đăng nhập vào thẻ ảnh). */
-  @Get('images/:id/data')
-  async imageData(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    const { mime, body } = await this.service.imageFile(user, id);
-    return { mime, base64: Buffer.from(body).toString('base64') };
+  @Post('knowledge/research')
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  knowledgeResearch(@CurrentUser() user: JwtUser, @Body() body: { topic?: string; count?: number }) {
+    return this.knowledge.adminResearch(user, body ?? {});
   }
 
-  @Get('images/:id/file')
-  async imageFile(@CurrentUser() user: JwtUser, @Param('id') id: string, @Res() res: any) {
-    const { mime, body } = await this.service.imageFile(user, id);
-    res.set({ 'Content-Type': mime, 'Cache-Control': 'private, max-age=3600', 'Content-Length': body.length });
-    res.end(body);
+  @Put('knowledge/:id/status')
+  knowledgeStatus(@CurrentUser() user: JwtUser, @Param('id') id: string, @Body() body: { status: 'APPROVED' | 'REJECTED' }) {
+    return this.knowledge.setStatus(user, id, body?.status === 'REJECTED' ? 'REJECTED' : 'APPROVED');
   }
 }

@@ -378,7 +378,7 @@ function AuthenticatedHomeScreen() {
             <Image source={assistantAvatar} style={hs.beEuAvatar} />
             <View style={wsStyles.grow}>
               <Text style={hs.beEuTitle}>Hỏi Bé Eu</Text>
-              <Text style={hs.beEuSub} numberOfLines={2}>Trợ lý AI riêng của xưởng: giải đáp nhôm kính, báo giá, công trình và tạo ảnh.</Text>
+              <Text style={hs.beEuSub} numberOfLines={2}>Trợ lý AI riêng của xưởng: giải đáp về nhôm kính, hệ nhôm Eurohouse, báo giá và công trình.</Text>
             </View>
             <View style={hs.beEuGo}><Icon name="message-circle" size={18} color="#FFFFFF" /></View>
           </Pressable>

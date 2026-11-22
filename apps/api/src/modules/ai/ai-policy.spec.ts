@@ -1,35 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ASSISTANT_NAME, IMAGE_WEEKLY_LIMIT, RequestGate, buildImagePrompt, buildMusePrompt, imageQuota, sanitizeUserText } from './ai-policy';
-
-const DAY = 24 * 60 * 60 * 1000;
-const NOW = new Date('2026-11-22T10:00:00.000Z');
-
-test('image quota counts only the last 7 days and reports remaining slots', () => {
-  const stamps = [NOW.getTime() - 1 * DAY, NOW.getTime() - 3 * DAY, NOW.getTime() - 8 * DAY].map((t) => new Date(t));
-  const quota = imageQuota(stamps, NOW);
-  assert.equal(quota.limit, IMAGE_WEEKLY_LIMIT);
-  assert.equal(quota.limit, 10);
-  assert.equal(quota.used, 2);
-  assert.equal(quota.remaining, 8);
-  assert.equal(quota.resetsAt, null);
-});
-
-test('when the weekly limit is reached the quota says when the oldest image frees a slot', () => {
-  const HOUR = 60 * 60 * 1000;
-  const stamps = Array.from({ length: 10 }, (_, index) => new Date(NOW.getTime() - (index + 1) * 10 * HOUR));
-  const quota = imageQuota(stamps, NOW);
-  assert.equal(quota.used, 10);
-  assert.equal(quota.remaining, 0);
-  assert.equal(quota.resetsAt?.toISOString(), new Date(NOW.getTime() - 100 * HOUR + 7 * DAY).toISOString());
-});
-
-test('quota window uses a custom limit and resets when the oldest counted image expires', () => {
-  const stamps = [new Date(NOW.getTime() - 6 * DAY), new Date(NOW.getTime() - 1 * DAY)];
-  const quota = imageQuota(stamps, NOW, 2);
-  assert.equal(quota.remaining, 0);
-  assert.equal(quota.resetsAt?.toISOString(), new Date(NOW.getTime() - 6 * DAY + 7 * DAY).toISOString());
-});
+import { ASSISTANT_NAME, RequestGate, buildMusePrompt, sanitizeUserText } from './ai-policy';
 
 test('user text is trimmed, length-limited and cannot spoof the system block', () => {
   assert.equal(sanitizeUserText('  xin chào  ', 100), 'xin chào');
@@ -97,5 +68,4 @@ test('assistant has its own Eurohouse identity and never names the underlying pr
   assert.match(first, /không nhắc tới Muse, Meta, Orion/i);
   const again = buildMusePrompt({ workshopName: 'Xưởng An', systemInstructions: '', summary: '', history: [], message: 'tiếp', mode: 'continue' });
   assert.match(again, /Bé Eu/);
-  assert.match(buildImagePrompt('Xưởng An', 'cửa sổ'), /Eurohouse/);
 });

@@ -5,6 +5,8 @@ export type AiProviderAsk = { threadId?: string | null; prompt: string; timeoutM
 export interface AiProviderPort {
   readonly configured: boolean;
   ask(input: AiProviderAsk): Promise<AiProviderResult>;
+  /** Đẩy tin "mồi" (quy tắc chung + kiến thức nền) để cầu nối làm nóng sẵn các phiên chat. */
+  setPrimer?(text: string, version: string): Promise<void>;
 }
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
 
@@ -31,6 +33,16 @@ export class MuseBridgeProvider implements AiProviderPort {
 
   get configured() {
     return Boolean(this.baseUrl && this.token);
+  }
+
+  async setPrimer(text: string, version: string): Promise<void> {
+    if (!this.configured) return;
+    const response = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, '')}/v1/primer`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, version }),
+    });
+    if (!response.ok) throw new AiProviderError('UNAVAILABLE', `PRIMER_${response.status}`);
   }
 
   async ask(input: AiProviderAsk): Promise<AiProviderResult> {

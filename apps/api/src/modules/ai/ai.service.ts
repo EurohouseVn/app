@@ -1,5 +1,4 @@
 import {
-  BadGatewayException,
   BadRequestException,
   ForbiddenException,
   HttpException,
@@ -14,13 +13,11 @@ import type { JwtUser } from '../../auth/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { AI_PROVIDER, AiProviderError, type AiProviderPort } from './ai-provider';
+import { AiKnowledgeService } from './ai-knowledge.service';
 import {
   ASSISTANT_NAME,
-  IMAGE_WEEKLY_LIMIT,
   RequestGate,
-  buildImagePrompt,
   buildMusePrompt,
-  imageQuota,
   sanitizeUserText,
   type PromptTurn,
 } from './ai-policy';
@@ -29,11 +26,8 @@ export const AI_GATE = Symbol('AI_GATE');
 export const AI_CLOCK = Symbol('AI_CLOCK');
 
 const MAX_MESSAGE_CHARS = 4000;
-const MAX_IMAGE_PROMPT_CHARS = 1000;
 const MAX_INSTRUCTION_CHARS = 4000;
 const HISTORY_TURNS = 40;
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const EXTENSIONS: Record<string, string> = { 'image/webp': '.webp', 'image/png': '.png', 'image/jpeg': '.jpg' };
 
 @Injectable()
 export class AiService {
@@ -43,6 +37,7 @@ export class AiService {
     private readonly storage: StorageService,
     @Inject(AI_GATE) private readonly gate: RequestGate,
     @Optional() @Inject(AI_CLOCK) private readonly clock: () => Date = () => new Date(),
+    @Optional() private readonly knowledge?: AiKnowledgeService,
   ) {}
 
   private organizationId(user: JwtUser): string {
@@ -59,40 +54,25 @@ export class AiService {
     return organization?.name ?? 'Xưởng';
   }
 
-  private async imageStamps(organizationId: string, userId: string) {
-    const rows = await this.prisma.aiImage.findMany({
-      where: { organizationId, userId, status: { in: ['PENDING', 'DONE'] }, createdAt: { gt: new Date(this.clock().getTime() - WEEK_MS) } },
-      select: { createdAt: true },
-    });
-    return rows.map((row: { createdAt: Date }) => row.createdAt);
-  }
-
   async status(user: JwtUser) {
     const organizationId = this.organizationId(user);
     const profile = await this.profile(organizationId);
-    const quota = imageQuota(await this.imageStamps(organizationId, user.sub), this.clock(), profile.imageWeeklyLimit ?? IMAGE_WEEKLY_LIMIT);
-    return { assistantName: ASSISTANT_NAME, configured: this.provider.configured, enabled: profile.enabled, imageQuota: quota };
+    return { assistantName: ASSISTANT_NAME, configured: this.provider.configured, enabled: profile.enabled };
   }
 
   async getProfile(user: JwtUser) {
     const profile = await this.profile(this.organizationId(user));
-    return { enabled: profile.enabled, systemInstructions: profile.systemInstructions, imageWeeklyLimit: profile.imageWeeklyLimit };
+    return { enabled: profile.enabled, systemInstructions: profile.systemInstructions };
   }
 
-  async updateProfile(user: JwtUser, body: { enabled?: boolean; systemInstructions?: string; imageWeeklyLimit?: number }) {
+  async updateProfile(user: JwtUser, body: { enabled?: boolean; systemInstructions?: string }) {
     const organizationId = this.organizationId(user);
-    const data: { enabled?: boolean; systemInstructions?: string; imageWeeklyLimit?: number } = {};
+    const data: { enabled?: boolean; systemInstructions?: string } = {};
     if (typeof body.enabled === 'boolean') data.enabled = body.enabled;
     if (typeof body.systemInstructions === 'string') data.systemInstructions = sanitizeUserText(body.systemInstructions, MAX_INSTRUCTION_CHARS);
-    if (body.imageWeeklyLimit !== undefined) {
-      if (!(user.isCeo || user.role === 'ADMIN')) throw new ForbiddenException('Chỉ quản trị hệ thống được đổi hạn mức ảnh.');
-      const limit = Math.floor(Number(body.imageWeeklyLimit));
-      if (!Number.isFinite(limit) || limit < 0 || limit > 1000) throw new BadRequestException('Hạn mức ảnh không hợp lệ.');
-      data.imageWeeklyLimit = limit;
-    }
     await this.profile(organizationId);
     const saved = await this.prisma.aiWorkspaceProfile.upsert({ where: { organizationId }, create: { organizationId, ...data }, update: data });
-    return { enabled: saved.enabled, systemInstructions: saved.systemInstructions, imageWeeklyLimit: saved.imageWeeklyLimit };
+    return { enabled: saved.enabled, systemInstructions: saved.systemInstructions };
   }
 
   async conversations(user: JwtUser) {
@@ -156,8 +136,9 @@ export class AiService {
         });
 
     const name = await this.workshopName(organizationId);
+    const facts = this.knowledge ? await this.knowledge.retrieve(message).catch(() => []) : [];
     const build = (mode: 'replay' | 'continue') =>
-      buildMusePrompt({ workshopName: name, systemInstructions: profile.systemInstructions ?? '', summary: conversation!.summary ?? '', history, message, mode });
+      buildMusePrompt({ workshopName: name, systemInstructions: profile.systemInstructions ?? '', summary: conversation!.summary ?? '', history, message, mode, knowledge: facts });
 
     try {
       let result;
@@ -183,84 +164,5 @@ export class AiService {
       if (error instanceof AiProviderError) throw new ServiceUnavailableException('AI_UNAVAILABLE');
       throw error;
     }
-  }
-
-  async createImage(user: JwtUser, input: { prompt: string }) {
-    const organizationId = this.organizationId(user);
-    const profile = await this.profile(organizationId);
-    if (!profile.enabled) throw new ForbiddenException('Trợ lý AI của xưởng đã tắt.');
-    const prompt = sanitizeUserText(String(input.prompt ?? ''), MAX_IMAGE_PROMPT_CHARS);
-    if (!prompt) throw new BadRequestException('Vui lòng mô tả ảnh cần tạo.');
-
-    const limit = profile.imageWeeklyLimit ?? IMAGE_WEEKLY_LIMIT;
-    const before = imageQuota(await this.imageStamps(organizationId, user.sub), this.clock(), limit);
-    if (before.remaining <= 0) {
-      throw new HttpException({ message: 'IMAGE_LIMIT_REACHED', resetsAt: before.resetsAt?.toISOString() ?? null }, HttpStatus.TOO_MANY_REQUESTS);
-    }
-    if (!this.gate.tryAcquire()) throw new HttpException('AI_BUSY', HttpStatus.TOO_MANY_REQUESTS);
-
-    const record = await this.prisma.aiImage.create({ data: { organizationId, userId: user.sub, prompt } });
-    let conversation = await this.prisma.aiConversation.findFirst({ where: { organizationId, userId: user.sub, kind: 'IMAGE' } });
-    if (!conversation) conversation = await this.prisma.aiConversation.create({ data: { organizationId, userId: user.sub, kind: 'IMAGE', title: 'Tạo ảnh' } });
-
-    const name = await this.workshopName(organizationId);
-    try {
-      const askWith = (threadId?: string | null) => this.provider.ask({ threadId, prompt: buildImagePrompt(name, prompt), timeoutMs: 180_000, expectImage: true });
-      let result;
-      try {
-        result = await askWith(conversation.museThreadId);
-      } catch (error) {
-        if (!(error instanceof AiProviderError) || error.code !== 'THREAD_LOST') throw error;
-        result = await askWith(null);
-      }
-      const image = result.images[0];
-      if (!image) {
-        await this.prisma.aiImage.update({ where: { id: record.id }, data: { status: 'FAILED', error: 'NO_IMAGE' } });
-        throw new BadGatewayException('IMAGE_FAILED');
-      }
-      const buffer = Buffer.from(image.base64, 'base64');
-      const object = await this.storage.putUpload({
-        buffer,
-        mime: image.mime,
-        purpose: 'ai-image',
-        ownerOrganizationId: organizationId,
-        ownerUserId: user.sub,
-        extension: EXTENSIONS[image.mime] ?? '.png',
-        metadata: { prompt },
-      });
-      await this.prisma.aiImage.update({
-        where: { id: record.id },
-        data: { status: 'DONE', storageObjectId: object.id, mime: image.mime, width: image.width ?? 0, height: image.height ?? 0 },
-      });
-      if (result.threadId && result.threadId !== conversation.museThreadId) {
-        await this.prisma.aiConversation.update({ where: { id: conversation.id }, data: { museThreadId: result.threadId } });
-      }
-      const quota = imageQuota(await this.imageStamps(organizationId, user.sub), this.clock(), limit);
-      return { id: record.id, url: `/ai/images/${record.id}/file`, quota };
-    } catch (error) {
-      if (error instanceof BadGatewayException) throw error;
-      await this.prisma.aiImage.update({ where: { id: record.id }, data: { status: 'FAILED', error: String((error as Error)?.message ?? error).slice(0, 200) } });
-      if (error instanceof AiProviderError) throw new ServiceUnavailableException('AI_UNAVAILABLE');
-      throw error;
-    }
-  }
-
-  async listImages(user: JwtUser) {
-    const organizationId = this.organizationId(user);
-    const rows = await this.prisma.aiImage.findMany({
-      where: { organizationId, userId: user.sub, status: 'DONE' },
-      orderBy: { createdAt: 'desc' },
-      take: 60,
-      select: { id: true, prompt: true, createdAt: true, width: true, height: true },
-    });
-    return rows.map((row: { id: string; prompt: string; createdAt: Date; width: number; height: number }) => ({ ...row, url: `/ai/images/${row.id}/file` }));
-  }
-
-  async imageFile(user: JwtUser, id: string) {
-    const organizationId = this.organizationId(user);
-    const image = await this.prisma.aiImage.findFirst({ where: { id, organizationId, userId: user.sub, status: 'DONE' } });
-    if (!image?.storageObjectId) throw new NotFoundException('Không tìm thấy ảnh.');
-    const { object, body } = await this.storage.read(image.storageObjectId);
-    return { mime: object.mime, body };
   }
 }

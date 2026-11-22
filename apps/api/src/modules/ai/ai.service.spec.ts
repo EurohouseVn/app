@@ -6,7 +6,7 @@ import { RequestGate } from './ai-policy';
 
 type Row = Record<string, any>;
 
-function fixture(options: { replies?: Array<AiProviderResult | AiProviderError>; gateLimit?: number } = {}) {
+function fixture(options: { replies?: Array<AiProviderResult | AiProviderError>; gateLimit?: number; facts?: string[] } = {}) {
   const profiles: Row[] = [];
   const conversations: Row[] = [];
   const messages: Row[] = [];
@@ -88,7 +88,8 @@ function fixture(options: { replies?: Array<AiProviderResult | AiProviderError>;
     },
     read: async () => ({ object: { mime: 'image/webp' }, body: Buffer.from('x') }),
   };
-  const service = new AiService(prisma, provider, storage, new RequestGate(options.gateLimit ?? 100, 60_000), () => now);
+  const knowledge: any = options.facts ? { retrieve: async () => options.facts } : undefined;
+  const service = new AiService(prisma, provider, storage, new RequestGate(options.gateLimit ?? 100, 60_000), () => now, knowledge);
   return { service, profiles, conversations, messages, images, stored, calls };
 }
 
@@ -166,35 +167,18 @@ test('global gate stops requests when the shared Muse account is saturated', asy
   await assert.rejects(() => service.chat(userA, { message: 'hai' }), /AI_BUSY/);
 });
 
-test('image: stores the file, counts toward the weekly limit and blocks the 11th', async () => {
-  const image = { mime: 'image/webp', base64: Buffer.from('abc').toString('base64'), width: 498, height: 332 };
-  const { service, images, stored, calls } = fixture({
-    replies: Array.from({ length: 12 }, () => ({ threadId: 'ti', text: 'xong', images: [image] })),
-  });
-  let last: any;
-  for (let index = 0; index < 10; index += 1) last = await service.createImage(userA, { prompt: `cửa sổ nhôm ${index}` });
-  assert.equal(last.quota.used, 10);
-  assert.equal(last.quota.remaining, 0);
-  assert.equal(stored.length, 10);
-  assert.equal(stored[0].ownerOrganizationId, 'org-a');
-  assert.equal(calls[0].expectImage, true);
-  assert.equal(images.every((row) => row.status === 'DONE'), true);
-  await assert.rejects(() => service.createImage(userA, { prompt: 'ảnh thứ 11' }), /IMAGE_LIMIT_REACHED/);
-  const other = await service.createImage(userB, { prompt: 'ảnh của xưởng Bình' });
-  assert.equal(other.quota.used, 1);
+test('retrieved Eurohouse knowledge is injected into the prompt of every message', async () => {
+  const { service, calls } = fixture({ facts: ['Hệ 70 Ecento: thanh 70mm, mở quay.'] });
+  const first = await service.chat(userA, { message: 'Hệ 70 là gì?' });
+  await service.chat(userA, { conversationId: first.conversationId, message: 'Còn màu thì sao?' });
+  assert.match(calls[0].prompt, /KIẾN THỨC EUROHOUSE/);
+  assert.match(calls[0].prompt, /thanh 70mm/);
+  assert.match(calls[1].prompt, /thanh 70mm/);
 });
 
-test('image failure does not consume quota and chat replies never leak images', async () => {
-  const { service, images } = fixture({
-    replies: [
-      { threadId: 'ti', text: 'không tạo được', images: [] },
-      { threadId: 't-1', text: 'đây là câu trả lời', images: [{ mime: 'image/png', base64: 'eA==' }] },
-    ],
-  });
-  await assert.rejects(() => service.createImage(userA, { prompt: 'cửa' }), /IMAGE_FAILED/);
-  assert.equal(images[0].status, 'FAILED');
-  const status = await service.status(userA);
-  assert.equal(status.imageQuota.used, 0);
-  const chat = await service.chat(userA, { message: 'vẽ cho tôi cái cửa' });
-  assert.equal((chat as any).images, undefined);
+test('knowledge lookup failure never blocks the answer', async () => {
+  const { service } = fixture();
+  (service as any).knowledge = { retrieve: async () => { throw new Error('boom'); } };
+  const result = await service.chat(userA, { message: 'xin chào' });
+  assert.equal(result.reply, 'Trả lời mẫu');
 });
