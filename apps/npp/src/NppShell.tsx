@@ -44,8 +44,9 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
   const pathname = usePathname();
 
   return (
-    <main style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100vh', background: ui.bg }}>
+    <main className="npp-shell" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100vh', background: ui.bg }}>
       <aside
+        className="npp-sidebar"
         style={{
           background: ui.sidebar,
           borderRight: `1px solid ${ui.border}`,
@@ -58,7 +59,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
           flexDirection: 'column',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 6px' }}>
+        <div className="npp-brand" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 6px' }}>
           <Image src="/logo.png" alt="Eurohouse" width={38} height={38} style={{ borderRadius: 10 }} />
           <div>
             <strong style={{ color: ui.text, fontSize: 17 }}>Eurohouse</strong>
@@ -66,12 +67,12 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
           </div>
         </div>
 
-        <div style={{ marginTop: 20, padding: 14, borderRadius: 14, background: ui.surfaceMuted, border: `1px solid ${ui.border}` }}>
+        <div className="npp-user-card" style={{ marginTop: 20, padding: 14, borderRadius: 14, background: ui.surfaceMuted, border: `1px solid ${ui.border}` }}>
           <p style={{ margin: 0, fontWeight: 700, color: ui.text, fontSize: 14 }}>{user.displayName}</p>
           <p style={{ margin: '4px 0 0', color: ui.brandText, fontSize: 12, fontWeight: 600 }}>{roleLabel[user.role] ?? user.role}</p>
         </div>
 
-        <nav style={{ display: 'grid', gap: 4, marginTop: 20, flex: 1 }}>
+        <nav className="npp-nav" style={{ display: 'grid', gap: 4, marginTop: 20, flex: 1 }}>
           {navItems.map((item) => {
             const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -79,6 +80,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
               <Link
                 key={item.href}
                 href={item.href}
+                className="npp-nav-link"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -99,6 +101,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
         </nav>
 
         <button
+          className="npp-logout"
           onClick={onLogout}
           style={{
             marginTop: 12,
@@ -119,7 +122,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
           <LogOut size={17} /> Đăng xuất
         </button>
       </aside>
-      <section style={{ padding: 32, maxWidth: 1280, width: '100%' }}>{children}</section>
+      <section className="npp-content" style={{ padding: 32, maxWidth: 1280, width: '100%', minWidth: 0 }}>{children}</section>
     </main>
   );
 }

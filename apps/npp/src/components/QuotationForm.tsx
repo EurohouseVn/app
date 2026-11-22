@@ -39,7 +39,7 @@ const defaultItem: QuoteItem = {
 };
 
 const QUOTE_NAMES = ['D1-Cửa chính', 'D2', 'D3', 'CS1', 'CS2', 'CS3', 'VK1', 'VK2', 'VK3', 'OFix 1', 'OFix 2', 'Khác'];
-const SYSTEM_OPTIONS = ['Hệ 55 Euroqueen', 'Hệ 55 Preco', 'Hệ trượt Châu Âu', 'Hệ Trượt quay', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ Thuỷ lực', 'Hệ nội thất', 'Hệ chấn song', 'Hệ phào đại hội', 'Hệ mặt dựng'];
+const SYSTEM_OPTIONS = ['Hệ 55 Vát Cạnh', 'Hệ 55 Preco', 'Hệ trượt Châu Âu', 'Hệ Trượt quay', 'Hệ Ecento 70', 'Hệ Ecento Plus', 'Hệ Thuỷ lực', 'Hệ nội thất', 'Hệ chấn song', 'Hệ phào đại hội', 'Hệ mặt dựng'];
 const COLORS = ['Màu Café Metalic', 'Màu Café thường', 'Màu Xám Ngọc Trai', 'Màu Vân gỗ Cẩm Lai', 'Màu vân gỗ Olak', 'Màu Xám Rita (dự án)'];
 const GLASS_TYPES = ['Kính dán 6.38', 'Kính dán 8.38', 'Kính cường lực 8mm', 'Kính cường lực 10mm', 'Kính cường lực 12mm', 'Kính hộp thường', 'Kính hộp nan đồng', 'Tấm nhôm liền 10mm', 'Tấm nhôm liền 18mm'];
 
@@ -71,7 +71,7 @@ function getDoorTypeOptions(name: string, system: string) {
     case 'Hệ Ecento Plus': return ['Cửa 1 cánh 98', 'Cửa 2 cánh 98', 'Cửa 4 cánh 98', 'Cửa 1 cánh 138', 'Cửa 2 cánh 138', 'Cửa 4 cánh 138', 'Cửa 1 cánh liền phào 138', 'Cửa 2 cánh liền phào 138', 'Cửa 4 cánh liền phào 138'];
     case 'Hệ Trượt quay': return ['Trượt quay 2 cánh', 'Trượt quay 4 cánh'];
     case 'Hệ trượt Châu Âu': return ['Cửa trượt ray đơn 1 cánh', 'Cửa trượt ray đôi 2 cánh', 'Cửa trượt ray đôi 4 cánh', 'Cửa trượt 3 ray - 3 cánh', 'Cửa trượt 3 ray - 6 cánh'];
-    case 'Hệ 55 Euroqueen': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91', 'Cửa 1 cánh VIP 118', 'Cửa 2 cánh VIP 118', 'Cửa 4 cánh VIP 118', 'Cửa 1 cánh liền phào 125', 'Cửa 2 cánh liền phào 125', 'Cửa 4 cánh liền phào 125'];
+    case 'Hệ 55 Vát Cạnh': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91', 'Cửa 1 cánh VIP 118', 'Cửa 2 cánh VIP 118', 'Cửa 4 cánh VIP 118', 'Cửa 1 cánh liền phào 125', 'Cửa 2 cánh liền phào 125', 'Cửa 4 cánh liền phào 125'];
     case 'Hệ 55 Preco': return ['Cửa 1 cánh 91', 'Cửa 2 cánh 91', 'Cửa 4 cánh 91'];
     case 'Hệ chấn song': return ['Chấn song cửa sổ', 'Chấn song trang trí'];
     case 'Hệ nội thất': return ['Cánh nội thất', 'Khung nội thất', 'Vách nội thất'];

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { CatalogSystem, ColorCode, CreateOrderResult, NppFactoryItem } from '@eurohouse/types';
 import { NppPage } from '../../../src/NppPage';
 import { apiGet, apiSend } from '../../../src/lib/api';
-import { currency, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, subtitleStyle, ui } from '../../../src/ui';
+import { ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, subtitleStyle, ui } from '../../../src/ui';
 
 function requestId() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -59,14 +59,13 @@ export default function NewNppOrderPage() {
     .map(({ profile, system }) => {
       const quantity = quantities[profile.id];
       const kg = profile.kgPerMeter * ((profile.barLengthMm || 6000) / 1000) * quantity;
-      return { profile, system, quantity, kg, amount: kg * profile.pricePerKg };
+      return { profile, system, quantity, kg };
     }), [profiles, quantities]);
 
   const totals = useMemo(() => selected.reduce((sum, item) => ({
     bars: sum.bars + item.quantity,
     kg: sum.kg + item.kg,
-    amount: sum.amount + item.amount,
-  }), { bars: 0, kg: 0, amount: 0 }), [selected]);
+  }), { bars: 0, kg: 0 }), [selected]);
 
   function changeQuantity(profileId: string, delta: number) {
     setQuantities((current) => ({ ...current, [profileId]: Math.max(0, (current[profileId] || 0) + delta) }));
@@ -153,16 +152,15 @@ export default function NewNppOrderPage() {
 
       <section style={{ ...panelStyle, marginTop: 16 }}>
         <h2 style={{ margin: '0 0 12px', fontSize: 18, color: ui.text }}>Tổng hợp đơn</h2>
-        {selected.map(({ profile, quantity, kg, amount }) => (
-          <div key={profile.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 20, padding: '8px 0', borderBottom: `1px solid ${ui.border}` }}>
+        {selected.map(({ profile, quantity, kg }) => (
+          <div key={profile.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 20, padding: '8px 0', borderBottom: `1px solid ${ui.border}` }}>
             <span><strong>{profile.code}</strong> - {profile.name}</span>
             <span>{quantity} cây · {kg.toFixed(2)} kg</span>
-            <strong>{currency(Math.round(amount))}</strong>
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 14, fontWeight: 800 }}>
           <span>{totals.bars} cây · {totals.kg.toFixed(2)} kg theo tỷ trọng</span>
-          <span>{currency(Math.round(totals.amount))}</span>
+          <span style={{ color: ui.textMuted }}>Chốt tiền sau khi cân hàng</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
           <label style={labelStyle}>Ghi chú giao hàng<textarea style={{ ...inputStyle, minHeight: 90, paddingTop: 10 }} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Thời gian giao, người nhận..." /></label>

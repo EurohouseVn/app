@@ -21,7 +21,14 @@ type ApiOrder = {
   accessoriesNote?: string;
   status: string;
   totalKg: number;
+  theoreticalTotalKg: number;
+  actualTotalKg?: number | null;
   totalAmount: number;
+  pricingStatus: 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
+  finalUnitPricePerKg?: number | null;
+  pricingDiscountAmount?: number;
+  pricingSurchargeAmount?: number;
+  pricingNote?: string;
   createdAt?: string;
   createdBy?: {
     displayName: string;
@@ -64,6 +71,10 @@ function StatusChip({ status }: { status: string }) {
   return <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>{fixVietnamese(meta.label)}</span>;
 }
 
+function estimatedKg(order: ApiOrder) {
+  return order.theoreticalTotalKg || order.items.reduce((sum, item) => sum + (item.totalKg || 0), 0) || order.totalKg;
+}
+
 export default function NppOrdersPage() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [total, setTotal] = useState(0);
@@ -71,6 +82,10 @@ export default function NppOrdersPage() {
   const [status, setStatus] = useState('ALL');
   const [selected, setSelected] = useState<ApiOrder | null>(null);
   const [deliveryActualKg, setDeliveryActualKg] = useState('');
+  const [deliveryUnitPrice, setDeliveryUnitPrice] = useState('');
+  const [deliveryDiscount, setDeliveryDiscount] = useState('0');
+  const [deliverySurcharge, setDeliverySurcharge] = useState('0');
+  const [deliveryPricingNote, setDeliveryPricingNote] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const pageSize = 10;
@@ -81,10 +96,18 @@ export default function NppOrdersPage() {
       return;
     }
     setSelected(order);
-    setDeliveryActualKg(order.totalKg ? order.totalKg.toFixed(1) : '');
+    setDeliveryActualKg((order.actualTotalKg ?? order.theoreticalTotalKg ?? order.totalKg)?.toFixed(2) || '');
+    setDeliveryUnitPrice(order.finalUnitPricePerKg ? String(order.finalUnitPricePerKg) : '');
+    setDeliveryDiscount(String(order.pricingDiscountAmount ?? 0));
+    setDeliverySurcharge(String(order.pricingSurchargeAmount ?? 0));
+    setDeliveryPricingNote(order.pricingNote ?? '');
     apiGet<ApiOrder>(`/npp/orders/${order.id}`).then((detail) => {
       setSelected(detail);
-      setDeliveryActualKg(detail.totalKg ? detail.totalKg.toFixed(1) : '');
+      setDeliveryActualKg((detail.actualTotalKg ?? detail.theoreticalTotalKg ?? detail.totalKg)?.toFixed(2) || '');
+      setDeliveryUnitPrice(detail.finalUnitPricePerKg ? String(detail.finalUnitPricePerKg) : '');
+      setDeliveryDiscount(String(detail.pricingDiscountAmount ?? 0));
+      setDeliverySurcharge(String(detail.pricingSurchargeAmount ?? 0));
+      setDeliveryPricingNote(detail.pricingNote ?? '');
     }).catch(() => undefined);
   }, []);
 
@@ -118,13 +141,33 @@ export default function NppOrdersPage() {
     setMessage('');
     setError('');
     const actualKg = Number(deliveryActualKg);
+    const unitPrice = Number(deliveryUnitPrice);
+    const discountAmount = Number(deliveryDiscount || 0);
+    const surchargeAmount = Number(deliverySurcharge || 0);
     if (!Number.isFinite(actualKg) || actualKg <= 0) {
-      setError('Nhap kg thuc can cua don giao truoc khi tao phieu.');
+      setError('Nhập kg thực cân của đơn giao trước khi tạo phiếu.');
       return;
     }
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      setError('Nhập đơn giá NPP áp dụng cho đơn giao.');
+      return;
+    }
+    if (!Number.isFinite(discountAmount) || discountAmount < 0 || !Number.isFinite(surchargeAmount) || surchargeAmount < 0) {
+      setError('Giảm giá hoặc phụ phí không hợp lệ.');
+      return;
+    }
+    const finalAmount = Math.round(actualKg * unitPrice) - Math.round(discountAmount) + Math.round(surchargeAmount);
+    if (finalAmount <= 0) return setError('Thành tiền chính thức phải lớn hơn 0.');
+    if (!window.confirm(`Xác nhận chốt đơn ${order.code}\n${actualKg.toLocaleString('vi-VN')} kg × ${unitPrice.toLocaleString('vi-VN')} đ/kg\nThành tiền: ${currency(finalAmount)}\n\nSau khi xác nhận, giá trị này sẽ được gửi tới CSSX.`)) return;
     try {
-      await apiSend(`/npp/orders/${order.id}/delivery`, 'POST', { actualTotalKg: actualKg });
-      setMessage(`Đã tạo đơn giao ${order.code}. Tồn kho NPP đã được trừ theo đơn.`);
+      await apiSend(`/npp/orders/${order.id}/delivery`, 'POST', {
+        actualTotalKg: actualKg,
+        finalUnitPricePerKg: unitPrice,
+        discountAmount,
+        surchargeAmount,
+        pricingNote: deliveryPricingNote.trim() || undefined,
+      });
+      setMessage(`Đã chốt giá và tạo đơn giao ${order.code}. CSSX đã nhận được giá trị chính thức.`);
       load(page, status);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không tạo được đơn giao.');
@@ -189,6 +232,11 @@ export default function NppOrdersPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const factoryContact = selected?.createdBy?.organization;
+  const pricingPreview = Math.max(0,
+    Math.round(Number(deliveryActualKg || 0) * Number(deliveryUnitPrice || 0))
+      - Math.round(Number(deliveryDiscount || 0))
+      + Math.round(Number(deliverySurcharge || 0)),
+  );
 
   return (
     <NppPage>
@@ -217,14 +265,14 @@ export default function NppOrdersPage() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>{['Mã đơn', 'Xưởng', 'Giá trị', 'Trạng thái'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
+                  <tr>{['Mã đơn', 'Xưởng', 'Giá trị chốt', 'Trạng thái'].map((head) => <th key={head} style={tableHeadStyle}>{head}</th>)}</tr>
                 </thead>
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id} onClick={() => selectOrder(order)} style={{ cursor: 'pointer', background: selected?.id === order.id ? ui.brandSoft : 'transparent' }}>
                       <td style={{ ...tableCellStyle, fontWeight: 700 }}>{order.code}</td>
                       <td style={tableCellStyle}>{order.factoryName || 'Chưa xác định'}</td>
-                      <td style={tableCellStyle}>{currency(order.totalAmount)}</td>
+                      <td style={tableCellStyle}>{order.pricingStatus === 'FINALIZED' ? currency(order.totalAmount) : <span style={{ color: ui.textFaint }}>Chờ cân và chốt giá</span>}</td>
                       <td style={tableCellStyle}><StatusChip status={order.status} /></td>
                     </tr>
                   ))}
@@ -250,12 +298,14 @@ export default function NppOrdersPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '16px 0' }}>
                   <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 10, padding: 12 }}>
-                    <small style={{ color: ui.textFaint }}>Tổng kg</small>
-                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{selected.totalKg.toFixed(1)} kg</p>
+                    <small style={{ color: ui.textFaint }}>Kg dự tính</small>
+                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{estimatedKg(selected).toFixed(2)} kg</p>
+                    {selected.actualTotalKg ? <small style={{ color: ui.success }}>Thực cân: {selected.actualTotalKg.toFixed(2)} kg</small> : null}
                   </div>
                   <div style={{ background: ui.surfaceMuted, border: `1px solid ${ui.border}`, borderRadius: 10, padding: 12 }}>
-                    <small style={{ color: ui.textFaint }}>Giá trị</small>
-                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{currency(selected.totalAmount)}</p>
+                    <small style={{ color: ui.textFaint }}>Giá trị chính thức</small>
+                    <p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 16 }}>{selected.pricingStatus === 'FINALIZED' ? currency(selected.totalAmount) : 'Chờ NPP chốt'}</p>
+                    {selected.finalUnitPricePerKg ? <small style={{ color: ui.textFaint }}>{currency(selected.finalUnitPricePerKg)}/kg</small> : null}
                   </div>
                 </div>
 
@@ -293,13 +343,32 @@ export default function NppOrdersPage() {
                   {selected.status === 'NEW' ? (
                     <button onClick={() => receive(selected)} style={ghostButtonStyle}><CheckCircle2 size={14} /> Tiếp nhận</button>
                   ) : null}
-                  {selected.status === 'NPP_REVIEWING' ? (
-                    <>
-                      <label style={{ ...labelStyle, display: 'inline-grid', minWidth: 180 }}>Kg thực cân đơn giao
-                        <input style={{ ...inputStyle, height: 38 }} type="number" step="0.1" value={deliveryActualKg} onChange={(e) => setDeliveryActualKg(e.target.value)} placeholder={selected.totalKg.toFixed(1)} />
+                  {['NPP_REVIEWING', 'CONFIRMED', 'RESERVED'].includes(selected.status) ? (
+                    <div style={{ width: '100%', display: 'grid', gap: 12, padding: 14, border: `1px solid ${ui.border}`, borderRadius: 12, background: ui.surfaceMuted }}>
+                      <strong style={{ color: ui.text }}>Cân hàng và chốt giá giao CSSX</strong>
+                      <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>Kg dự tính: {estimatedKg(selected).toFixed(2)} kg. Giá chỉ được gửi tới CSSX sau bước xác nhận này.</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: 10 }}>
+                        <label style={labelStyle}>Kg thực cân toàn đơn
+                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="0.01" value={deliveryActualKg} onChange={(e) => setDeliveryActualKg(e.target.value)} placeholder={estimatedKg(selected).toFixed(2)} />
+                        </label>
+                        <label style={labelStyle}>Đơn giá NPP (đ/kg)
+                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="100" value={deliveryUnitPrice} onChange={(e) => setDeliveryUnitPrice(e.target.value)} placeholder="Nhập đơn giá giao thực tế" />
+                        </label>
+                        <label style={labelStyle}>Giảm giá (đ)
+                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="1000" value={deliveryDiscount} onChange={(e) => setDeliveryDiscount(e.target.value)} />
+                        </label>
+                        <label style={labelStyle}>Phụ phí (đ)
+                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="1000" value={deliverySurcharge} onChange={(e) => setDeliverySurcharge(e.target.value)} />
+                        </label>
+                      </div>
+                      <label style={labelStyle}>Ghi chú giá
+                        <input style={{ ...inputStyle, height: 38 }} value={deliveryPricingNote} onChange={(e) => setDeliveryPricingNote(e.target.value)} placeholder="Chiết khấu, vận chuyển hoặc thỏa thuận riêng" />
                       </label>
-                      <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brandSoft, color: ui.brandText }}><Truck size={14} /> Tạo đơn giao</button>
-                    </>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div><small style={{ color: ui.textFaint }}>Thành tiền sẽ ghi nhận</small><div style={{ color: ui.brandText, fontSize: 20, fontWeight: 900 }}>{currency(pricingPreview)}</div></div>
+                        <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brand, color: '#fff' }}><Truck size={14} /> Xác nhận giá và tạo đơn giao</button>
+                      </div>
+                    </div>
                   ) : null}
                   {selected.status === 'SHIPPED' || selected.status === 'DELIVERED' || selected.status === 'COMPLETED' ? (
                     <>

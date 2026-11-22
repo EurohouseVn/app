@@ -71,3 +71,56 @@ button:hover:not(:disabled) {
 button:active:not(:disabled) {
   transform: translateY(1px);
 }
+
+/* Khung NPP chuyển từ sidebar sang thanh điều hướng ngang trên màn hình nhỏ. */
+@media (max-width: 760px) {
+  .npp-shell {
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
+
+  .npp-sidebar {
+    position: static !important;
+    height: auto !important;
+    min-width: 0;
+    padding: 12px 14px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ui-border) !important;
+    overflow: hidden !important;
+  }
+
+  .npp-brand {
+    padding: 0 2px !important;
+  }
+
+  .npp-user-card,
+  .npp-logout {
+    display: none !important;
+  }
+
+  .npp-nav {
+    display: flex !important;
+    gap: 6px !important;
+    margin-top: 12px !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .npp-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .npp-nav-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 9px 11px !important;
+  }
+
+  .npp-content {
+    padding: 20px 14px 28px !important;
+    max-width: 100% !important;
+    min-width: 0;
+  }
+}

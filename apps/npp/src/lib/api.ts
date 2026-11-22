@@ -42,6 +42,13 @@ export async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+export function apiGetQuery<T>(path: string, query: Record<string, string | undefined>): Promise<T> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const suffix = params.toString();
+  return apiGet<T>(`${path}${suffix ? `?${suffix}` : ''}`);
+}
+
 export async function apiBlob(path: string): Promise<Blob> {
   const response = await authenticatedFetch(`${apiUrl}${path}`);
   if (!response.ok) {
