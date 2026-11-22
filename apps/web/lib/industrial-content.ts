@@ -78,7 +78,7 @@ function service(input: Omit<IndustrialService, 'eyebrow' | 'description' | 'ima
     ...input,
     eyebrow: 'Dịch vụ nhôm công nghiệp',
     description: `${input.definition} Đội ngũ EUROHOUSE sẽ dựa trên bản vẽ và mục tiêu sử dụng để trao đổi phương án phù hợp.`,
-    image: '/images/v5/factory-coating.webp',
+    image: '/images/v4/factory-coating-line.jpg',
     faq: [
       { question: 'Khi nào có thể nhận phản hồi phương án?', answer: 'Thời gian phản hồi phụ thuộc mức độ đầy đủ của bản vẽ và yêu cầu đầu ra. Hồ sơ rõ ràng giúp quá trình trao đổi nhanh và tập trung hơn.' },
       { question: 'Có thể gửi hồ sơ chưa hoàn chỉnh không?', answer: 'Có. Hãy gửi phần dữ liệu đang có cùng mô tả mục đích sử dụng; đội ngũ EUROHOUSE sẽ chỉ ra nội dung cần bổ sung cho bước tiếp theo.' },

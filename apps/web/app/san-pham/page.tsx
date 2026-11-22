@@ -5,7 +5,7 @@ import { StructuredData } from '@/components/StructuredData';
 import { site } from '@/lib/site';
 import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = buildPageMetadata({ title: 'Hệ nhôm Eurohouse và sản phẩm', description: 'Tra cứu ECENTO 70, ECENTO PLUS, Hệ 55 Vát Cạnh, PRECO cùng các hệ cửa và mặt dựng chuyên dụng của EUROHOUSE.', canonicalPath: '/san-pham', image: '/images/v5/product-ecento-70.webp', imageAlt: 'Các hệ nhôm và sản phẩm Eurohouse' });
+export const metadata: Metadata = buildPageMetadata({ title: 'Hệ nhôm Eurohouse và sản phẩm', description: 'Tra cứu ECENTO 70, ECENTO PLUS, Hệ 55 Vát Cạnh, PRECO cùng các hệ cửa và mặt dựng chuyên dụng của EUROHOUSE.', canonicalPath: '/san-pham', image: '/images/v4/ecento-70.jpg', imageAlt: 'Các hệ nhôm và sản phẩm Eurohouse' });
 
 export default function ProductsPage() {
   return (

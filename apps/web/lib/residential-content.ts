@@ -15,10 +15,10 @@ export type ResidentialItem = {
 };
 
 export const residentialProducts: ResidentialItem[] = [
-  item('ecento-70', 'ECENTO 70', 'EU-70', 'Dòng nhôm kiến trúc', 'Hệ nhôm đa khoang dành cho không gian cần nâng cao cách âm và cách nhiệt.', '/images/v5/product-ecento-70.webp', ['Cửa đi', 'Cửa sổ', 'Vách kính'], 'product'),
-  item('ecento-plus', 'ECENTO PLUS', 'EU-ECPLUS', 'Dòng nhôm kiến trúc', 'Giải pháp rãnh K Châu Âu với thiết kế phẳng và cấu hình giấu vít.', '/images/v5/product-ecento-plus.webp', ['Nhà ở', 'Biệt thự', 'Công trình cao cấp'], 'product'),
-  item('he-55-vat-canh', 'HỆ 55 VÁT CẠNH', 'EU-55', 'Dòng nhôm kiến trúc', 'Hệ nhôm cân bằng giữa thẩm mỹ, công năng và khả năng triển khai.', '/images/v5/product-he-55.webp', ['Nhà phố', 'Văn phòng', 'Công trình dân dụng'], 'product'),
-  item('preco', 'PRECO', 'EU-PRECO', 'Dòng nhôm kiến trúc', 'Giải pháp hệ 55 đa năng cho các cấu hình cửa phổ biến.', '/images/v5/product-preco.webp', ['Nhà ở', 'Cải tạo', 'Công trình quy mô vừa'], 'product'),
+  item('ecento-70', 'ECENTO 70', 'EU-70', 'Dòng nhôm kiến trúc', 'Hệ nhôm đa khoang dành cho không gian cần nâng cao cách âm và cách nhiệt.', '/images/v4/ecento-70.jpg', ['Cửa đi', 'Cửa sổ', 'Vách kính'], 'product'),
+  item('ecento-plus', 'ECENTO PLUS', 'EU-ECPLUS', 'Dòng nhôm kiến trúc', 'Giải pháp rãnh K Châu Âu với thiết kế phẳng và cấu hình giấu vít.', '/images/v4/ecento-plus.jpg', ['Nhà ở', 'Biệt thự', 'Công trình cao cấp'], 'product'),
+  item('he-55-vat-canh', 'HỆ 55 VÁT CẠNH', 'EU-55', 'Dòng nhôm kiến trúc', 'Hệ nhôm cân bằng giữa thẩm mỹ, công năng và khả năng triển khai.', '/images/v4/he-55-vat-canh.jpg', ['Nhà phố', 'Văn phòng', 'Công trình dân dụng'], 'product'),
+  item('preco', 'PRECO', 'EU-PRECO', 'Dòng nhôm kiến trúc', 'Giải pháp hệ 55 đa năng cho các cấu hình cửa phổ biến.', '/images/v4/preco.jpg', ['Nhà ở', 'Cải tạo', 'Công trình quy mô vừa'], 'product'),
 ];
 
 export const specialistSystems: ResidentialItem[] = [
@@ -51,7 +51,7 @@ function item(slug: string, title: string, code: string, eyebrow: string, summar
   return { ...guidance, slug, title, code, eyebrow, summary, image, applications, category, relatedLinks: [{ label: 'Xem catalog sản phẩm', href: '/tai-nguyen/catalog' }, { label: 'Nhận tư vấn lựa chọn hệ', href: `/lien-he?san-pham=${slug}` }, { label: 'So sánh các hệ nhôm', href: '/nhom-dan-dung/so-sanh' }] };
 }
 function solution(slug: string, title: string, summary: string): ResidentialItem {
-  return { slug, title, eyebrow: 'Giải pháp theo công trình', summary, description: `${summary} Việc lựa chọn bắt đầu từ vị trí ô cửa, kiểu mở, tần suất sử dụng và yêu cầu thẩm mỹ của dự án.`, image: '/images/v5/project-villa.webp', applications: [title], suitableFor: [title, 'Đơn vị thiết kế và thi công cần định hướng hệ'], benefits: ['Gắn lựa chọn hệ với bối cảnh công trình', 'Phối hợp cửa, mặt dựng và bề mặt nhất quán', 'Có đầu mối tư vấn từ nhu cầu đến tài liệu'], selectionNotes: ['Chuẩn bị mặt bằng, mặt đứng hoặc ảnh hiện trạng', 'Nêu rõ kiểu mở, màu sắc và mốc tiến độ mong muốn'], relatedLinks: [{ label: 'Xem catalog sản phẩm', href: '/tai-nguyen/catalog' }, { label: 'Gửi nhu cầu công trình', href: '/lien-he' }], category: 'solution' };
+  return { slug, title, eyebrow: 'Giải pháp theo công trình', summary, description: `${summary} Việc lựa chọn bắt đầu từ vị trí ô cửa, kiểu mở, tần suất sử dụng và yêu cầu thẩm mỹ của dự án.`, image: '/images/v4/hero-house.webp', applications: [title], suitableFor: [title, 'Đơn vị thiết kế và thi công cần định hướng hệ'], benefits: ['Gắn lựa chọn hệ với bối cảnh công trình', 'Phối hợp cửa, mặt dựng và bề mặt nhất quán', 'Có đầu mối tư vấn từ nhu cầu đến tài liệu'], selectionNotes: ['Chuẩn bị mặt bằng, mặt đứng hoặc ảnh hiện trạng', 'Nêu rõ kiểu mở, màu sắc và mốc tiến độ mong muốn'], relatedLinks: [{ label: 'Xem catalog sản phẩm', href: '/tai-nguyen/catalog' }, { label: 'Gửi nhu cầu công trình', href: '/lien-he' }], category: 'solution' };
 }
 
 function productGuidanceFor(slug: string): Pick<ResidentialItem, 'description' | 'suitableFor' | 'benefits' | 'selectionNotes'> | undefined {

@@ -7,7 +7,7 @@ import { ConsultationCta } from '@/components/content/ConsultationCta';
 import { residentialProducts, residentialSolutions, specialistSystems } from '@/lib/residential-content';
 import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = buildPageMetadata({ title: 'Nhôm dân dụng cao cấp', description: 'Khám phá hệ nhôm EUROHOUSE cho nhà phố, biệt thự, khách sạn và dự án: ECENTO 70, ECENTO PLUS, Hệ 55 Vát Cạnh, PRECO và hệ chuyên dụng.', canonicalPath: '/nhom-dan-dung', image: '/images/v5/project-villa.webp', imageAlt: 'Ứng dụng hệ nhôm dân dụng Eurohouse trong công trình' });
+export const metadata: Metadata = buildPageMetadata({ title: 'Nhôm dân dụng cao cấp', description: 'Khám phá hệ nhôm EUROHOUSE cho nhà phố, biệt thự, khách sạn và dự án: ECENTO 70, ECENTO PLUS, Hệ 55 Vát Cạnh, PRECO và hệ chuyên dụng.', canonicalPath: '/nhom-dan-dung', image: '/images/v4/hero-house.webp', imageAlt: 'Ứng dụng hệ nhôm dân dụng Eurohouse trong công trình' });
 
 export default function ResidentialPage() {
   return <>

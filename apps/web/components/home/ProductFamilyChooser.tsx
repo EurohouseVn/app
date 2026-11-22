@@ -10,7 +10,7 @@ const families = [
     description: 'Cửa đi, cửa sổ, vách kính, mặt dựng cho nhà ở, biệt thự và công trình. Có catalog và mặt cắt để chủ nhà, kiến trúc sư và thợ cùng trao đổi.',
     href: '/nhom-dan-dung',
     action: homepageCopy.residential.action,
-    image: '/images/v5/project-villa.webp',
+    image: '/images/v4/hero-house.webp',
     alt: 'Biệt thự hiện đại sử dụng hệ cửa nhôm EUROHOUSE',
   },
   {
