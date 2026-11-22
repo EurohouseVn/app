@@ -15,10 +15,10 @@ export type ResidentialItem = {
 };
 
 export const residentialProducts: ResidentialItem[] = [
-  item('ecento-70', 'ECENTO 70', 'EU-70', 'Dòng nhôm kiến trúc', 'Hệ nhôm đa khoang dành cho không gian cần nâng cao cách âm và cách nhiệt.', '/images/v4/ecento-70.jpg', ['Cửa đi', 'Cửa sổ', 'Vách kính'], 'product'),
-  item('ecento-plus', 'ECENTO PLUS', 'EU-ECPLUS', 'Dòng nhôm kiến trúc', 'Giải pháp rãnh K Châu Âu với thiết kế phẳng và cấu hình giấu vít.', '/images/v4/ecento-plus.jpg', ['Nhà ở', 'Biệt thự', 'Công trình cao cấp'], 'product'),
-  item('he-55-vat-canh', 'HỆ 55 VÁT CẠNH', 'EU-55', 'Dòng nhôm kiến trúc', 'Hệ nhôm cân bằng giữa thẩm mỹ, công năng và khả năng triển khai.', '/images/v4/he-55-vat-canh.jpg', ['Nhà phố', 'Văn phòng', 'Công trình dân dụng'], 'product'),
-  item('preco', 'PRECO', 'EU-PRECO', 'Dòng nhôm kiến trúc', 'Giải pháp hệ 55 đa năng cho các cấu hình cửa phổ biến.', '/images/v4/preco.jpg', ['Nhà ở', 'Cải tạo', 'Công trình quy mô vừa'], 'product'),
+  item('ecento-70', 'ECENTO 70', 'EU-70', 'Dòng nhôm kiến trúc', 'Hệ nhôm đa khoang dành cho không gian cần nâng cao cách âm và cách nhiệt.', '/images/gallery/ecento-70-mat-cat.webp', ['Cửa đi', 'Cửa sổ', 'Vách kính'], 'product'),
+  item('ecento-plus', 'ECENTO PLUS', 'EU-ECPLUS', 'Dòng nhôm kiến trúc', 'Giải pháp rãnh K Châu Âu với thiết kế phẳng và cấu hình giấu vít.', '/images/gallery/ecento-plus-mat-cat.webp', ['Nhà ở', 'Biệt thự', 'Công trình cao cấp'], 'product'),
+  item('he-55-vat-canh', 'HỆ 55 VÁT CẠNH', 'EU-55', 'Dòng nhôm kiến trúc', 'Hệ nhôm cân bằng giữa thẩm mỹ, công năng và khả năng triển khai.', '/images/gallery/he-55-mat-cat.webp', ['Nhà phố', 'Văn phòng', 'Công trình dân dụng'], 'product'),
+  item('preco', 'PRECO', 'EU-PRECO', 'Dòng nhôm kiến trúc', 'Giải pháp hệ 55 đa năng cho các cấu hình cửa phổ biến.', '/images/gallery/preco-mat-cat.webp', ['Nhà ở', 'Cải tạo', 'Công trình quy mô vừa'], 'product'),
 ];
 
 export const specialistSystems: ResidentialItem[] = [

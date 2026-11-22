@@ -6,8 +6,8 @@ import { homepageFamilyLabel, mergeHomepageProjects } from '@/lib/homepage-card-
 import { homepageCopy } from '@/lib/homepage-presentation';
 
 const fallback = [
-  { slug: 'biet-thu-hien-dai', title: 'Biệt thự hiện đại · Hệ cửa cao cấp', summary: 'Không gian mở với hệ cửa nhôm đồng bộ cho kiến trúc nhà ở.', image: '/images/v4/hero-house.webp', href: '/du-an', family: 'RESIDENTIAL' },
-  { slug: 'khong-gian-mo', title: 'Không gian mở · Khẩu độ lớn', summary: 'Ứng dụng cửa và vách kính để kết nối ánh sáng với không gian sống.', image: '/images/v4/installed-window.jpg', href: '/du-an', family: 'RESIDENTIAL' },
+  { slug: 'biet-thu-hien-dai', title: 'Cửa đi vân gỗ kính hoa văn', summary: 'Cửa nhôm vân gỗ khung phào, kính ốp nan đồng cho nhà ở truyền thống.', image: '/images/gallery/cua-go-khung-trang-tri.webp', href: '/du-an', family: 'RESIDENTIAL' },
+  { slug: 'khong-gian-mo', title: 'Cửa xám nhiều cánh, sảnh lớn', summary: 'Cửa đi bốn cánh màu xám than, tay nắm đồng, mở ra sảnh nền đá.', image: '/images/gallery/cua-xam-ben-trong-hoa-vien.webp', href: '/du-an', family: 'RESIDENTIAL' },
   { slug: 'bien-dang-theo-ung-dung', title: 'Biên dạng theo ứng dụng', summary: 'Từ yêu cầu sử dụng đến profile và bề mặt hoàn thiện phù hợp.', image: '/images/v4/factory-coating-line.jpg', href: '/du-an', family: 'INDUSTRIAL' },
 ] as const;
 
