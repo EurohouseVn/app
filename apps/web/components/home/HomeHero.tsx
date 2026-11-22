@@ -14,10 +14,10 @@ export function HomeHero() {
   return (
     <section className="hp-hero" id="top" data-home-chapter="hero" aria-labelledby="home-hero-title">
       <picture className="hp-hero-media">
-        <source media="(max-width: 760px)" srcSet="/images/v5/hero-ecento-70-mobile.webp" />
+        <source media="(max-width: 760px)" srcSet="/images/v4/hero-house-mobile.webp" />
         <img
-          src="/images/v5/hero-ecento-70.webp"
-          alt="Mặt cắt profile ECENTO 70 đặt trước một ngôi nhà mái ngói hoàn thiện"
+          src="/images/v4/hero-house.webp"
+          alt="Biệt thự mái ngói lắp cửa nhôm EUROHOUSE ECENTO"
           fetchPriority="high"
           decoding="async"
         />

@@ -41,7 +41,7 @@ test('brand frame uses the approved logo and portal hierarchy', () => {
   const footerSource = source('../components/Footer.tsx');
 
   assert.match(heroSource, /data-home-chapter="hero"/);
-  assert.match(heroSource, /hero-ecento-70-mobile/);
+  assert.match(heroSource, /hero-house-mobile/);
   assert.match(headerSource, /brandAssets\.logo/);
   assert.match(headerSource, /Cổng NPP/);
   assert.match(footerSource, /brandAssets\.logo/);
