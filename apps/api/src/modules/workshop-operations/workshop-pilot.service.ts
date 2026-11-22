@@ -33,9 +33,8 @@ export class WorkshopPilotService {
   async flags(user: JwtUser, requestedOrganizationId?: string): Promise<PilotFlags & { source: string; version: number }> {
     const organizationId = this.access.organization(user, requestedOrganizationId);
     const config = await this.prisma.workshopPilotConfig.findUnique({ where: { organizationId } });
-    // Công trình, thu chi và khách hàng là chức năng lõi của mọi cơ sở: không cần cấu hình thí điểm.
-    // Các module vận hành sâu (kho, sản xuất, QC, lắp đặt, bảo hành) vẫn phải được bật riêng.
-    if (!config) return { ...DISABLED_PILOT_FLAGS, survey: true, source: 'NO_TENANT_CONFIG', version: 0 };
+    // Bật theo từng xưởng: không có cấu hình riêng thì tắt hết (mỗi xưởng là một khu vực làm việc độc lập).
+    if (!config) return { ...DISABLED_PILOT_FLAGS, source: 'NO_TENANT_CONFIG', version: 0 };
     return {
       survey: config.active && config.survey,
       inventory: config.active && config.inventory,

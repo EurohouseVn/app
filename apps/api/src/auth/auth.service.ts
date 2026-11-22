@@ -139,7 +139,7 @@ export class AuthService {
           phone: input.phone?.trim() || null,
         },
       });
-      return tx.user.create({
+      const created = await tx.user.create({
         data: {
           email: identities.emailNormalized ?? null,
           emailNormalized: identities.emailNormalized ?? null,
@@ -153,6 +153,11 @@ export class AuthService {
           verifiedAt: null,
         },
       });
+      // Mỗi xưởng có cấu hình riêng, độc lập: chỉ bật nhóm lõi (công trình, thu chi, khách hàng).
+      await tx.workshopPilotConfig.create({
+        data: { organizationId: organization.id, active: true, survey: true, version: 1, enabledAt: new Date(), updatedById: created.id },
+      });
+      return created;
     });
     const channel = 'EMAIL' as const;
     const target = identities.emailNormalized;
@@ -161,6 +166,7 @@ export class AuthService {
     } catch (deliveryError) {
       await this.prisma.$transaction(async (tx) => {
         await tx.user.delete({ where: { id: user.id } });
+        await tx.workshopPilotConfig.deleteMany({ where: { organizationId: user.organizationId! } });
         await tx.organization.delete({ where: { id: user.organizationId! } });
       }).catch(() => undefined);
       throw deliveryError;

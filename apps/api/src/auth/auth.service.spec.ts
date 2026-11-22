@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 function fixture(existingUsers: any[] = [], verificationFailure?: Error) {
   const users = [...existingUsers];
   const organizations: any[] = [];
+  const pilotConfigs: any[] = [];
   const prisma: any = {
     user: {
       findFirst: async ({ where }: any) => users.find((user) =>
@@ -35,6 +36,10 @@ function fixture(existingUsers: any[] = [], verificationFailure?: Error) {
       findFirst: async () => null,
       delete: async ({ where }: any) => { const index = organizations.findIndex((item) => item.id === where.id); if (index >= 0) organizations.splice(index, 1); },
     },
+    workshopPilotConfig: {
+      create: async ({ data }: any) => { pilotConfigs.push(data); return data; },
+      deleteMany: async ({ where }: any) => { for (let i = pilotConfigs.length - 1; i >= 0; i--) if (pilotConfigs[i].organizationId === where.organizationId) pilotConfigs.splice(i, 1); return { count: 0 }; },
+    },
     $transaction: async (work: (tx: any) => unknown) => work(prisma),
   };
   const jwt = { signAsync: async () => 'signed-jwt' };
@@ -53,7 +58,7 @@ function fixture(existingUsers: any[] = [], verificationFailure?: Error) {
     }),
   };
   const service = new AuthService(prisma, jwt as never, verification as never);
-  return { service, users, organizations, challenges };
+  return { service, users, organizations, challenges, pilotConfigs };
 }
 
 test('public workshop registration grants registered modules but not Eurohouse formulas or ordering', async () => {
@@ -168,4 +173,17 @@ test('identifier login rejects unverified workshops and accepts normalized email
   users[0].verifiedAt = new Date();
   assert.equal((await service.login(' USER@example.com ', 'secret123')).user.token, 'signed-jwt');
   assert.equal((await service.login('+84912345678', 'secret123')).user.token, 'signed-jwt');
+});
+
+test('each newly registered workshop gets its own pilot config with only the core survey module on', async () => {
+  const { service, organizations, pilotConfigs } = fixture();
+  await service.registerWorkshop({ displayName: 'An', organizationName: 'Xưởng An', password: 'secret123', email: 'an@example.com' });
+  await service.registerWorkshop({ displayName: 'Bình', organizationName: 'Xưởng Bình', password: 'secret123', email: 'binh@example.com' });
+  assert.equal(pilotConfigs.length, 2);
+  assert.deepEqual(pilotConfigs.map((config) => config.organizationId), organizations.map((organization) => organization.id));
+  for (const config of pilotConfigs) {
+    assert.equal(config.active, true);
+    assert.equal(config.survey, true);
+    assert.equal(Boolean(config.inventory || config.shopFloor || config.quality || config.installation || config.warranty), false);
+  }
 });
