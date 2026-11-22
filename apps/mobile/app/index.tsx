@@ -18,6 +18,7 @@ import { featureUiState } from '../src/lib/eurohouseFeatureAccess';
 import { fetchWeatherForecast, initialWeatherLocation, weatherIcon, weatherText } from '../src/lib/weather';
 import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import heroImage from '../assets/brand/hero-ecento-70.jpg';
+import assistantAvatar from '../assets/brand/assistant-avatar.png';
 import logoLandscape from '../assets/brand/logo-landscape.png';
 import productEcento70 from '../assets/brand/product-ecento-70.jpg';
 import productEcentoPlus from '../assets/brand/product-ecento-plus.jpg';
@@ -368,6 +369,20 @@ function AuthenticatedHomeScreen() {
             )}
           </Card>
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Mở Bé Eu, trợ lý AI của xưởng"
+            onPress={() => router.push('/assistant' as Href)}
+            style={({ pressed }) => [hs.beEu, pressed && { opacity: 0.9 }]}
+          >
+            <Image source={assistantAvatar} style={hs.beEuAvatar} />
+            <View style={wsStyles.grow}>
+              <Text style={hs.beEuTitle}>Hỏi Bé Eu</Text>
+              <Text style={hs.beEuSub} numberOfLines={2}>Trợ lý AI riêng của xưởng: giải đáp nhôm kính, báo giá, công trình và tạo ảnh.</Text>
+            </View>
+            <View style={hs.beEuGo}><Icon name="message-circle" size={18} color="#FFFFFF" /></View>
+          </Pressable>
+
           {error ? <View style={{ marginTop: 10 }}><Banner tone="error" title="Chưa tải đủ dữ liệu" text={error} onPress={() => void loadDashboard(true)} /></View> : null}
 
           <BrandSectionHead kicker="Công cụ" action={<Pressable onPress={() => setActionsOpen(true)}><Text style={hs.seeAll}>Tất cả</Text></Pressable>} />
@@ -491,6 +506,11 @@ const hs = StyleSheet.create({
   chipText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '700', flexShrink: 1 },
   chipStrong: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   body: { paddingHorizontal: 14 },
+  beEu: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 8, backgroundColor: '#FFF2E8', borderWidth: 1, borderColor: '#FED7AA' },
+  beEuAvatar: { width: 58, height: 58 },
+  beEuTitle: { color: '#C65309', fontSize: 15, fontWeight: '900' },
+  beEuSub: { color: '#475467', fontSize: 12, lineHeight: 17, marginTop: 2 },
+  beEuGo: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F47C20', alignItems: 'center', justifyContent: 'center' },
   todayCard: { marginTop: -42, shadowColor: '#101828', shadowOpacity: 0.1, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 4 },
   todayHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
   todayTitle: { color: '#151A22', fontSize: 15, fontWeight: '900' },
