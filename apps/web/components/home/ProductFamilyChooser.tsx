@@ -10,8 +10,8 @@ const families = [
     description: 'Cửa đi, cửa sổ, vách kính, mặt dựng cho nhà ở, biệt thự và công trình. Có catalog và mặt cắt để chủ nhà, kiến trúc sư và thợ cùng trao đổi.',
     href: '/nhom-dan-dung',
     action: homepageCopy.residential.action,
-    image: '/images/gallery/cua-xam-co-dien.webp',
-    alt: 'Cửa đi nhôm màu xám phong cách cổ điển do EUROHOUSE thực hiện',
+    image: '/images/gallery/cua-go-kinh-phong-khach.webp',
+    alt: 'Cửa đi nhôm vân gỗ kính hoa văn do EUROHOUSE thực hiện',
   },
   {
     id: 'industrial',
@@ -19,8 +19,8 @@ const families = [
     description: 'Profile theo bản vẽ, chi tiết máy, khung pin mặt trời, đùn thuê và gia công cho doanh nghiệp sản xuất.',
     href: '/nhom-cong-nghiep',
     action: homepageCopy.industrial.action,
-    image: '/images/gallery/uon-cong-profile.webp',
-    alt: 'Profile nhôm uốn cong theo bản vẽ trong xưởng gia công EUROHOUSE',
+    image: '/images/gallery/nhom-cong-nghiep-bia.webp',
+    alt: 'Các thanh profile nhôm công nghiệp EUROHOUSE',
   },
 ] as const;
 
