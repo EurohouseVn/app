@@ -33,7 +33,9 @@ export function HomeHero() {
             <Link className="hp-button hp-button-light" href="/yeu-cau-bao-gia-cong-nghiep">{hero.secondaryAction} <ArrowRight size={18} aria-hidden="true" /></Link>
           </div>
         </div>
-        <dl className="hp-hero-facts" aria-label="EUROHOUSE trong con số">
+      </div>
+      <div className="hp-hero-band">
+        <dl className="container hp-hero-facts" aria-label="EUROHOUSE trong con số">
           {facts.map((fact) => <div key={fact.label}><dt>{fact.value}</dt><dd>{fact.label}</dd></div>)}
         </dl>
       </div>
