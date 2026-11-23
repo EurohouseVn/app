@@ -67,7 +67,7 @@
   "kind": "turn",
   "tag": "GIẢI PHÁP",
   "title": "EUROHOUSE WORKSHOP OS",
-  "sub": "Cả xưởng trong một chiếc điện thoại",
+  "sub": "Đã có trên App Store và CH Play",
   "text": "Dừng lại! Eurohouse Workshop OS, cả xưởng trong một chiếc điện thoại!"
  },
  {
@@ -106,7 +106,7 @@
   "clip": "c18-assistant",
   "tag": "TRỢ LÝ AI",
   "title": "Bé Eu · trợ lý AI",
-  "sub": "Trò chuyện · tạo ảnh phối cảnh",
+  "sub": "Trò chuyện · quy tắc riêng của xưởng",
   "text": "Thêm Bé Eu, trợ lý AI riêng cho xưởng bạn!",
   "short": true,
   "mascot": true
@@ -117,6 +117,6 @@
   "title": "EUROHOUSE",
   "sub": "Nhôm của sự thịnh vượng",
   "tag": "app.nhomeurohouse.com",
-  "text": "Dùng thử ngay! Nhôm của sự thịnh vượng!"
+  "text": "Đã có trên App Store và CH Play! Nhôm của sự thịnh vượng!"
  }
 ]

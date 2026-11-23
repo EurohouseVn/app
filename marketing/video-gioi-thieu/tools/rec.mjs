@@ -10,11 +10,12 @@ const RIPPLE = `(() => {
   document.documentElement.appendChild(s);
   addEventListener('pointerdown', (e) => { const d = document.createElement('div'); d.className = 'ehr'; d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px'; document.documentElement.appendChild(d); setTimeout(() => d.remove(), 700); }, true);
 })();`;
-export async function record(name, fn, { auth = true, w = 390, h = 844 } = {}) {
+export async function record(name, fn, { auth = true, w = 390, h = 844, init = '' } = {}) {
   const dir = path.join(process.env.TEMP, 'eh-frames', name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   const browser = await chromium.launch({ channel: 'msedge' });
   const ctx = await browser.newContext({ ...(auth ? { storageState: STATE } : {}), viewport: { width: w, height: h }, deviceScaleFactor: 2, locale: 'vi-VN' });
   await ctx.addInitScript(RIPPLE);
+  if (init) await ctx.addInitScript(init);
   const page = await ctx.newPage();
   const cdp = await ctx.newCDPSession(page);
   const frames = []; let n = 0; let running = false;

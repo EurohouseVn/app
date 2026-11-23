@@ -109,7 +109,7 @@
   "kind": "turn",
   "tag": "GIẢI PHÁP",
   "title": "EUROHOUSE WORKSHOP OS",
-  "sub": "Cả xưởng nhôm kính trong một chiếc điện thoại",
+  "sub": "Đã có trên App Store và CH Play",
   "text": "Dừng lại! Có một cách gọn hơn nhiều. Eurohouse Workshop OS: cả xưởng nhôm kính, gói gọn trong một chiếc điện thoại!"
  },
  {
@@ -271,17 +271,17 @@
   "clip": "c18-assistant",
   "tag": "TRỢ LÝ AI",
   "title": "Bé Eu · trợ lý AI của xưởng bạn",
-  "sub": "Trò chuyện · tạo ảnh · quy tắc riêng",
-  "text": "Và đây là Bé Eu, trợ lý AI riêng của từng xưởng! Hỏi gì đáp nấy, soạn lời chào khách, tạo ảnh phối cảnh, và nhớ quy tắc riêng của xưởng bạn!",
+  "sub": "Trò chuyện · soạn lời chào · quy tắc riêng",
+  "text": "Và đây là Bé Eu, trợ lý AI riêng của từng xưởng! Hỏi gì đáp nấy, soạn lời chào gửi khách, và nhớ quy tắc riêng của xưởng bạn!",
   "mascot": true
  },
  {
   "id": "f19-pwa",
   "kind": "pwa",
-  "title": "Cài như một ứng dụng",
-  "sub": "app.nhomeurohouse.com",
-  "tag": "CÀI ĐẶT",
-  "text": "Cài như một ứng dụng ngay trên điện thoại. Mở a, p, p, chấm nhom euro house chấm com, là dùng được liền!"
+  "title": "Tải ngay hôm nay",
+  "sub": "App Store · CH Play · app.nhomeurohouse.com",
+  "tag": "ĐÃ CÓ TRÊN APP STORE VÀ CH PLAY",
+  "text": "Eurohouse Workshop OS đã có trên App Store và CH Play! Tải ngay, hoặc cài thẳng từ trang web, a, p, p, chấm nhom euro house chấm com!"
  },
  {
   "id": "f20-outro",
@@ -289,6 +289,6 @@
   "title": "EUROHOUSE",
   "sub": "Nhôm của sự thịnh vượng",
   "tag": "app.nhomeurohouse.com",
-  "text": "Eurohouse Workshop OS. Quản lý xưởng gọn trong tay! Nhôm của sự thịnh vượng!"
+  "text": "Eurohouse Workshop OS, đã có trên App Store và CH Play! Quản lý xưởng gọn trong tay. Nhôm của sự thịnh vượng!"
  }
 ]
