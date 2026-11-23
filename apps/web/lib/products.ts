@@ -68,7 +68,7 @@ export const products: ProductSystem[] = [
     eyebrow: 'Tiêu chuẩn 55 đa năng',
     summary: 'Giải pháp profile tiêu chuẩn cho kiến trúc dân dụng và các dự án cần tối ưu ngân sách.',
     description: 'PRECO cung cấp dải hệ 55 đa năng, từ mặt cắt vát cạnh đến rãnh K, phù hợp các cấu hình cửa phổ biến và kế hoạch thi công cần kiểm soát chi phí.',
-    warranty: '10 năm',
+    warranty: '5 năm',
     colors: ['Xám ghi', 'Cafe', 'Trắng'],
     features: ['Độ dày định hướng 1 mm', 'Dễ triển khai', 'Dải mã phổ biến', 'Tối ưu chi phí'],
     applications: ['Nhà ở dân dụng', 'Nhà cho thuê', 'Công trình quy mô vừa', 'Cải tạo'],

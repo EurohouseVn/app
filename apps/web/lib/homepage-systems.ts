@@ -119,7 +119,7 @@ export const homeMainSystems: HomeMainSystem[] = [
     imageAlt: 'Mặt cắt thực tế khung cánh hệ PRECO màu xám',
     imageFit: 'contain',
     href: '/nhom-dan-dung/dong-san-pham/preco',
-    warranty: '10 năm',
+    warranty: '5 năm',
     colors: ['Xám ghi', 'Cafe', 'Trắng'],
     features: ['Độ dày định hướng 1 mm', 'Dễ triển khai', 'Dải mã phổ biến', 'Tối ưu chi phí'],
     suitableFor: ['Nhà ở, công trình cải tạo, dự án quy mô vừa', 'Cửa đi, cửa sổ cấu hình thông dụng', 'Chủ đầu tư cần kiểm soát chi phí'],
