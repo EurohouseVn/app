@@ -4,7 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { View, ActivityIndicator, AppState, Platform } from 'react-native';
 import { colors } from '@eurohouse/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tabBarIcon } from '../src/components/Icon';
+import { KeyboardInset } from '../src/components/KeyboardInset';
 import { AuthProvider, useAuth } from '../src/lib/auth';
 import AuthScreen from './auth';
 import { syncOperationsQueue } from '../src/lib/localProjects';
@@ -24,6 +26,7 @@ function SessionStatusBar() {
 
 function Gate() {
   const { user, ready, sessionTier } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync().catch(() => undefined);
@@ -47,19 +50,22 @@ function Gate() {
   }
 
   if (!user && sessionTier !== 'GUEST') {
-    return <AuthScreen />;
+    return <KeyboardInset><AuthScreen /></KeyboardInset>;
   }
 
   return (
+    <KeyboardInset>
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.brandOrange,
         tabBarInactiveTintColor: '#9AA0A6',
         tabBarStyle: {
+          // Tràn mép: thanh điều hướng của máy nằm đè lên đáy app nên phải nâng thanh tab lên đúng bằng phần đó.
           height: 78,
+          marginBottom: 12 + insets.bottom,
           marginHorizontal: 16,
-          marginBottom: 12,
           borderRadius: 24,
           backgroundColor: colors.white,
           borderTopWidth: 0,
@@ -115,6 +121,7 @@ function Gate() {
       <Tabs.Screen name="service-warranty" options={{ href: null }} />
       <Tabs.Screen name="media-sync" options={{ href: null }} />
     </Tabs>
+    </KeyboardInset>
   );
 }
 

@@ -44,6 +44,8 @@ export class EurohouseAccessService {
   }
 
   async getCapability(organizationId: string | undefined, featureKey: EurohouseFeatureKey) {
+    // Công thức cắt mở cho mọi tài khoản; chỉ Đặt hàng Nhôm Eurohouse còn cần mã mời của NPP.
+    if (featureKey === 'FORMULA_CUTTING') return featureCapability('ACTIVE', featureKey);
     if (!organizationId) return featureCapability('LOCKED', featureKey);
     const grant = await this.prisma.eurohouseFeatureGrant.findUnique({
       where: { organizationId_featureKey: { organizationId, featureKey } },
@@ -55,7 +57,7 @@ export class EurohouseAccessService {
 
   async getAccessView(organizationId?: string): Promise<EurohouseAccessView> {
     const locked = {
-      FORMULA_CUTTING: featureCapability('LOCKED', 'FORMULA_CUTTING'),
+      FORMULA_CUTTING: featureCapability('ACTIVE', 'FORMULA_CUTTING'),
       EUROHOUSE_ORDERING: featureCapability('LOCKED', 'EUROHOUSE_ORDERING'),
     };
     if (!organizationId) return { organizationId: '', features: locked };
@@ -66,6 +68,7 @@ export class EurohouseAccessService {
     if (!organization) return { organizationId, features: locked };
     const features = { ...locked };
     for (const grant of organization.eurohouseFeatureGrants) {
+      if (grant.featureKey === 'FORMULA_CUTTING') continue;
       features[grant.featureKey] = featureCapability(grant.status, grant.featureKey);
     }
     return {

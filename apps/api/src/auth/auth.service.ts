@@ -256,15 +256,14 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại.');
     }
-    const legacyFormula = this.formulaAccessService
-      ? await this.formulaAccessService.getCapability(user.organizationId ?? undefined)
-      : formulaCapabilityFromStatus('LOCKED');
+    // Công thức cắt mở cho mọi tài khoản; chỉ Đặt hàng Nhôm Eurohouse còn cần mã mời của NPP.
+    const legacyFormula = formulaCapabilityFromStatus('ACTIVE');
     const eurohouse = this.eurohouseAccessService
       ? await this.eurohouseAccessService.getAccessView(user.organizationId ?? undefined)
       : {
           organizationId: user.organizationId ?? '',
           features: {
-            FORMULA_CUTTING: featureCapability(legacyFormula.status, 'FORMULA_CUTTING'),
+            FORMULA_CUTTING: featureCapability('ACTIVE', 'FORMULA_CUTTING'),
             EUROHOUSE_ORDERING: featureCapability('LOCKED', 'EUROHOUSE_ORDERING'),
           },
         };

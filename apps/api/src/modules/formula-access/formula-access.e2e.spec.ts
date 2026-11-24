@@ -61,7 +61,7 @@ test('self-register → locked guard → NPP invite → active guard → live re
   const meLocked = await auth.me(factory.id);
   assert.ok(meLocked.modules.includes('factory:quotations'));
   assert.equal(meLocked.modules.includes('factory:formulas'), false);
-  assert.equal(meLocked.capabilities.formulas.status, 'LOCKED');
+  assert.equal(meLocked.capabilities.formulas.status, 'ACTIVE');
 
   const guard = new FormulaAccessGuard(formula);
   const jwtUser = { sub: factory.id, role: 'FACTORY', organizationId: factory.organizationId };

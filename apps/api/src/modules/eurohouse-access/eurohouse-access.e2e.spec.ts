@@ -63,7 +63,7 @@ function releaseDatabase() {
   return { db, prisma, now };
 }
 
-test('guest discovery stays public and registration starts with both Eurohouse features locked', async () => {
+test('guest discovery stays public and registration starts with formulas open and ordering locked', async () => {
   const catalog = new CatalogService({ aluSystem: { findMany: async () => [{ id: 'eu55', code: 'EU55', name: 'Hệ EU55', profiles: [] }] } } as never);
   assert.deepEqual(await catalog.catalog(), [{ id: 'eu55', code: 'EU55', name: 'Hệ EU55', description: undefined, profiles: [] }]);
 
@@ -79,7 +79,7 @@ test('guest discovery stays public and registration starts with both Eurohouse f
   await auth.registerWorkshop({ displayName: 'Anh Thợ', organizationName: 'Xưởng An', password: 'secret123', email: 'tho.an@example.test', phone: '0912345678' });
   db.users[0].verifiedAt = now;
   const me = await auth.me('factory-user');
-  assert.equal(me.capabilities.eurohouse.features.FORMULA_CUTTING.status, 'LOCKED');
+  assert.equal(me.capabilities.eurohouse.features.FORMULA_CUTTING.status, 'ACTIVE');
   assert.equal(me.capabilities.eurohouse.features.EUROHOUSE_ORDERING.status, 'LOCKED');
 });
 

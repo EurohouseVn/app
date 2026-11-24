@@ -167,8 +167,9 @@ a:hover > .hp-arrow { background: var(--hp-orange-dark); transform: translateX(4
 .hp-system-photo { position: relative; margin: 0; min-height: 560px; overflow: hidden; background: #fff; border-radius: var(--hp-radius-lg); }
 .hp-system-photo img { object-fit: contain; padding: 16px 16px 56px; }
 .hp-system-photo-cover img { object-fit: cover; padding: 0; }
-.hp-system-photo-cover figcaption { left: 0; right: auto; bottom: 0; padding: 10px 16px; color: #fff; background: rgba(21, 26, 34, .78); border-top-right-radius: var(--hp-radius); }
 .hp-system-photo figcaption { position: absolute; left: 20px; right: 20px; bottom: 18px; color: var(--hp-muted); font-size: 14px; font-weight: 700; }
+/* Đặt sau rule chung và tăng độ ưu tiên: trước đây chữ xám của rule chung đè lên nền tối nên không đọc được. */
+.hp-system-photo.hp-system-photo-cover figcaption { left: 0; right: auto; bottom: 0; padding: 10px 16px; color: var(--hp-ink); background: rgba(255, 255, 255, .9); border-top-right-radius: var(--hp-radius); }
 .hp-system-body { min-width: 0; padding: clamp(24px, 3vw, 40px); background: #fff; border-radius: var(--hp-radius-lg); }
 .hp-profile { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: center; }
 .hp-profile-drawing { padding: 8px; background: var(--hp-canvas); border-radius: var(--hp-radius); }

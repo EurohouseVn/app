@@ -72,7 +72,7 @@ test('public workshop registration grants registered modules but not Eurohouse f
   assert.equal(modules.includes('factory:formulas'), false);
 });
 
-test('/auth/me exposes independent locked Eurohouse capabilities and the legacy formula projection', async () => {
+test('/auth/me exposes open formulas and locked ordering capabilities and the legacy formula projection', async () => {
   const user = {
     id: 'u1', displayName: 'An', email: 'an@example.com', phone: '', role: 'FACTORY',
     organizationId: 'o1', organization: { id: 'o1', name: 'Xưởng An', type: 'FACTORY', province: null },
@@ -81,9 +81,9 @@ test('/auth/me exposes independent locked Eurohouse capabilities and the legacy 
   };
   const { service } = fixture([user]);
   const result = await service.me('u1');
-  assert.equal(result.capabilities.eurohouse.features.FORMULA_CUTTING.status, 'LOCKED');
+  assert.equal(result.capabilities.eurohouse.features.FORMULA_CUTTING.status, 'ACTIVE');
   assert.equal(result.capabilities.eurohouse.features.EUROHOUSE_ORDERING.status, 'LOCKED');
-  assert.equal(result.capabilities.formulas.status, 'LOCKED');
+  assert.equal(result.capabilities.formulas.status, 'ACTIVE');
 });
 
 test('registers email and optional phone workshops as unverified atomic tenants', async () => {

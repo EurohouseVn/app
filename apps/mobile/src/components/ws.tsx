@@ -12,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
@@ -311,6 +312,10 @@ export function Sheet({ visible, onClose, title, sub, children, tall, scroll = t
   scroll?: boolean;
   onShow?: () => void;
 }) {
+  // Khung nhìn của danh sách phải có chiều cao tối đa cụ thể, nếu không Android để nội dung tràn khỏi bảng
+  // mà không cuộn được. Chừa chỗ cho tiêu đề, tay nắm và lề dưới của bảng.
+  const { height: windowHeight } = useWindowDimensions();
+  const bodyMax = Math.max(160, Math.round(windowHeight * 0.86) - 110);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onShow={onShow}>
       <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -324,7 +329,7 @@ export function Sheet({ visible, onClose, title, sub, children, tall, scroll = t
             </View>
             <IconButton icon="x" label="Đóng" onPress={onClose} />
           </View>
-          {scroll ? <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.sheetBody}>{children}</ScrollView> : <View style={[s.sheetBody, { flex: 1 }]}>{children}</View>}
+          {scroll ? <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={tall ? { flex: 1 } : { flexGrow: 0, maxHeight: bodyMax }} contentContainerStyle={s.sheetBody}>{children}</ScrollView> : <View style={[s.sheetBody, { flex: 1 }]}>{children}</View>}
         </View>
       </KeyboardAvoidingView>
     </Modal>

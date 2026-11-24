@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.nhomeurohouse.app",
+      "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon/adaptive-foreground-1024.png",
