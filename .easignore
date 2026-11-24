@@ -1,0 +1,51 @@
+node_modules
+.pnpm-store
+.next
+.expo
+dist
+build
+coverage
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+uploads
+
+# Local SQLite dev database (prod uses Postgres via db push + seed)
+*.db
+*.db-journal
+
+# Oversized source asset (97MB) — keep out of git to avoid repo bloat / GitHub limits
+EUROHOUSE CATALOG R17.pdf
+
+# ---- EAS Build: chỉ gửi mã nguồn cần cho app di động ----
+# (khi có .easignore, EAS dùng file này thay cho .gitignore nên phần trên là bản chép của .gitignore)
+/videos
+/marketing
+/output
+/outputs
+/scratch
+/tmp
+/.tmp
+/.tools
+/.codex-runtime
+/.playwright-cli
+/.superpowers
+/.taste-skill
+/.claude
+/audit
+/docs
+/public
+/tools
+/Anh quang cao
+/Bảng tính CÔNG THỨC CẮT
+/*.pdf
+/*.doc
+/*.docx
+/*.xlsx
+/*.jpg
+/*.png
+/apps/web/.next.stale-*
+/apps/mobile/dist-phase0-verify
+/apps/mobile/store-assets
