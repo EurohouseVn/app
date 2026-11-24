@@ -183,13 +183,13 @@ export default function ProjectsScreen() {
             <ProjectRow project={item} now={now} onPress={() => open(item)} />
           </View>
         )}
-        contentContainerStyle={[styles.content, { paddingBottom: 190 + insets.bottom }]}
+        contentContainerStyle={[styles.content, { paddingBottom: 96 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.brandOrange} />}
       />
       {projects.length > 0 ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Tạo công trình mới" disabled={creating} onPress={createProject} style={({ pressed }) => [styles.fab, { bottom: 104 + insets.bottom }, (pressed || creating) && { opacity: 0.85 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Tạo công trình mới" disabled={creating} onPress={createProject} style={({ pressed }) => [styles.fab, { bottom: 16 }, (pressed || creating) && { opacity: 0.85 }]}>
           <Icon name="plus" size={20} color={colors.white} />
           <Text style={styles.fabText}>{creating ? 'Đang tạo...' : 'Công trình'}</Text>
         </Pressable>

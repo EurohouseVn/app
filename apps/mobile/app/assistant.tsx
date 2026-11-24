@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '../src/components/Icon';
+import { useKeyboardClearance } from '../src/components/KeyboardInset';
 import { api } from '../src/lib/api';
 import { Banner, Button, Card, Field, Input, Segmented, SubHeader, ws, wsStyles } from '../src/components/ws';
 import avatar from '../assets/brand/assistant-avatar.png';
@@ -72,6 +73,9 @@ function ChatTab({ disabled, name }: { disabled: boolean; name: string }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const scroller = useRef<ScrollView>(null);
+  const composerRef = useRef<View>(null);
+  // Ô gõ nằm sát đáy: tự nâng lên cho tới khi hết bị bàn phím che, kể cả khi lớp bọc ngoài chừa chưa đủ.
+  const clearance = useKeyboardClearance(composerRef);
 
   async function send() {
     const message = text.trim();
@@ -115,7 +119,7 @@ function ChatTab({ disabled, name }: { disabled: boolean; name: string }) {
         {sending ? <View style={styles.rowBot}><Image source={avatar} style={styles.botAvatar} /><View style={[styles.bubble, styles.bubbleBot]}><TypingText name={name} /></View></View> : null}
         {error ? <Banner tone="error" text={error} /> : null}
       </ScrollView>
-      <View style={styles.composer}>
+      <View ref={composerRef} collapsable={false} style={[styles.composer, { paddingBottom: 14 + clearance }]}>
         <View style={{ flex: 1 }}>
           <Input value={text} onChangeText={setText} placeholder="Nhập câu hỏi…" multiline editable={!disabled} style={{ minHeight: 46, maxHeight: 120 }} />
         </View>

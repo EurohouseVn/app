@@ -195,5 +195,5 @@ const styles = StyleSheet.create({
   logoTitle: { color: ws.ink, fontSize: 13.5, fontWeight: '800' },
   removeLogo: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
   removeLogoText: { color: ws.dangerText, fontSize: 12.5, fontWeight: '800' },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: ws.surface, borderTopWidth: 1, borderTopColor: ws.line, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 96 },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: ws.surface, borderTopWidth: 1, borderTopColor: ws.line, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14 },
 });

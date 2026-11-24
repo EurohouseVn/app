@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   metaFaint: { color: ws.faint, fontSize: 11, marginTop: 1 },
   countBadge: { minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 6, backgroundColor: ws.orange, alignItems: 'center', justifyContent: 'center' },
   countText: { color: ws.surface, fontSize: 12, fontWeight: '900' },
-  summaryBar: { position: 'absolute', left: 14, right: 14, bottom: 96, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 14, paddingRight: 10, borderRadius: 16, backgroundColor: ws.surface, borderWidth: 1, borderColor: ws.line, shadowColor: '#101828', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
+  summaryBar: { position: 'absolute', left: 14, right: 14, bottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingLeft: 14, paddingRight: 10, borderRadius: 16, backgroundColor: ws.surface, borderWidth: 1, borderColor: ws.line, shadowColor: '#101828', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
   summaryTitle: { color: ws.ink, fontSize: 14, fontWeight: '900' },
   summarySub: { color: ws.muted, fontSize: 11.5, marginTop: 1 },
   summaryButton: { minHeight: 42 },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Keyboard, Platform, View } from 'react-native';
 
 /**
@@ -9,6 +9,45 @@ import { Keyboard, Platform, View } from 'react-native';
  * khiến ô gõ vẫn nằm sau bàn phím). Thay vào đó đo vị trí đáy thật của app và vị trí đỉnh bàn phím trên màn hình.
  * Trên iOS và web, hệ điều hành hay từng màn đã tự lo nên bỏ qua.
  */
+/**
+ * Chừa thêm chỗ cho một khung cụ thể (ví dụ ô gõ cố định ở đáy) cho tới khi nó nằm hẳn trên bàn phím.
+ * Đo thẳng đáy của khung so với đỉnh bàn phím nên đúng dù cửa sổ đã tự co hay chưa, và dù lớp bọc ngoài đã chừa bao nhiêu.
+ * Gắn `ref` vào khung (kèm `collapsable={false}`) và cộng `extra` vào paddingBottom của chính khung đó.
+ */
+export function useKeyboardClearance(ref: RefObject<View | null>) {
+  const [extra, setExtra] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    let current = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = (top: number, pass: number) => {
+      ref.current?.measureInWindow((_x, y, _w, height) => {
+        const overlap = Math.round(y + height - top);
+        if (Math.abs(overlap) <= 2) return;
+        current = Math.max(0, current + overlap);
+        setExtra(current);
+        // Bố cục cập nhật chậm vài khung hình, đo lại để chốt (tối đa 3 lượt).
+        if (pass < 3) timer = setTimeout(() => settle(top, pass + 1), 120);
+      });
+    };
+    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+      const top = event.endCoordinates?.screenY;
+      if (typeof top !== 'number') return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => settle(top, 1), 150);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      if (timer) clearTimeout(timer);
+      current = 0;
+      setExtra(0);
+    });
+    return () => { if (timer) clearTimeout(timer); show.remove(); hide.remove(); };
+  }, [ref]);
+
+  return extra;
+}
+
 export function KeyboardInset({ children }: { children: ReactNode }) {
   const [inset, setInset] = useState(0);
   const frame = useRef<View>(null);
