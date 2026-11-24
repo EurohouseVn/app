@@ -43,7 +43,7 @@ function readableError(error: unknown, fallback: string) {
 }
 
 export default function AuthScreen() {
-  const { login, registerWorkshop, confirmVerification, resendVerification, continueAsGuest } = useAuth();
+  const { login, registerWorkshop, registerWorkshopByPhone, confirmVerification, resendVerification, continueAsGuest } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -53,6 +53,11 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberPassword, setRememberPassword] = useState(true);
   const [now, setNow] = useState(Date.now());
+  // Mặc định đăng ký bằng số điện thoại vì nhiều thợ không dùng email.
+  const [method, setMethod] = useState<'phone' | 'email'>('phone');
+  const [phoneDraft, setPhoneDraft] = useState({ organizationName: '', address: '', phone: '', password: '' });
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   useEffect(() => { void (async () => {
     const saved = await getRememberedLogin();
@@ -93,6 +98,26 @@ export default function AuthScreen() {
     } catch (error) { dispatch({ type: 'FAILED', message: readableError(error, 'Chưa thể tạo tài khoản.'), recoverTo: 'FORM' }); }
   }
 
+  async function submitPhoneRegistration() {
+    const draft = { organizationName: phoneDraft.organizationName.trim(), address: phoneDraft.address.trim(), phone: phoneDraft.phone.trim(), password: phoneDraft.password };
+    if (!draft.organizationName) { setPhoneError('Vui lòng nhập tên cơ sở sản xuất.'); return; }
+    if (!draft.address) { setPhoneError('Vui lòng nhập địa chỉ.'); return; }
+    if (!draft.phone) { setPhoneError('Vui lòng nhập số điện thoại.'); return; }
+    if (draft.password.length < 6) { setPhoneError('Mật khẩu cần tối thiểu 6 ký tự.'); return; }
+    setPhoneError(''); setPhoneLoading(true);
+    try {
+      await registerWorkshopByPhone(draft);
+      await setRememberedLogin({ identifier: draft.phone, password: Platform.OS === 'web' ? undefined : draft.password });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      const map: Record<string, string> = {
+        INVALID_IDENTIFIER: 'Số điện thoại chưa đúng. Vui lòng nhập số di động Việt Nam, ví dụ 0912345678.',
+        PASSWORD_TOO_SHORT: 'Mật khẩu cần tối thiểu 6 ký tự.',
+      };
+      setPhoneError(map[message] ?? readableError(error, 'Chưa thể tạo tài khoản.'));
+    } finally { setPhoneLoading(false); }
+  }
+
   async function confirmCode() {
     if (!registration.pendingVerificationId || registration.code.length !== 6) {
       dispatch({ type: 'FAILED', message: 'Vui lòng nhập đủ mã xác minh 6 số.', recoverTo: 'VERIFY' }); return;
@@ -117,7 +142,7 @@ export default function AuthScreen() {
   const heroKicker = isLogin ? 'Chào mừng trở lại' : isVerify ? 'Xác minh email' : 'Đăng ký cơ sở';
   const heroTitle = isLogin ? 'Đăng nhập xưởng' : isVerify ? 'Nhập mã 6 số' : 'Tạo tài khoản miễn phí';
   const heroLead = isLogin
-    ? 'Đăng nhập bằng email hoặc số điện thoại đã xác minh.'
+    ? 'Đăng nhập bằng số điện thoại hoặc email đã đăng ký.'
     : isVerify ? `Mã đã gửi tới ${registration.maskedTarget ?? 'email của bạn'}.`
     : 'Cho cơ sở nhôm kính, cơ khí và xưởng sản xuất.';
 
@@ -158,7 +183,23 @@ export default function AuthScreen() {
         <PrimaryButton loading={registrationLoading} label="Xác minh và vào ứng dụng" onPress={confirmCode} />
         <Pressable disabled={cooldownSeconds > 0 || registrationLoading} onPress={resendCode} style={styles.secondaryButton}><Text style={[styles.secondaryText, cooldownSeconds > 0 && styles.mutedText]}>{cooldownSeconds > 0 ? `Gửi lại mã sau ${cooldownSeconds}s` : 'Gửi lại mã xác minh'}</Text></Pressable>
         <Pressable onPress={() => dispatch({ type: 'BACK_TO_FORM' })}><Text style={styles.textAction}>Sửa thông tin đăng ký</Text></Pressable>
+ </> : method === 'phone' ? <>
+        <View style={styles.methodRow}>
+          <Pressable onPress={() => setMethod('phone')} style={[styles.methodItem, styles.methodActive]}><Text style={[styles.methodText, styles.methodTextActive]}>Số điện thoại</Text></Pressable>
+          <Pressable onPress={() => setMethod('email')} style={styles.methodItem}><Text style={styles.methodText}>Email</Text></Pressable>
+        </View>
+        <Field placeholder="Tên cơ sở sản xuất" value={phoneDraft.organizationName} onChangeText={(value) => setPhoneDraft((d) => ({ ...d, organizationName: value }))} />
+        <Field placeholder="Địa chỉ" value={phoneDraft.address} onChangeText={(value) => setPhoneDraft((d) => ({ ...d, address: value }))} />
+        <Field placeholder="Số điện thoại" value={phoneDraft.phone} onChangeText={(value) => setPhoneDraft((d) => ({ ...d, phone: value }))} keyboardType="phone-pad" />
+        <PasswordInput value={phoneDraft.password} onChangeText={(value) => setPhoneDraft((d) => ({ ...d, password: value }))} visible={showPassword} onToggleVisible={() => setShowPassword((value) => !value)} />
+        {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
+        <PrimaryButton loading={phoneLoading} label="Tạo tài khoản và vào app" onPress={submitPhoneRegistration} />
+        <Text style={styles.note}>Không cần xác minh. Hãy nhập đúng số điện thoại để đăng nhập lại về sau. Công thức Eurohouse dùng được ngay; Đặt hàng cần mã mời của NPP.</Text>
       </> : <>
+        <View style={styles.methodRow}>
+          <Pressable onPress={() => setMethod('phone')} style={styles.methodItem}><Text style={styles.methodText}>Số điện thoại</Text></Pressable>
+          <Pressable onPress={() => setMethod('email')} style={[styles.methodItem, styles.methodActive]}><Text style={[styles.methodText, styles.methodTextActive]}>Email</Text></Pressable>
+        </View>
         <Field placeholder="Họ và tên" value={registration.draft.displayName} onChangeText={(value) => updateDraft('displayName', value)} />
         <Field placeholder="Tên cơ sở / xưởng" value={registration.draft.organizationName} onChangeText={(value) => updateDraft('organizationName', value)} />
         <Field placeholder="Email (nhận mã xác minh)" value={registration.draft.email} onChangeText={(value) => updateDraft('email', value)} keyboardType="email-address" />
@@ -180,7 +221,7 @@ export default function AuthScreen() {
 }
 
 function Field({ placeholder, value, onChangeText, keyboardType }: { placeholder: string; value: string; onChangeText: (value: string) => void; keyboardType?: 'email-address' | 'phone-pad' }) {
-  return <TextInput placeholder={placeholder} autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'} keyboardType={keyboardType} value={value} onChangeText={onChangeText} style={styles.input} placeholderTextColor="#98A2B3" />;
+  return <TextInput placeholder={placeholder} autoCapitalize={keyboardType === 'email-address' || keyboardType === 'phone-pad' ? 'none' : 'sentences'} keyboardType={keyboardType} value={value} onChangeText={onChangeText} style={styles.input} placeholderTextColor="#98A2B3" />;
 }
 
 function PrimaryButton({ loading, label, onPress }: { loading: boolean; label: string; onPress: () => void }) {
@@ -211,6 +252,11 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFE3E8' },
   segmentText: { color: '#667085', fontWeight: '800', fontSize: 14 },
   segmentTextActive: { color: INK },
+  methodRow: { flexDirection: 'row', gap: 8 },
+  methodItem: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#D0D5DD', backgroundColor: '#FFFFFF' },
+  methodActive: { borderColor: '#F47C20', backgroundColor: '#FFF2E8' },
+  methodText: { color: '#667085', fontWeight: '800', fontSize: 13 },
+  methodTextActive: { color: '#C65309' },
   input: { minHeight: 52, borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, fontSize: 16, color: INK, backgroundColor: '#FFFFFF' },
   passwordRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 8, backgroundColor: '#FFFFFF', overflow: 'hidden' },
   passwordInput: { flex: 1, paddingHorizontal: 14, fontSize: 16, color: INK, minWidth: 0 },

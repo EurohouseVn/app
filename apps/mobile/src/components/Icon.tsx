@@ -27,8 +27,9 @@ export function Icon({ name, size = 22, color = colors.brandBlack.main }: { name
 // Helper cho tab bar (giữ cast Feather trong một file duy nhất).
 export function tabBarIcon(name: IconName) {
   return ({ color, focused }: { color: string; focused: boolean }) => (
-    <View style={focused ? { backgroundColor: colors.orangeSoft, padding: 8, borderRadius: 14 } : { padding: 8 }}>
-      <Feather name={name} size={focused ? 20 : 22} color={color} />
+    // Khung cố định cùng kích thước ở cả hai trạng thái, không phụ thuộc padding, để Android không cắt icon.
+    <View style={{ width: 40, height: 32, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colors.orangeSoft : 'transparent' }}>
+      <Feather name={name} size={20} color={color} />
     </View>
   );
 }

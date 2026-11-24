@@ -20,10 +20,10 @@ import { useResetScrollOnFocus } from '../src/hooks/useResetScrollOnFocus';
 import heroImage from '../assets/brand/hero-ecento-70.jpg';
 import assistantAvatar from '../assets/brand/assistant-avatar.png';
 import logoLandscape from '../assets/brand/logo-landscape.png';
-import productEcento70 from '../assets/brand/product-ecento-70.jpg';
-import productEcentoPlus from '../assets/brand/product-ecento-plus.jpg';
-import productHe55 from '../assets/brand/product-he-55-vat-canh.jpg';
-import productPreco from '../assets/brand/product-preco.jpg';
+import productEcento70 from '../assets/brand/product-ecento-70.webp';
+import productEcentoPlus from '../assets/brand/product-ecento-plus.webp';
+import productHe55 from '../assets/brand/product-he-55-vat-canh.webp';
+import productPreco from '../assets/brand/product-preco.webp';
 import logo from '../assets/logo-mark.png';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -103,7 +103,7 @@ function ProductStrip({ onOpen }: { onOpen: () => void }) {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hs.productStrip} snapToInterval={222} decelerationRate="fast">
       {HOME_PRODUCTS.map((product) => (
         <Pressable key={product.key} accessibilityRole="button" accessibilityLabel={`Xem ${product.name} trong catalog`} onPress={onOpen} style={({ pressed }) => [hs.product, pressed && { opacity: 0.9 }]}>
-          <View style={hs.productImageWrap}><Image source={PRODUCT_IMAGES[product.image]} style={hs.productImage} resizeMode="contain" /></View>
+          <View style={hs.productImageWrap}><Image source={PRODUCT_IMAGES[product.image]} style={hs.productImage} resizeMode={product.image === 'ecento70' || product.image === 'ecentoPlus' ? 'cover' : 'contain'} /></View>
           <View style={hs.productBody}>
             <View style={wsStyles.grow}>
               <Text style={hs.productName} numberOfLines={1}>{product.name.toUpperCase()}</Text>
@@ -537,7 +537,7 @@ const hs = StyleSheet.create({
   toolIconPrimary: { backgroundColor: ws.orange },
   productStrip: { gap: 12, paddingHorizontal: 14, paddingBottom: 4 },
   product: { width: 210, backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#DFE3E8', overflow: 'hidden' },
-  productImageWrap: { height: 132, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
+  productImageWrap: { height: 132, backgroundColor: '#EEF5FB', borderBottomWidth: 1, borderBottomColor: ws.lineSoft },
   productImage: { width: '100%', height: '100%' },
   productBody: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   productName: { color: '#151A22', fontSize: 15, fontWeight: '900', letterSpacing: -0.2 },

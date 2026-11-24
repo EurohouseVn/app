@@ -178,6 +178,61 @@ export class AuthService {
     return { pendingVerificationId: user.id, maskedTarget: maskIdentity(target) };
   }
 
+  /**
+   * Đăng ký nhanh bằng số điện thoại cho thợ không dùng email: không gửi mã xác minh, vào app ngay.
+   * Số điện thoại chưa được xác minh nên `verificationChannel` để trống (phân biệt với tài khoản đã xác minh).
+   */
+  async registerWorkshopByPhone(input: { organizationName: string; address: string; phone: string; password: string }): Promise<LoginResponse> {
+    const organizationName = input.organizationName?.trim() ?? '';
+    const address = input.address?.trim() ?? '';
+    const password = input.password?.trim() ?? '';
+    if (!organizationName) throw new BadRequestException('WORKSHOP_NAME_REQUIRED');
+    if (!address) throw new BadRequestException('ADDRESS_REQUIRED');
+    if (password.length < 6) throw new BadRequestException('PASSWORD_TOO_SHORT');
+    let identity;
+    try {
+      identity = normalizeIdentity(input.phone ?? '');
+    } catch {
+      throw new BadRequestException('INVALID_IDENTIFIER');
+    }
+    if (identity.kind !== 'PHONE') throw new BadRequestException('INVALID_IDENTIFIER');
+    const duplicate = await this.prisma.user.findFirst({ where: { OR: [{ phoneNormalized: identity.normalized }] }, select: { id: true } });
+    if (duplicate) throw new BadRequestException('IDENTIFIER_ALREADY_USED');
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = `CSSX-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const phone = input.phone.trim();
+    const user = await this.prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: { code, name: organizationName, type: 'FACTORY', address, phone },
+      });
+      const created = await tx.user.create({
+        data: {
+          email: null,
+          emailNormalized: null,
+          phone,
+          phoneNormalized: identity.normalized,
+          displayName: organizationName,
+          passwordHash,
+          role: 'FACTORY',
+          organizationId: organization.id,
+          moduleAccess: JSON.stringify(PUBLIC_WORKSHOP_DEFAULT_MODULE_KEYS),
+          verifiedAt: new Date(),
+          verificationChannel: null,
+        },
+      });
+      await tx.workshopPilotConfig.create({
+        data: {
+          organizationId: organization.id, active: true,
+          survey: true, inventory: true, shopFloor: true, quality: true, installation: true, warranty: true,
+          version: 1, enabledAt: new Date(), updatedById: created.id,
+        },
+      });
+      return { ...created, organization };
+    });
+    return this.issueLogin(user);
+  }
+
   async confirmWorkshopVerification(input: VerificationConfirmInput): Promise<LoginResponse> {
     const verified = await this.verificationService.confirm(input.pendingVerificationId, input.code);
     await this.prisma.user.update({

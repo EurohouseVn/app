@@ -6,6 +6,7 @@ import type { RegisterFactoryInput } from '@eurohouse/types';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser, type JwtUser } from './current-user.decorator';
 import { RegisterWorkshopDto } from './dto/register-workshop.dto';
+import { RegisterWorkshopPhoneDto } from './dto/register-workshop-phone.dto';
 import { VerificationConfirmDto, VerificationResendDto } from './dto/verification.dto';
 
 @Controller('auth')
@@ -31,6 +32,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 600_000 } })
   registerWorkshop(@Body() body: RegisterWorkshopDto) {
     return this.authService.registerWorkshop(body);
+  }
+
+  @Post('register-workshop-phone')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 600_000 } })
+  registerWorkshopByPhone(@Body() body: RegisterWorkshopPhoneDto) {
+    return this.authService.registerWorkshopByPhone(body);
   }
 
   @Post('verification/confirm')

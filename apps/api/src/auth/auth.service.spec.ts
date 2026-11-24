@@ -186,3 +186,31 @@ test('each newly registered workshop gets its own pilot config with every worksh
     for (const key of ['survey', 'inventory', 'shopFloor', 'quality', 'installation', 'warranty']) assert.equal(config[key], true, key);
   }
 });
+
+test('phone registration signs the workshop in at once without any verification challenge', async () => {
+  const { service, users, organizations, challenges, pilotConfigs } = fixture();
+  const result = await service.registerWorkshopByPhone({ organizationName: ' Xưởng Nhôm An ', address: '46 Lạc Long Quân, Hà Nội', phone: '0912 345 678', password: 'secret123' });
+  assert.equal(result.user.token, 'signed-jwt');
+  assert.equal(challenges.length, 0);
+  assert.equal(users[0].phoneNormalized, '+84912345678');
+  assert.equal(users[0].email, null);
+  assert.equal(users[0].role, 'FACTORY');
+  assert.ok(users[0].verifiedAt instanceof Date);
+  assert.equal(users[0].verificationChannel, null);
+  assert.equal(organizations[0].name, 'Xưởng Nhôm An');
+  assert.equal(organizations[0].address, '46 Lạc Long Quân, Hà Nội');
+  assert.equal(pilotConfigs.length, 1);
+  assert.equal(JSON.parse(users[0].moduleAccess).includes('factory:orders'), false);
+});
+
+test('phone registration rejects bad phones, short passwords, missing fields and used numbers', async () => {
+  const { service } = fixture();
+  const base = { organizationName: 'Xưởng An', address: 'Hà Nội', phone: '0912345678', password: 'secret123' };
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, phone: '12345' }), /INVALID_IDENTIFIER/);
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, phone: 'an@example.com' }), /INVALID_IDENTIFIER/);
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, password: '123' }), /PASSWORD_TOO_SHORT/);
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, organizationName: ' ' }), /WORKSHOP_NAME_REQUIRED/);
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, address: '' }), /ADDRESS_REQUIRED/);
+  await service.registerWorkshopByPhone(base);
+  await assert.rejects(() => service.registerWorkshopByPhone({ ...base, phone: '+84 912 345 678' }), /IDENTIFIER_ALREADY_USED/);
+});

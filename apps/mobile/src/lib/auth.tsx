@@ -49,6 +49,8 @@ const storage = {
   },
 };
 
+export interface PhoneRegistrationInput { organizationName: string; address: string; phone: string; password: string }
+
 interface AuthContextValue {
   user: AuthUser | null;
   ready: boolean;
@@ -56,6 +58,7 @@ interface AuthContextValue {
   login: (identifier: string, password: string) => Promise<void>;
   registerFactory: (input: RegisterFactoryInput) => Promise<void>;
   registerWorkshop: (input: RegisterWorkshopInput) => Promise<WorkshopRegistrationResponse>;
+  registerWorkshopByPhone: (input: PhoneRegistrationInput) => Promise<void>;
   confirmVerification: (input: VerificationConfirmInput) => Promise<void>;
   resendVerification: (pendingVerificationId: string) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -165,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerWorkshop = useCallback((input: RegisterWorkshopInput) =>
     api.post<WorkshopRegistrationResponse>('/auth/register-workshop', input), []);
 
+  // Đăng ký bằng số điện thoại, không cần xác minh: máy chủ trả phiên đăng nhập ngay.
+  const registerWorkshopByPhone = useCallback(async (input: PhoneRegistrationInput) => {
+    const res = await api.post<LoginResponse>('/auth/register-workshop-phone', input);
+    await establishSession(res);
+  }, [establishSession]);
+
   const registerFactory = useCallback(async (input: RegisterFactoryInput) => {
     const res = await api.post<LoginResponse>('/auth/register-factory', input);
     await establishSession(res);
@@ -186,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     registerFactory,
     registerWorkshop,
+    registerWorkshopByPhone,
     confirmVerification,
     resendVerification,
     refreshUser,
@@ -193,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     leaveGuestMode,
     upgradeGuestData,
     logout,
-  }), [user, ready, guestMode, login, registerFactory, registerWorkshop, confirmVerification, resendVerification, refreshUser, continueAsGuest, leaveGuestMode, upgradeGuestData, logout]);
+  }), [user, ready, guestMode, login, registerFactory, registerWorkshop, registerWorkshopByPhone, confirmVerification, resendVerification, refreshUser, continueAsGuest, leaveGuestMode, upgradeGuestData, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
