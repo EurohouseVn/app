@@ -13,8 +13,11 @@
       "favicon": "./public/icon-192.png"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.nhomeurohouse.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nhomeurohouse.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.nhomeurohouse.app",
@@ -84,6 +87,9 @@
       "typedRoutes": true
     },
     "extra": {
+      "eas": {
+        "projectId": "7f1b93b7-ab93-4d2a-96c1-3222e29b37c8"
+      },
       "legalPublisher": "LELOI EXIM GLOBAL",
       "publicWebsite": "https://nhomeurohouse.com"
     }

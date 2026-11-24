@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import type { RegisterFactoryInput } from '@eurohouse/types';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser, type JwtUser } from './current-user.decorator';
@@ -59,5 +60,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: JwtUser) {
     return this.authService.me(user.sub);
+  }
+
+  @Post('delete-account')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 600_000 } })
+  deleteAccount(@CurrentUser() user: JwtUser, @Body() body: DeleteAccountDto) {
+    return this.authService.deleteAccount(user.sub, body.password);
   }
 }

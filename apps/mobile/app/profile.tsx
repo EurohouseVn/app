@@ -173,6 +173,11 @@ export default function ProfileScreen() {
           <Icon name="log-out" size={16} color={ws.danger} />
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </Pressable>
+        {user && (user.role === 'FACTORY' || user.role === 'DAILY') ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Xoá tài khoản" onPress={() => router.push('/delete-account')} style={({ pressed }) => [styles.deleteLink, pressed && { opacity: 0.7 }]}>
+            <Text style={styles.deleteLinkText}>Xoá tài khoản</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -208,4 +213,6 @@ const styles = StyleSheet.create({
   toolIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   logout: { marginTop: 16, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, borderWidth: 1, borderColor: '#FECDCA', backgroundColor: ws.surface },
   logoutText: { color: ws.danger, fontSize: 14, fontWeight: '800' },
+  deleteLink: { marginTop: 6, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  deleteLinkText: { color: ws.muted, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
 });

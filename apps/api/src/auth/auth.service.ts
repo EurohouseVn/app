@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
@@ -20,6 +20,11 @@ import { normalizeIdentity, normalizeOptionalIdentities } from './identity-norma
 import { VerificationService } from './verification.service';
 import { FormulaAccessService } from '../modules/formula-access/formula-access.service';
 import { EurohouseAccessService } from '../modules/eurohouse-access/eurohouse-access.service';
+
+/** Vai trò đánh dấu tài khoản đã bị người dùng tự xóa (đã ẩn danh hóa, không đăng nhập lại được). */
+export const DELETED_ROLE = 'DELETED';
+const DELETED_DISPLAY_NAME = 'Tài khoản đã xóa';
+const DELETED_ORGANIZATION_NAME = 'Cơ sở đã xóa';
 
 function parseModules(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -303,12 +308,66 @@ export class AuthService {
     return this.login(email, password);
   }
 
+  /**
+   * Người dùng tự xóa tài khoản trong app (bắt buộc theo App Store Guideline 5.1.1(v)).
+   * Không xóa cứng vì đơn hàng, báo giá, sổ quỹ... còn phải giữ theo nghĩa vụ kế toán: ẩn danh hóa danh tính
+   * (email, số điện thoại, tên, mật khẩu) và thông tin liên hệ của cơ sở nếu người này là người dùng duy nhất của cơ sở.
+   * Chỉ áp dụng cho tài khoản xưởng/đại lý tự đăng ký; tài khoản nội bộ và NPP do công ty quản lý.
+   */
+  async deleteAccount(userId: string, password: string): Promise<{ deleted: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role === DELETED_ROLE) throw new UnauthorizedException('Tài khoản không tồn tại.');
+    if (user.role !== 'FACTORY' && user.role !== 'DAILY') throw new ForbiddenException('ACCOUNT_DELETE_NOT_ALLOWED');
+    if (!password || !(await bcrypt.compare(password, user.passwordHash))) throw new BadRequestException('INVALID_PASSWORD');
+
+    const lockedHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.verificationChallenge.deleteMany({ where: { userId } });
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          email: null,
+          emailNormalized: null,
+          phone: null,
+          phoneNormalized: null,
+          displayName: DELETED_DISPLAY_NAME,
+          passwordHash: lockedHash,
+          role: DELETED_ROLE,
+          moduleAccess: '[]',
+          verifiedAt: null,
+          verificationChannel: null,
+        },
+      });
+      if (user.organizationId) {
+        const others = await tx.user.count({
+          where: { organizationId: user.organizationId, id: { not: userId }, role: { not: DELETED_ROLE } },
+        });
+        if (others === 0) {
+          await tx.organization.update({
+            where: { id: user.organizationId },
+            data: {
+              name: DELETED_ORGANIZATION_NAME,
+              productionName: null,
+              phone: null,
+              address: null,
+              email: null,
+              fanpage: null,
+              logoUrl: null,
+              mainCategories: null,
+            },
+          });
+        }
+      }
+    });
+    return { deleted: true };
+  }
+
   async me(userId: string): Promise<AuthUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { organization: true, department: true, rbacRole: true },
     });
-    if (!user) {
+    if (!user || user.role === DELETED_ROLE) {
       throw new UnauthorizedException('Tài khoản không tồn tại.');
     }
     // Công thức cắt mở cho mọi tài khoản; chỉ Đặt hàng Nhôm Eurohouse còn cần mã mời của NPP.

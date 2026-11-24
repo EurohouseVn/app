@@ -34,7 +34,7 @@ const SECTIONS: Section[] = [
     'Chúng tôi lưu dữ liệu trong thời gian tài khoản còn hoạt động. Sau khi xóa tài khoản, dữ liệu cá nhân được xóa hoặc ẩn danh hóa; một số chứng từ, hóa đơn và lịch sử giao dịch có thể được giữ theo nghĩa vụ kế toán và pháp luật, và không còn dùng cho mục đích khác.',
   ]],
   ['Quyền của bạn', [
-    'Bạn có thể yêu cầu truy cập, chỉnh sửa hoặc xóa tài khoản và dữ liệu liên quan. Có thể chỉnh sửa thông tin cơ bản ngay trong ứng dụng ở mục Tài khoản. Để xóa tài khoản, gửi yêu cầu tại trang https://nhomeurohouse.com/delete-account (không cần cài lại ứng dụng) hoặc qua email bên dưới. Chúng tôi xác minh quyền sở hữu và phản hồi trong vòng 30 ngày.',
+    'Bạn có thể yêu cầu truy cập, chỉnh sửa hoặc xóa tài khoản và dữ liệu liên quan. Có thể chỉnh sửa thông tin cơ bản ngay trong ứng dụng ở mục Tài khoản. Để xóa tài khoản, vào ứng dụng, mục Tài khoản, chọn “Xóa tài khoản” và nhập mật khẩu để xác nhận; tài khoản bị khóa và dữ liệu cá nhân được ẩn danh hóa ngay. Nếu không còn truy cập được ứng dụng, gửi yêu cầu tại trang https://nhomeurohouse.com/delete-account hoặc qua email bên dưới; chúng tôi xác minh quyền sở hữu và phản hồi trong vòng 30 ngày.',
     'Bạn có thể thu hồi quyền máy ảnh và vị trí bất cứ lúc nào trong phần Cài đặt của điện thoại; các tính năng liên quan sẽ ngừng hoạt động nhưng phần còn lại của ứng dụng vẫn dùng được.',
   ]],
   ['Thay đổi chính sách', [

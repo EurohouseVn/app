@@ -88,6 +88,7 @@ function Gate() {
       <Tabs.Screen name="profile" options={{ title: 'Tài khoản', href: sessionTier === 'GUEST' ? null : undefined, tabBarIcon: tabBarIcon('user') }} />
       <Tabs.Screen name="auth" options={{ href: null }} />
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
+      <Tabs.Screen name="delete-account" options={{ href: null }} />
       <Tabs.Screen name="estimate" options={{ href: null }} />
       <Tabs.Screen name="warranty" options={{ href: null }} />
       <Tabs.Screen name="loyalty" options={{ href: null }} />

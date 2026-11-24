@@ -15,6 +15,7 @@ function fixture(existingUsers: any[] = [], verificationFailure?: Error) {
         ),
       ) ?? null,
       findUnique: async ({ where }: any) => users.find((user) => user.id === where.id || user.email === where.email) ?? null,
+      count: async ({ where }: any) => users.filter((user) => user.organizationId === where.organizationId && user.id !== where.id?.not && user.role !== where.role?.not).length,
       create: async ({ data }: any) => {
         const user = { id: `u${users.length + 1}`, isCeo: false, moduleAccess: '[]', jobTitle: '', ...data };
         users.push(user);
@@ -34,8 +35,10 @@ function fixture(existingUsers: any[] = [], verificationFailure?: Error) {
         return organization;
       },
       findFirst: async () => null,
+      update: async ({ where, data }: any) => { const org = organizations.find((item) => item.id === where.id)!; Object.assign(org, data); return org; },
       delete: async ({ where }: any) => { const index = organizations.findIndex((item) => item.id === where.id); if (index >= 0) organizations.splice(index, 1); },
     },
+    verificationChallenge: { deleteMany: async () => ({ count: 0 }) },
     workshopPilotConfig: {
       create: async ({ data }: any) => { pilotConfigs.push(data); return data; },
       deleteMany: async ({ where }: any) => { for (let i = pilotConfigs.length - 1; i >= 0; i--) if (pilotConfigs[i].organizationId === where.organizationId) pilotConfigs.splice(i, 1); return { count: 0 }; },
@@ -213,4 +216,46 @@ test('phone registration rejects bad phones, short passwords, missing fields and
   await assert.rejects(() => service.registerWorkshopByPhone({ ...base, address: '' }), /ADDRESS_REQUIRED/);
   await service.registerWorkshopByPhone(base);
   await assert.rejects(() => service.registerWorkshopByPhone({ ...base, phone: '+84 912 345 678' }), /IDENTIFIER_ALREADY_USED/);
+});
+
+async function seedPhoneWorkshop() {
+  const ctx = fixture();
+  await ctx.service.registerWorkshopByPhone({ organizationName: 'Xưởng An', address: 'Hà Nội', phone: '0912345678', password: 'secret123' });
+  return ctx;
+}
+
+test('deleteAccount anonymizes the user and the sole-owner workshop contact data', async () => {
+  const { service, users, organizations } = await seedPhoneWorkshop();
+  const id = users[0].id;
+  await service.deleteAccount(id, 'secret123');
+  assert.equal(users[0].email, null);
+  assert.equal(users[0].phone, null);
+  assert.equal(users[0].phoneNormalized, null);
+  assert.equal(users[0].role, 'DELETED');
+  assert.equal(users[0].displayName, 'Tài khoản đã xóa');
+  assert.equal(await bcrypt.compare('secret123', users[0].passwordHash), false);
+  assert.equal(organizations[0].phone, null);
+  assert.equal(organizations[0].address, null);
+  assert.equal(organizations[0].name, 'Cơ sở đã xóa');
+});
+
+test('deleteAccount refuses a wrong password and changes nothing', async () => {
+  const { service, users } = await seedPhoneWorkshop();
+  await assert.rejects(() => service.deleteAccount(users[0].id, 'wrong-pass'), /INVALID_PASSWORD/);
+  assert.equal(users[0].role, 'FACTORY');
+  assert.equal(users[0].phoneNormalized !== null, true);
+});
+
+test('deleteAccount is not available to internal staff or NPP accounts', async () => {
+  for (const role of ['ADMIN', 'STAFF', 'NPP']) {
+    const { service } = fixture([{ id: 'x1', role, passwordHash: await bcrypt.hash('secret123', 4), organizationId: null }]);
+    await assert.rejects(() => service.deleteAccount('x1', 'secret123'), /ACCOUNT_DELETE_NOT_ALLOWED/);
+  }
+});
+
+test('deleted accounts can no longer log in or load /me', async () => {
+  const { service, users } = await seedPhoneWorkshop();
+  await service.deleteAccount(users[0].id, 'secret123');
+  await assert.rejects(() => service.me(users[0].id), /không tồn tại/);
+  await assert.rejects(() => service.login('0912345678', 'secret123'), /Sai tài khoản/);
 });
