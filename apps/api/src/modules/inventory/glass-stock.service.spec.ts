@@ -6,6 +6,7 @@ import { NppGlassStockService } from './glass-stock.service';
 type Row = Record<string, any>;
 
 function fakePrisma() {
+  const hooks: { afterRollback: (() => void) | null } = { afterRollback: null };
   const schemes: Row[] = [];
   const stocks: Row[] = [];
   const moves: Row[] = [];
@@ -62,9 +63,23 @@ function fakePrisma() {
         return row;
       },
     },
-    $transaction: async (fn: (tx: Row) => unknown) => fn(prisma),
+    // Giao dịch giả có hoàn tác như Postgres thật; afterRollback chèn dòng của "yêu cầu khác đã chốt" sau khi hoàn tác.
+    $transaction: async (fn: (tx: Row) => unknown) => {
+      const snapshot = { schemes: schemes.map((r) => ({ ...r })), stocks: stocks.map((r) => ({ ...r })), moves: moves.map((r) => ({ ...r })) };
+      try {
+        return await fn(prisma);
+      } catch (error) {
+        schemes.splice(0, schemes.length, ...snapshot.schemes);
+        stocks.splice(0, stocks.length, ...snapshot.stocks);
+        moves.splice(0, moves.length, ...snapshot.moves);
+        const hook = hooks.afterRollback;
+        hooks.afterRollback = null;
+        hook?.();
+        throw error;
+      }
+    },
   };
-  return { prisma, schemes, stocks, moves };
+  return { prisma, schemes, stocks, moves, hooks };
 }
 
 function setup() {
@@ -158,6 +173,48 @@ test('receive rejects bad quantity, missing key, foreign or inactive scheme, bad
   await assert.rejects(service.receiveStock('npp-2', 'u', base), NotFoundException);
   await service.updateScheme('npp-1', scheme.id, { active: false });
   await assert.rejects(service.receiveStock('npp-1', 'u', { ...base, idempotencyKey: 'k2' }), /ngừng dùng/);
+});
+
+test('a concurrent insert of the same row is retried and adds to the winner', async () => {
+  const { service, prisma, stocks, hooks } = setup();
+  const scheme = await service.createScheme('npp-1', { prefix: 'CL8' });
+  const realCreate = prisma.nppGlassSheet.create;
+  let raced = false;
+  prisma.nppGlassSheet.create = async (args: Row) => {
+    if (!raced) {
+      raced = true;
+      // yêu cầu khác đã chốt dòng này trước; giao dịch của ta thua ràng buộc duy nhất
+      hooks.afterRollback = () => { stocks.push({ id: 'winner', note: '', unitCost: 0, createdAt: new Date(), updatedAt: new Date(), ...args.data, quantity: 1 }); };
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    }
+    return realCreate(args);
+  };
+  const item = await service.receiveStock('npp-1', 'u', { schemeId: scheme.id, widthMm: 600, heightMm: 900, quantity: 2, idempotencyKey: 'r1' });
+  assert.equal(stocks.length, 1);
+  assert.equal(item.quantity, 3);
+});
+
+test('a concurrent duplicate idempotency key replays instead of failing', async () => {
+  const { service, prisma, stocks, moves, hooks } = setup();
+  const scheme = await service.createScheme('npp-1', { prefix: 'CL8' });
+  const realMovementCreate = prisma.nppGlassMovement.create;
+  let raced = false;
+  prisma.nppGlassMovement.create = async (args: Row) => {
+    if (!raced) {
+      raced = true;
+      // yêu cầu trùng khóa đã ghi xong dòng tồn và sổ trước khi yêu cầu này kịp ghi
+      hooks.afterRollback = () => {
+        stocks.push({ id: 'winner', nppOrgId: 'npp-1', code: 'x', glassType: '', widthMm: 600, heightMm: 900, quantity: 2, unitCost: 0, note: '', schemeId: scheme.id, kind: 'SHEET', location: '', barcode: 'CL8-0600-0900', createdAt: new Date(), updatedAt: new Date() });
+        moves.push({ id: 'winner-move', nppOrgId: 'npp-1', stockId: 'winner', type: 'RECEIVE', quantity: 2, direction: 'IN', idempotencyKey: 'dup', createdAt: new Date() });
+      };
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    }
+    return realMovementCreate(args);
+  };
+  const item = await service.receiveStock('npp-1', 'u', { schemeId: scheme.id, widthMm: 600, heightMm: 900, quantity: 2, idempotencyKey: 'dup' });
+  assert.equal(item.quantity, 2);
+  assert.equal(stocks.length, 1);
+  assert.equal(moves.length, 1);
 });
 
 test('lookup finds stock by scanned barcode, only inside the caller NPP', async () => {

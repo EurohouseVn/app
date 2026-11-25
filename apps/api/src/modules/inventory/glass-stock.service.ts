@@ -119,6 +119,21 @@ export class NppGlassStockService {
     const parsed = parseGlassBarcode(barcode)!;
     const location = input.location?.trim() ?? '';
 
+    // Hai yêu cầu đồng thời có thể cùng tạo một dòng tồn hoặc cùng khóa chống trùng; Postgres chặn bằng ràng buộc duy nhất
+    // và hủy giao dịch thua. Chạy lại giao dịch: lần sau sẽ thấy dòng hoặc bút toán của bên thắng nên cộng dồn hoặc trả lại kết quả cũ.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.receiveOnce(nppOrgId, actorId, input, key, kind, scheme, barcode, parsed.shortMm, parsed.longMm, location);
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'P2002' || attempt >= 4) throw error;
+      }
+    }
+  }
+
+  private receiveOnce(
+    nppOrgId: string, actorId: string, input: ReceiveNppGlassStockInput, key: string, kind: NppGlassStockKind,
+    scheme: SchemeRow, barcode: string, shortMm: number, longMm: number, location: string,
+  ): Promise<NppGlassSheetItem> {
     return this.prisma.$transaction(async (tx) => {
       const replay = await tx.nppGlassMovement.findUnique({ where: { nppOrgId_idempotencyKey: { nppOrgId, idempotencyKey: key } } });
       if (replay) {
@@ -138,8 +153,8 @@ export class NppGlassStockService {
               nppOrgId,
               code: barcode,
               glassType: scheme.glassType,
-              widthMm: parsed.shortMm,
-              heightMm: parsed.longMm,
+              widthMm: shortMm,
+              heightMm: longMm,
               quantity: input.quantity,
               unitCost: input.unitCost && input.unitCost > 0 ? input.unitCost : 0,
               note: input.note?.trim() ?? '',
