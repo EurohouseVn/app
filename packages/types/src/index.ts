@@ -1169,6 +1169,94 @@ export interface ScanGlassStockInput {
   idempotencyKey: string;
 }
 
+export type NppStocktakeStatus = 'OPEN' | 'APPLIED' | 'CANCELLED';
+
+export interface NppStocktakeItem {
+  id: string;
+  name: string;
+  /** Rỗng nghĩa là kiểm cả kho. */
+  location: string;
+  status: NppStocktakeStatus;
+  createdAt: string;
+  appliedAt?: string;
+}
+
+export interface CreateStocktakeInput {
+  name?: string;
+  location?: string;
+}
+
+export interface StocktakeScanInput {
+  barcode: string;
+  /** Mặc định 1; số âm để hoàn tác lần quét trước. */
+  quantity?: number;
+  kind?: NppGlassStockKind;
+  location?: string;
+  idempotencyKey: string;
+}
+
+export interface StocktakeScanResult {
+  barcode: string;
+  kind: NppGlassStockKind;
+  location: string;
+  counted: number;
+}
+
+export interface StocktakeLine {
+  barcode: string;
+  kind: NppGlassStockKind;
+  location: string;
+  widthMm: number;
+  heightMm: number;
+  system: number;
+  counted: number;
+  delta: number;
+  scanned: boolean;
+}
+
+export interface NppStocktakeSummary extends NppStocktakeItem {
+  lines: StocktakeLine[];
+  scanCount: number;
+  deviceCount: number;
+  /** Số dòng đã quét mà số đếm khác số trong hệ thống. */
+  differenceCount: number;
+}
+
+export interface ApplyStocktakeInput {
+  /** Dòng nào trong phạm vi mà không ai quét thì coi như 0. Mặc định false. */
+  zeroUnscanned?: boolean;
+}
+
+export interface PrintLabelData {
+  barcode: string;
+  widthMm: number;
+  heightMm: number;
+  glassType?: string;
+  location?: string;
+  kindLabel?: string;
+}
+
+export type NppPrintJobStatus = 'QUEUED' | 'CLAIMED' | 'PRINTED' | 'FAILED';
+
+export interface EnqueuePrintJobInput {
+  labels: PrintLabelData[];
+}
+
+export interface NppPrintJobItem {
+  id: string;
+  status: NppPrintJobStatus;
+  labelCount: number;
+  error: string;
+  createdAt: string;
+  printedAt?: string;
+  /** Chỉ có ngay sau khi gửi lệnh: có trạm in nào đang trực tuyến không. */
+  stationOnline?: boolean;
+}
+
+export interface NppPrintJobWithLabels extends NppPrintJobItem {
+  labels: PrintLabelData[];
+}
+
 export interface CreateNppFactoryInput {
   name: string;
   phone?: string;

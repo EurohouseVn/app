@@ -11,6 +11,8 @@ function matchValue(actual: unknown, expected: unknown): boolean {
     if ('in' in op) return (op.in as unknown[]).includes(actual);
     if ('gt' in op) return (actual as number) > op.gt;
     if ('gte' in op) return (actual as number) >= op.gte;
+    if ('lt' in op) return (actual as number) < op.lt;
+    if ('lte' in op) return (actual as number) <= op.lte;
     if ('not' in op) return actual !== op.not;
     if ('startsWith' in op) return String(actual).startsWith(op.startsWith);
   }
@@ -26,6 +28,10 @@ export function fakeGlassPrisma() {
     stocks: [] as Row[],
     moves: [] as Row[],
     plans: [] as Row[],
+    stocktakes: [] as Row[],
+    stocktakeScans: [] as Row[],
+    printJobs: [] as Row[],
+    printStations: [] as Row[],
   };
   let seq = 0;
   const nextId = (prefix: string) => `${prefix}${++seq}`;
@@ -113,6 +119,64 @@ export function fakeGlassPrisma() {
         rows.forEach((row) => applyData(row, data));
         return { count: rows.length };
       },
+    },
+    nppStocktake: {
+      create: async ({ data }: Row) => {
+        const row = { id: nextId('st'), name: '', location: '', status: 'OPEN', appliedAt: null, appliedById: null, createdAt: now(), updatedAt: now(), ...data };
+        tables.stocktakes.push(row);
+        return row;
+      },
+      findFirst: async ({ where }: Row) => tables.stocktakes.find((r) => matches(r, where)) ?? null,
+      findMany: async ({ where, take }: Row) => tables.stocktakes.filter((r) => matches(r, where)).slice().reverse().slice(0, take ?? 1000),
+      update: async ({ where, data }: Row) => {
+        const row = tables.stocktakes.find((r) => r.id === where.id)!;
+        applyData(row, data);
+        return row;
+      },
+      updateMany: async ({ where, data }: Row) => {
+        const rows = tables.stocktakes.filter((r) => matches(r, where));
+        rows.forEach((row) => applyData(row, data));
+        return { count: rows.length };
+      },
+    },
+    nppStocktakeScan: {
+      create: async ({ data }: Row) => {
+        if (tables.stocktakeScans.some((r) => r.stocktakeId === data.stocktakeId && r.idempotencyKey === data.idempotencyKey)) throw unique();
+        const row = { id: nextId('scan'), createdAt: now(), deviceSessionId: null, actorId: null, ...data };
+        tables.stocktakeScans.push(row);
+        return row;
+      },
+      findMany: async ({ where }: Row) => tables.stocktakeScans.filter((r) => matches(r, where)),
+      findFirst: async ({ where }: Row) => tables.stocktakeScans.find((r) => matches(r, where)) ?? null,
+    },
+    nppPrintJob: {
+      create: async ({ data }: Row) => {
+        const row = { id: nextId('job'), status: 'QUEUED', claimedBySessionId: null, claimedAt: null, printedAt: null, error: '', createdAt: now(), updatedAt: now(), ...data };
+        tables.printJobs.push(row);
+        return row;
+      },
+      findFirst: async ({ where, orderBy }: Row) => {
+        const rows = tables.printJobs.filter((r) => matches(r, where));
+        if (orderBy?.createdAt === 'asc') rows.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+        return rows[0] ?? null;
+      },
+      findMany: async ({ where, take }: Row) => tables.printJobs.filter((r) => matches(r, where)).slice().reverse().slice(0, take ?? 1000),
+      updateMany: async ({ where, data }: Row) => {
+        const rows = tables.printJobs.filter((r) => matches(r, where));
+        rows.forEach((row) => applyData(row, data));
+        return { count: rows.length };
+      },
+    },
+    nppPrintStation: {
+      upsert: async ({ where, create, update }: Row) => {
+        const k = where.nppOrgId_deviceSessionId;
+        const row = tables.printStations.find((r) => r.nppOrgId === k.nppOrgId && r.deviceSessionId === k.deviceSessionId);
+        if (row) { applyData(row, update); return row; }
+        const made = { id: nextId('stn'), createdAt: now(), updatedAt: now(), ...create };
+        tables.printStations.push(made);
+        return made;
+      },
+      findFirst: async ({ where }: Row) => tables.printStations.find((r) => matches(r, where)) ?? null,
     },
     $transaction: async (fn: (tx: Row) => unknown) => {
       const snapshot = Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))])) as Record<string, Row[]>;

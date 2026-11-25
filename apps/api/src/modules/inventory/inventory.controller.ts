@@ -3,12 +3,16 @@ import { InventoryService } from './inventory.service';
 import type {
   AdjustProfileStockInput,
   CreateMaterialInput,
+  ApplyStocktakeInput,
   CreateNppCutPlanInput,
+  CreateStocktakeInput,
+  EnqueuePrintJobInput,
   CreateStockMovementInput,
   GlassCutPieceInput,
   NppCutPlanStatus,
   ReceiveNppGlassStockInput,
   ScanGlassStockInput,
+  StocktakeScanInput,
   UpdateMaterialInput,
   UpsertNppAccessoryInput,
   UpsertNppBarcodeSchemeInput,
@@ -16,6 +20,8 @@ import type {
 } from '@eurohouse/types';
 import { NppGlassStockService } from './glass-stock.service';
 import { NppGlassCuttingService } from './glass-cutting.service';
+import { NppStocktakeService } from './glass-stocktake.service';
+import { NppPrintService } from './glass-print.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -31,7 +37,7 @@ function commandContext(user: JwtUser, idempotencyKey: string | undefined, owner
 
 @Controller()
 export class InventoryController {
-  constructor(private readonly service: InventoryService, private readonly glass: NppGlassStockService, private readonly cutting: NppGlassCuttingService) {}
+  constructor(private readonly service: InventoryService, private readonly glass: NppGlassStockService, private readonly cutting: NppGlassCuttingService, private readonly stocktakes: NppStocktakeService, private readonly printing: NppPrintService) {}
 
   @Get('materials')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -258,6 +264,90 @@ export class InventoryController {
   @Roles('NPP')
   cancelNppCutPlan(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.cutting.cancelPlan(user.organizationId!, id);
+  }
+
+  @Get('npp/glass/stocktakes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppStocktakes(@CurrentUser() user: JwtUser) {
+    return this.stocktakes.listStocktakes(user.organizationId!);
+  }
+
+  @Post('npp/glass/stocktakes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  createNppStocktake(@Body() body: CreateStocktakeInput, @CurrentUser() user: JwtUser) {
+    return this.stocktakes.createStocktake(user.organizationId!, user.sub, body ?? {});
+  }
+
+  @Get('npp/glass/stocktakes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppStocktake(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.stocktakes.getSummary(user.organizationId!, id);
+  }
+
+  @Post('npp/glass/stocktakes/:id/scans')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  scanNppStocktake(@Param('id') id: string, @Body() body: StocktakeScanInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.stocktakes.addScan(user.organizationId!, user.sub, user.sid, id, { ...body, idempotencyKey: body.idempotencyKey || key || '' });
+  }
+
+  @Post('npp/glass/stocktakes/:id/apply')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  applyNppStocktake(@Param('id') id: string, @Body() body: ApplyStocktakeInput, @CurrentUser() user: JwtUser) {
+    return this.stocktakes.applyStocktake(user.organizationId!, user.sub, id, body ?? {});
+  }
+
+  @Post('npp/glass/stocktakes/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  cancelNppStocktake(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.stocktakes.cancelStocktake(user.organizationId!, id);
+  }
+
+  @Get('npp/print-jobs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppPrintJobs(@CurrentUser() user: JwtUser) {
+    return this.printing.listJobs(user.organizationId!);
+  }
+
+  @Post('npp/print-jobs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  enqueueNppPrintJob(@Body() body: EnqueuePrintJobInput, @CurrentUser() user: JwtUser) {
+    return this.printing.enqueue(user.organizationId!, user.sub, user.sid, body);
+  }
+
+  @Get('npp/print-jobs/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppPrintJob(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.printing.getJob(user.organizationId!, id);
+  }
+
+  @Post('npp/print-jobs/:id/complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  completeNppPrintJob(@Param('id') id: string, @Body() body: { ok?: boolean; error?: string }, @CurrentUser() user: JwtUser) {
+    return this.printing.complete(user.organizationId!, id, { ok: body?.ok !== false, error: body?.error });
+  }
+
+  @Get('npp/print-station/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  async nppPrintStationStatus(@CurrentUser() user: JwtUser) {
+    return { online: await this.printing.stationOnline(user.organizationId!) };
+  }
+
+  @Post('npp/print-station/poll')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  pollNppPrintStation(@CurrentUser() user: JwtUser) {
+    return this.printing.poll(user.organizationId!, user.sid);
   }
 
   @Get('inventory-summary')

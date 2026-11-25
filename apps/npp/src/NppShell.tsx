@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2,
+  ClipboardCheck,
   Factory,
   FileBarChart,
   FileText,
@@ -12,6 +13,7 @@ import {
   LayoutGrid,
   LogOut,
   Package,
+  Printer,
   Scale,
   ScanLine,
   Settings,
@@ -29,6 +31,8 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: 'Phụ kiện', href: '/accessories', icon: Package },
   { label: 'Kính', href: '/glass', icon: LayoutGrid },
   { label: 'Quét mã', href: '/scan', icon: ScanLine },
+  { label: 'Kiểm kê', href: '/stocktake', icon: ClipboardCheck },
+  { label: 'Trạm in', href: '/print-station', icon: Printer },
   { label: 'Báo giá', href: '/quotations', icon: FileText },
   { label: 'Công trình', href: '/projects', icon: Building2 },
   { label: 'Đối chiếu', href: '/reconciliation', icon: Scale },

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ScanGlassStockInput } from '@eurohouse/types';
-import { SCAN_QUEUE_MAX, ScanQueue } from './scanQueue';
+import { DEFAULT_SCAN_PATH, SCAN_QUEUE_MAX, ScanQueue } from './scanQueue';
 
 const memory = (initial?: string) => {
   const data = new Map<string, string>();
@@ -50,4 +50,21 @@ test('the queue is capped, dropping the oldest scans', () => {
   assert.equal(ids.length, SCAN_QUEUE_MAX);
   assert.equal(ids[0], 'k20');
   assert.equal(ids[ids.length - 1], `k${SCAN_QUEUE_MAX + 19}`);
+});
+
+test('each queued scan remembers which API path it belongs to, defaulting to stock scanning', () => {
+  const store = memory();
+  const queue = new ScanQueue(store);
+  queue.add(scan('a'));
+  queue.add({ barcode: 'CL8-0600-0900', quantity: 1, idempotencyKey: 'b' }, '/npp/glass/stocktakes/st1/scans');
+  const reloaded = new ScanQueue(store).list();
+  assert.equal(reloaded.find((q) => q.id === 'a')!.path, DEFAULT_SCAN_PATH);
+  assert.equal(reloaded.find((q) => q.id === 'b')!.path, '/npp/glass/stocktakes/st1/scans');
+});
+
+test('entries saved before paths existed are read back with the default path', () => {
+  const legacy = JSON.stringify([{ id: 'old', input: { mode: 'RECEIVE', barcode: 'CL8-0600-0900', idempotencyKey: 'old' }, queuedAt: 1 }]);
+  const list = new ScanQueue(memory(legacy)).list();
+  assert.equal(list.length, 1);
+  assert.equal(list[0].path, DEFAULT_SCAN_PATH);
 });

@@ -42,6 +42,9 @@ model Organization {
   nppGlassMovements      NppGlassMovement[]       @relation("NppGlassMovementOrg")
   nppCutPlans            NppCutPlan[]             @relation("NppCutPlanOrg")
   nppDeviceSessions      NppDeviceSession[]       @relation("NppDeviceSessionOrg")
+  nppStocktakes          NppStocktake[]           @relation("NppStocktakeOrg")
+  nppPrintJobs           NppPrintJob[]            @relation("NppPrintJobOrg")
+  nppPrintStations       NppPrintStation[]        @relation("NppPrintStationOrg")
   salesTargets           SalesTarget[]            @relation("NppSalesTarget")
   workshopWorkers        WorkshopWorker[]         @relation("WorkshopWorkerOrg")
   workshopAttendances    WorkshopAttendance[]     @relation("WorkshopAttendanceOrg")
@@ -3946,4 +3949,75 @@ model NppDeviceSession {
 
   @@index([nppOrgId, kind, revokedAt])
   @@index([userId])
+}
+
+// Đợt kiểm kê kính: nhiều điện thoại cùng quét vào một đợt, máy tính xem số đếm và bấm Áp dụng thì kho mới đổi.
+model NppStocktake {
+  id          String             @id @default(cuid())
+  nppOrgId    String
+  nppOrg      Organization       @relation("NppStocktakeOrg", fields: [nppOrgId], references: [id])
+  name        String             @default("")
+  location    String             @default("") // "" = cả kho
+  status      String             @default("OPEN") // OPEN | APPLIED | CANCELLED
+  createdById String?
+  appliedById String?
+  appliedAt   DateTime?
+  scans       NppStocktakeScan[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([nppOrgId, status, createdAt])
+}
+
+// Mỗi lần quét một dòng; quantity âm là hoàn tác. idempotencyKey duy nhất trong đợt nên gửi lại không đếm hai lần.
+model NppStocktakeScan {
+  id              String       @id @default(cuid())
+  stocktakeId     String
+  stocktake       NppStocktake @relation(fields: [stocktakeId], references: [id], onDelete: Cascade)
+  nppOrgId        String
+  barcode         String
+  kind            String
+  location        String       @default("")
+  quantity        Int
+  deviceSessionId String?
+  actorId         String?
+  idempotencyKey  String
+  createdAt       DateTime     @default(now())
+
+  @@unique([stocktakeId, idempotencyKey])
+  @@index([stocktakeId, barcode, kind, location])
+}
+
+// Hàng đợi in nhãn: điện thoại gửi lệnh, "trạm in" (một máy tính nối máy in tem) nhận và in.
+model NppPrintJob {
+  id                 String       @id @default(cuid())
+  nppOrgId           String
+  nppOrg             Organization @relation("NppPrintJobOrg", fields: [nppOrgId], references: [id])
+  createdById        String?
+  sourceSessionId    String?
+  labels             Json
+  labelCount         Int
+  status             String       @default("QUEUED") // QUEUED | CLAIMED | PRINTED | FAILED
+  claimedBySessionId String?
+  claimedAt          DateTime?
+  printedAt          DateTime?
+  error              String       @default("")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([nppOrgId, status, createdAt])
+}
+
+// Máy tính đang bật trang Trạm in: mỗi lần hỏi lệnh in thì cập nhật lastSeenAt để điện thoại biết trạm đang trực tuyến.
+model NppPrintStation {
+  id              String       @id @default(cuid())
+  nppOrgId        String
+  nppOrg          Organization @relation("NppPrintStationOrg", fields: [nppOrgId], references: [id])
+  deviceSessionId String
+  lastSeenAt      DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([nppOrgId, deviceSessionId])
+  @@index([nppOrgId, lastSeenAt])
 }

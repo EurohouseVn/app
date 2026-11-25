@@ -6,11 +6,13 @@ import type {
   NppBarcodeSchemeItem,
   NppGlassSheetItem,
   NppGlassStockKind,
+  NppPrintJobItem,
   ReceiveNppGlassStockInput,
   UpsertNppBarcodeSchemeInput,
 } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiGet, apiSend } from '../../src/lib/api';
+import { detectDeviceKind } from '../../src/lib/device';
 import { previewGlassBarcode } from '../../src/lib/glassBarcode';
 import { GlassCutPlanner } from '../../src/components/GlassCutPlanner';
 import {
@@ -43,6 +45,8 @@ export default function NppGlassPage() {
   const [printLabels, setPrintLabels] = useState<GlassLabelData[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [printTarget, setPrintTarget] = useState<'LOCAL' | 'STATION'>('LOCAL');
+  const [stationOnline, setStationOnline] = useState(false);
 
   function load() {
     apiGet<NppBarcodeSchemeItem[]>('/npp/glass/schemes')
@@ -58,7 +62,17 @@ export default function NppGlassPage() {
 
   useEffect(() => {
     setLabelSize(loadLabelSize());
+    // Điện thoại thường không nối được máy in tem: mặc định gửi lệnh tới trạm in; máy tính in thẳng từ trình duyệt.
+    const saved = window.localStorage.getItem('eurohouse-npp-print-target');
+    setPrintTarget(saved === 'LOCAL' || saved === 'STATION' ? saved : detectDeviceKind(navigator.userAgent) === 'PHONE' ? 'STATION' : 'LOCAL');
     load();
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => apiGet<{ online: boolean }>('/npp/print-station/status').then((s) => setStationOnline(s.online)).catch(() => setStationOnline(false));
+    void refresh();
+    const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 10_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   // In: chờ mã vạch vẽ xong rồi mới mở hộp thoại in, và dọn vùng in sau khi in xong.
@@ -96,6 +110,27 @@ export default function NppGlassPage() {
     };
   }
 
+  function chooseTarget(target: 'LOCAL' | 'STATION') {
+    setPrintTarget(target);
+    window.localStorage.setItem('eurohouse-npp-print-target', target);
+  }
+
+  /** In tại máy này (hộp thoại in của trình duyệt) hoặc gửi lệnh tới trạm in nối máy in tem. */
+  async function handlePrint(labels: GlassLabelData[]) {
+    setError('');
+    if (printTarget === 'LOCAL') {
+      setPrintLabels(labels);
+      return;
+    }
+    try {
+      const job = await apiSend<NppPrintJobItem>('/npp/print-jobs', 'POST', { labels });
+      setMessage(job.stationOnline ? `Đã gửi ${job.labelCount} nhãn tới trạm in.` : `Đã lưu lệnh in ${job.labelCount} nhãn nhưng chưa có trạm in nào trực tuyến. Mở trang Trạm in trên máy tính nối máy in để in.`);
+    } catch (e) {
+      setMessage('');
+      setError(e instanceof Error ? e.message : 'Không gửi được lệnh in.');
+    }
+  }
+
   function printRow(row: NppGlassSheetItem, copies: number) {
     const label = labelFor(row);
     if (!label) {
@@ -103,7 +138,7 @@ export default function NppGlassPage() {
       return;
     }
     setError('');
-    setPrintLabels(Array.from({ length: Math.min(Math.max(1, copies), 500) }, () => label));
+    void handlePrint(Array.from({ length: Math.min(Math.max(1, copies), 500) }, () => label));
   }
 
   async function createScheme() {
@@ -252,6 +287,12 @@ export default function NppGlassPage() {
             <label style={{ ...labelStyle, fontSize: 12 }}>Khổ tem rộng (mm)<input aria-label="Khổ tem rộng" style={{ ...inputStyle, width: 90 }} type="number" value={labelSize.widthMm || ''} onChange={(e) => updateLabelSize('widthMm', e.target.value)} /></label>
             <label style={{ ...labelStyle, fontSize: 12 }}>Khổ tem cao (mm)<input aria-label="Khổ tem cao" style={{ ...inputStyle, width: 90 }} type="number" value={labelSize.heightMm || ''} onChange={(e) => updateLabelSize('heightMm', e.target.value)} /></label>
             {!sizeValid ? <span style={{ color: ui.danger, fontSize: 12 }}>Khổ tem 20–200 × 15–200 mm</span> : null}
+            <label style={{ ...labelStyle, fontSize: 12 }}>In bằng
+              <select aria-label="In bằng" style={{ ...inputStyle, width: 190 }} value={printTarget} onChange={(e) => chooseTarget(e.target.value as 'LOCAL' | 'STATION')}>
+                <option value="LOCAL">Trình duyệt máy này</option>
+                <option value="STATION">Trạm in {stationOnline ? '(đang trực)' : '(chưa bật)'}</option>
+              </select>
+            </label>
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -283,7 +324,7 @@ export default function NppGlassPage() {
         </div>
       </section>
 
-      <GlassCutPlanner schemes={schemes} onStockChanged={load} onPrint={setPrintLabels} labelSizeValid={sizeValid} />
+      <GlassCutPlanner schemes={schemes} onStockChanged={load} onPrint={(labels) => void handlePrint(labels)} labelSizeValid={sizeValid} />
 
       <GlassLabelPrintSheet labels={printLabels} size={labelSize} />
     </NppPage>
