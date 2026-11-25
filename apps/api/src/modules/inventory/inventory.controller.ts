@@ -3,8 +3,10 @@ import { InventoryService } from './inventory.service';
 import type {
   AdjustProfileStockInput,
   CreateMaterialInput,
+  CreateNppCutPlanInput,
   CreateStockMovementInput,
   GlassCutPieceInput,
+  NppCutPlanStatus,
   ReceiveNppGlassStockInput,
   UpdateMaterialInput,
   UpsertNppAccessoryInput,
@@ -12,6 +14,7 @@ import type {
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
 import { NppGlassStockService } from './glass-stock.service';
+import { NppGlassCuttingService } from './glass-cutting.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -27,7 +30,7 @@ function commandContext(user: JwtUser, idempotencyKey: string | undefined, owner
 
 @Controller()
 export class InventoryController {
-  constructor(private readonly service: InventoryService, private readonly glass: NppGlassStockService) {}
+  constructor(private readonly service: InventoryService, private readonly glass: NppGlassStockService, private readonly cutting: NppGlassCuttingService) {}
 
   @Get('materials')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -209,6 +212,41 @@ export class InventoryController {
   @Roles('NPP')
   receiveNppGlassStock(@Body() body: ReceiveNppGlassStockInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
     return this.glass.receiveStock(user.organizationId!, user.sub, { ...body, idempotencyKey: body.idempotencyKey || key || '' });
+  }
+
+  @Get('npp/glass/cut-plans')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppCutPlans(@CurrentUser() user: JwtUser, @Query('status') status?: NppCutPlanStatus) {
+    return this.cutting.listPlans(user.organizationId!, status);
+  }
+
+  @Post('npp/glass/cut-plans')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  createNppCutPlan(@Body() body: CreateNppCutPlanInput, @CurrentUser() user: JwtUser) {
+    return this.cutting.createPlan(user.organizationId!, user.sub, body);
+  }
+
+  @Get('npp/glass/cut-plans/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppCutPlan(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.cutting.getPlan(user.organizationId!, id);
+  }
+
+  @Post('npp/glass/cut-plans/:id/confirm')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  confirmNppCutPlan(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.cutting.confirmPlan(user.organizationId!, user.sub, id);
+  }
+
+  @Post('npp/glass/cut-plans/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  cancelNppCutPlan(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    return this.cutting.cancelPlan(user.organizationId!, id);
   }
 
   @Get('inventory-summary')

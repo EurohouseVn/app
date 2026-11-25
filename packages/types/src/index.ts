@@ -1068,6 +1068,93 @@ export interface GlassCutPlanResult {
   wastePercent: number;
 }
 
+export interface GlassCutOptionsInput {
+  /** Lề cắt (hao mạch) giữa hai tấm kề nhau, mm. */
+  kerfMm?: number;
+  /** Mép bỏ mỗi cạnh tấm lớn, mm. */
+  trimMm?: number;
+  /** Cạnh ngắn nhất để một mảnh thừa được giữ lại làm tấm dư, mm. */
+  minRemnantMm?: number;
+  allowRotation?: boolean;
+}
+
+export interface CreateNppCutPlanInput {
+  schemeId: string;
+  pieces: GlassCutPieceInput[];
+  options?: GlassCutOptionsInput;
+  orderRef?: string;
+  note?: string;
+}
+
+export interface NppCutPlanPlacement {
+  pieceNo: number;
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+  rotated: boolean;
+}
+
+export interface NppCutPlanRemnant {
+  x: number;
+  y: number;
+  widthMm: number;
+  heightMm: number;
+}
+
+export interface NppCutPlanSheet {
+  sheetNo: number;
+  sourceId: string;
+  sourceKind: NppGlassStockKind;
+  sourceBarcode: string;
+  sourceLocation: string;
+  widthMm: number;
+  heightMm: number;
+  placements: NppCutPlanPlacement[];
+  remnants: NppCutPlanRemnant[];
+  usedAreaMm2: number;
+  wasteAreaMm2: number;
+  wastePercent: number;
+}
+
+export interface NppCutPlanEffectLine {
+  barcode: string;
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+  location: string;
+}
+
+export interface NppCutPlanEffects {
+  consumed: NppCutPlanEffectLine[];
+  remnants: NppCutPlanEffectLine[];
+  pieces: NppCutPlanEffectLine[];
+}
+
+export interface NppCutPlanResultData {
+  sheets: NppCutPlanSheet[];
+  unplaced: Array<{ pieceNo: number; widthMm: number; heightMm: number }>;
+  totals: { sheetsUsed: number; piecesPlaced: number; usedAreaMm2: number; wasteAreaMm2: number; wastePercent: number };
+  /** Có sau khi chốt cắt: những gì đã trừ khỏi kho và đã cộng vào kho. */
+  effects?: NppCutPlanEffects;
+}
+
+export type NppCutPlanStatus = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+
+export interface NppCutPlanItem {
+  id: string;
+  status: NppCutPlanStatus;
+  schemeId: string;
+  schemePrefix: string;
+  orderRef: string;
+  note: string;
+  options: Required<GlassCutOptionsInput>;
+  pieces: GlassCutPieceInput[];
+  result: NppCutPlanResultData;
+  createdAt: string;
+  confirmedAt?: string;
+}
+
 export interface CreateNppFactoryInput {
   name: string;
   phone?: string;

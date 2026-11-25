@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Barcode, Layers3, PackagePlus, Plus, Printer, Save, Scissors, Tags } from 'lucide-react';
+import { Barcode, Layers3, PackagePlus, Plus, Printer, Save, Tags } from 'lucide-react';
 import type {
-  GlassCutPieceInput,
-  GlassCutPlanResult,
   NppBarcodeSchemeItem,
   NppGlassSheetItem,
   NppGlassStockKind,
@@ -14,6 +12,7 @@ import type {
 import { NppPage } from '../../src/NppPage';
 import { apiGet, apiSend } from '../../src/lib/api';
 import { previewGlassBarcode } from '../../src/lib/glassBarcode';
+import { GlassCutPlanner } from '../../src/components/GlassCutPlanner';
 import {
   BarcodeSvg,
   DEFAULT_LABEL_SIZE,
@@ -42,9 +41,6 @@ export default function NppGlassPage() {
   const [receiveKey, setReceiveKey] = useState(newKey);
   const [labelSize, setLabelSize] = useState<LabelSize>(DEFAULT_LABEL_SIZE);
   const [printLabels, setPrintLabels] = useState<GlassLabelData[]>([]);
-  const [selectedSheetId, setSelectedSheetId] = useState('');
-  const [pieces, setPieces] = useState<GlassCutPieceInput[]>([{ widthMm: 600, heightMm: 900, quantity: 1 }]);
-  const [plan, setPlan] = useState<GlassCutPlanResult | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -56,10 +52,7 @@ export default function NppGlassPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được mã đầu.'));
     apiGet<NppGlassSheetItem[]>('/npp/glass/stock')
-      .then((items) => {
-        setStock(items);
-        setSelectedSheetId((current) => current || items[0]?.id || '');
-      })
+      .then(setStock)
       .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được kho kính.'));
   }
 
@@ -85,7 +78,6 @@ export default function NppGlassPage() {
   const previewCode = selectedScheme ? previewGlassBarcode(selectedScheme.prefix, Number(receive.widthMm), Number(receive.heightMm)) : null;
   const totalValue = useMemo(() => stock.reduce((sum, row) => sum + row.quantity * row.unitCost, 0), [stock]);
   const totalPieces = useMemo(() => stock.reduce((sum, row) => sum + row.quantity, 0), [stock]);
-  const selectedSheet = stock.find((row) => row.id === selectedSheetId);
 
   function fail(e: unknown, fallback: string) {
     setMessage('');
@@ -172,24 +164,6 @@ export default function NppGlassPage() {
     const next = { ...labelSize, [key]: Number(value) || 0 };
     setLabelSize(next);
     if (next.widthMm >= 20 && next.widthMm <= 200 && next.heightMm >= 15 && next.heightMm <= 200) saveLabelSize(next);
-  }
-
-  function updatePiece(index: number, key: keyof GlassCutPieceInput, value: string) {
-    setPieces((current) => current.map((piece, i) => (i === index ? { ...piece, [key]: Number(value) } : piece)));
-  }
-
-  async function calculatePlan() {
-    setError('');
-    setPlan(null);
-    if (!selectedSheetId) {
-      setError('Chọn tấm kính lớn để cắt.');
-      return;
-    }
-    try {
-      setPlan(await apiSend<GlassCutPlanResult>('/npp/glass/cut-plan', 'POST', { sheetId: selectedSheetId, pieces }));
-    } catch (e) {
-      fail(e, 'Không tính được phương án cắt.');
-    }
   }
 
   const sizeValid = labelSize.widthMm >= 20 && labelSize.widthMm <= 200 && labelSize.heightMm >= 15 && labelSize.heightMm <= 200;
@@ -299,7 +273,6 @@ export default function NppGlassPage() {
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       <button disabled={!sizeValid || isLegacy(row.barcode)} onClick={() => printRow(row, 1)} style={{ ...ghostButtonStyle, opacity: sizeValid && !isLegacy(row.barcode) ? 1 : 0.5 }} title="In một nhãn"><Printer size={14} /> In 1</button>
                       <button disabled={!sizeValid || isLegacy(row.barcode)} onClick={() => printRow(row, row.quantity)} style={{ ...ghostButtonStyle, opacity: sizeValid && !isLegacy(row.barcode) ? 1 : 0.5 }} title="In đủ nhãn cho cả số tấm đang tồn"><Printer size={14} /> In {row.quantity}</button>
-                      <button onClick={() => setSelectedSheetId(row.id)} style={{ ...ghostButtonStyle, background: selectedSheetId === row.id ? ui.brandSoft : ui.surface, color: selectedSheetId === row.id ? ui.brandText : ui.text }}><Scissors size={14} /> Cắt</button>
                     </div>
                   </td>
                 </tr>
@@ -310,61 +283,7 @@ export default function NppGlassPage() {
         </div>
       </section>
 
-      <section style={{ ...panelStyle, marginTop: 20 }}>
-        <h2 style={{ margin: '0 0 14px', color: ui.text, fontSize: 18, display: 'flex', gap: 8, alignItems: 'center' }}><Scissors size={18} color={ui.brand} /> Tính hướng cắt</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, alignItems: 'start' }}>
-          <div style={{ display: 'grid', gap: 10 }}>
-            <label style={labelStyle}>Tấm kính cần cắt
-              <select style={inputStyle} value={selectedSheetId} onChange={(e) => setSelectedSheetId(e.target.value)}>
-                {stock.map((row) => <option key={row.id} value={row.id}>{isLegacy(row.barcode) ? row.code : row.barcode} — {row.widthMm}×{row.heightMm}</option>)}
-              </select>
-            </label>
-            <button onClick={() => setPieces((current) => [...current, { widthMm: 500, heightMm: 800, quantity: 1 }])} style={ghostButtonStyle}><Plus size={14} /> Thêm kích thước</button>
-            <button onClick={calculatePlan} style={primaryButtonStyle}><Scissors size={15} /> Tính hướng cắt</button>
-          </div>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {pieces.map((piece, index) => (
-              <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                <label style={labelStyle}>Rộng (mm)<input style={inputStyle} type="number" value={piece.widthMm} onChange={(e) => updatePiece(index, 'widthMm', e.target.value)} /></label>
-                <label style={labelStyle}>Cao (mm)<input style={inputStyle} type="number" value={piece.heightMm} onChange={(e) => updatePiece(index, 'heightMm', e.target.value)} /></label>
-                <label style={labelStyle}>Số tấm<input style={inputStyle} type="number" value={piece.quantity} onChange={(e) => updatePiece(index, 'quantity', e.target.value)} /></label>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {plan && selectedSheet ? (
-          <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 320px', gap: 18, alignItems: 'start' }}>
-            <div style={{ border: `1px solid ${ui.borderStrong}`, borderRadius: 12, background: ui.surfaceMuted, padding: 12, overflow: 'auto' }}>
-              <div style={{ position: 'relative', width: 760, height: Math.max(220, Math.round(760 * (plan.sheetHeightMm / plan.sheetWidthMm))), background: '#fff', border: `2px solid ${ui.text}`, boxSizing: 'border-box' }}>
-                {plan.placements.map((placement) => (
-                  <div key={placement.pieceNo} style={{
-                    position: 'absolute',
-                    left: `${(placement.x / plan.sheetWidthMm) * 100}%`,
-                    top: `${(placement.y / plan.sheetHeightMm) * 100}%`,
-                    width: `${(placement.widthMm / plan.sheetWidthMm) * 100}%`,
-                    height: `${(placement.heightMm / plan.sheetHeightMm) * 100}%`,
-                    border: `1px solid ${ui.brand}`,
-                    background: ui.brandSoft,
-                    color: ui.brandText,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    display: 'grid',
-                    placeItems: 'center',
-                    boxSizing: 'border-box',
-                  }}>{placement.pieceNo}{placement.rotated ? ' R' : ''}</div>
-                ))}
-              </div>
-            </div>
-            <div style={{ color: ui.textMuted, fontSize: 14, lineHeight: 1.8 }}>
-              <div>Khổ lớn: <strong style={{ color: ui.text }}>{plan.sheetWidthMm} × {plan.sheetHeightMm} mm</strong></div>
-              <div>Số tấm cắt được: <strong style={{ color: ui.text }}>{plan.placements.length}</strong></div>
-              <div>Hao hụt dự kiến: <strong style={{ color: ui.text }}>{plan.wastePercent}%</strong></div>
-              {plan.errors.length ? <div style={{ color: ui.danger, marginTop: 8 }}>{plan.errors.join(' ')}</div> : null}
-            </div>
-          </div>
-        ) : null}
-      </section>
+      <GlassCutPlanner schemes={schemes} onStockChanged={load} onPrint={setPrintLabels} labelSizeValid={sizeValid} />
 
       <GlassLabelPrintSheet labels={printLabels} size={labelSize} />
     </NppPage>
