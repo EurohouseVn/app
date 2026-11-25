@@ -5,10 +5,13 @@ import type {
   CreateMaterialInput,
   CreateStockMovementInput,
   GlassCutPieceInput,
+  ReceiveNppGlassStockInput,
   UpdateMaterialInput,
   UpsertNppAccessoryInput,
+  UpsertNppBarcodeSchemeInput,
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
+import { NppGlassStockService } from './glass-stock.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -24,7 +27,7 @@ function commandContext(user: JwtUser, idempotencyKey: string | undefined, owner
 
 @Controller()
 export class InventoryController {
-  constructor(private readonly service: InventoryService) {}
+  constructor(private readonly service: InventoryService, private readonly glass: NppGlassStockService) {}
 
   @Get('materials')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -164,6 +167,48 @@ export class InventoryController {
   @Roles('NPP')
   nppGlassCutPlan(@Body() body: { sheetId: string; pieces: GlassCutPieceInput[] }, @CurrentUser() user: JwtUser) {
     return this.service.planNppGlassCut(user.organizationId!, body.sheetId, body.pieces ?? []);
+  }
+
+  @Get('npp/glass/schemes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppGlassSchemes(@CurrentUser() user: JwtUser) {
+    return this.glass.listSchemes(user.organizationId!);
+  }
+
+  @Post('npp/glass/schemes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  createNppGlassScheme(@Body() body: UpsertNppBarcodeSchemeInput, @CurrentUser() user: JwtUser) {
+    return this.glass.createScheme(user.organizationId!, body);
+  }
+
+  @Patch('npp/glass/schemes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  updateNppGlassScheme(@Param('id') id: string, @Body() body: UpsertNppBarcodeSchemeInput, @CurrentUser() user: JwtUser) {
+    return this.glass.updateScheme(user.organizationId!, id, body);
+  }
+
+  @Get('npp/glass/stock')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppGlassStock(@CurrentUser() user: JwtUser) {
+    return this.glass.listStock(user.organizationId!);
+  }
+
+  @Get('npp/glass/stock/lookup')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  lookupNppGlassStock(@Query('code') code: string, @CurrentUser() user: JwtUser) {
+    return this.glass.lookupByBarcode(user.organizationId!, code ?? '');
+  }
+
+  @Post('npp/glass/stock/receive')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  receiveNppGlassStock(@Body() body: ReceiveNppGlassStockInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    return this.glass.receiveStock(user.organizationId!, user.sub, { ...body, idempotencyKey: body.idempotencyKey || key || '' });
   }
 
   @Get('inventory-summary')

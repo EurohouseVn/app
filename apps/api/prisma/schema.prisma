@@ -38,6 +38,8 @@ model Organization {
   nppStockMovements      NppStockMovement[]       @relation("NppStockMovementOrg")
   nppAccessories         NppAccessory[]           @relation("NppAccessoryOrg")
   nppGlassSheets         NppGlassSheet[]          @relation("NppGlassSheetOrg")
+  nppBarcodeSchemes      NppBarcodeScheme[]       @relation("NppBarcodeSchemeOrg")
+  nppGlassMovements      NppGlassMovement[]       @relation("NppGlassMovementOrg")
   salesTargets           SalesTarget[]            @relation("NppSalesTarget")
   workshopWorkers        WorkshopWorker[]         @relation("WorkshopWorkerOrg")
   workshopAttendances    WorkshopAttendance[]     @relation("WorkshopAttendanceOrg")
@@ -831,22 +833,68 @@ model NppAccessory {
   @@index([brand])
 }
 
+// Mã đầu mã vạch kính do NPP tự đặt (xem docs/design/NPP_GLASS_BARCODE_STOCK_DESIGN.md mục 3).
+model NppBarcodeScheme {
+  id          String          @id @default(cuid())
+  nppOrgId    String
+  nppOrg      Organization    @relation("NppBarcodeSchemeOrg", fields: [nppOrgId], references: [id])
+  prefix      String
+  label       String          @default("")
+  glassType   String          @default("")
+  thicknessMm Float?
+  active      Boolean         @default(true)
+  stocks      NppGlassSheet[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([nppOrgId, prefix])
+  @@index([nppOrgId, active])
+}
+
+// Tồn kính theo (mã đầu, kích thước, loại, vị trí). Dòng cũ nhập tay có barcode "LEGACY-<id>" và schemeId rỗng.
 model NppGlassSheet {
-  id        String       @id @default(cuid())
+  id        String            @id @default(cuid())
   nppOrgId  String
-  nppOrg    Organization @relation("NppGlassSheetOrg", fields: [nppOrgId], references: [id])
+  nppOrg    Organization      @relation("NppGlassSheetOrg", fields: [nppOrgId], references: [id])
   code      String
-  glassType String       @default("")
+  glassType String            @default("")
   widthMm   Int
   heightMm  Int
-  quantity  Int          @default(0)
-  unitCost  Int          @default(0)
-  note      String       @default("")
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  quantity  Int               @default(0)
+  unitCost  Int               @default(0)
+  note      String            @default("")
+  schemeId  String?
+  scheme    NppBarcodeScheme? @relation(fields: [schemeId], references: [id], onDelete: Restrict)
+  kind      String            @default("SHEET") // SHEET | REMNANT | CUT_PIECE
+  location  String            @default("")
+  barcode   String            @default("")
+  movements NppGlassMovement[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
+  @@unique([nppOrgId, barcode, kind, location])
   @@index([nppOrgId])
   @@index([glassType])
+  @@index([schemeId])
+}
+
+// Sổ nhập xuất kính bất biến. idempotencyKey chống ghi trùng khi quét lặp hoặc gửi lại.
+model NppGlassMovement {
+  id             String        @id @default(cuid())
+  nppOrgId       String
+  nppOrg         Organization  @relation("NppGlassMovementOrg", fields: [nppOrgId], references: [id])
+  stockId        String
+  stock          NppGlassSheet @relation(fields: [stockId], references: [id], onDelete: Restrict)
+  type           String // RECEIVE | ISSUE | CUT | REMNANT_IN | ADJUST | SCRAP
+  quantity       Int // luôn dương; chiều tăng/giảm theo type
+  direction      String // IN | OUT
+  reason         String        @default("")
+  actorId        String?
+  idempotencyKey String
+  createdAt      DateTime      @default(now())
+
+  @@unique([nppOrgId, idempotencyKey])
+  @@index([stockId, createdAt])
 }
 
 model ProfileCutoff {

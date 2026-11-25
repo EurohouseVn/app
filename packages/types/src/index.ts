@@ -983,6 +983,8 @@ export interface UpsertNppAccessoryInput {
   note?: string;
 }
 
+export type NppGlassStockKind = 'SHEET' | 'REMNANT' | 'CUT_PIECE';
+
 export interface NppGlassSheetItem {
   id: string;
   code: string;
@@ -993,6 +995,41 @@ export interface NppGlassSheetItem {
   unitCost: number;
   note?: string;
   createdAt: string;
+  /** Mã vạch dạng MÃĐẦU-CẠNHNGẮN-CẠNHDÀI; dòng cũ nhập tay có dạng LEGACY-<id>. */
+  barcode?: string;
+  kind?: NppGlassStockKind;
+  location?: string;
+  schemeId?: string | null;
+}
+
+export interface NppBarcodeSchemeItem {
+  id: string;
+  prefix: string;
+  label: string;
+  glassType: string;
+  thicknessMm?: number | null;
+  active: boolean;
+}
+
+export interface UpsertNppBarcodeSchemeInput {
+  prefix?: string;
+  label?: string;
+  glassType?: string;
+  thicknessMm?: number | null;
+  active?: boolean;
+}
+
+export interface ReceiveNppGlassStockInput {
+  schemeId: string;
+  widthMm: number;
+  heightMm: number;
+  quantity: number;
+  unitCost?: number;
+  location?: string;
+  kind?: NppGlassStockKind;
+  note?: string;
+  /** Chống ghi trùng khi gửi lại; sinh ở máy khách cho mỗi thao tác. */
+  idempotencyKey: string;
 }
 
 export interface UpsertNppGlassSheetInput {

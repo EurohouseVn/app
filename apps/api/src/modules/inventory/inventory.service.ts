@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -146,6 +147,8 @@ export class InventoryService {
         quantity: input.quantity ?? 0,
         unitCost: input.unitCost ?? 0,
         note: input.note?.trim() ?? '',
+        // Đường nhập tay cũ không có mã đầu: cấp mã LEGACY duy nhất để không vướng khóa (nppOrgId, barcode, kind, location).
+        barcode: `LEGACY-${randomUUID()}`,
       },
     });
     return this.toNppGlassSheet(created);
