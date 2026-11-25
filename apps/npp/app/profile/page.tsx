@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Save, UserCircle, Image as ImageIcon, MapPin, Phone, Mail, Globe, Hammer } from 'lucide-react';
 import { NppPage } from '../../src/NppPage';
+import { DeviceSessionsPanel } from '../../src/components/DeviceSessionsPanel';
 import { apiGet, apiSend } from '../../src/lib/api';
 import { eyebrowStyle, pageTitleStyle, panelStyle, subtitleStyle, ui } from '../../src/ui';
 
@@ -181,6 +182,8 @@ export default function NppProfilePage() {
 
         </div>
       )}
+
+      <DeviceSessionsPanel />
     </NppPage>
   );
 }

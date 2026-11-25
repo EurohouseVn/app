@@ -1155,6 +1155,20 @@ export interface NppCutPlanItem {
   confirmedAt?: string;
 }
 
+export interface ScanGlassStockInput {
+  mode: 'RECEIVE' | 'ISSUE';
+  /** Mã quét được, dạng MÃĐẦU-CẠNHNGẮN-CẠNHDÀI. */
+  barcode: string;
+  /** Mặc định 1 cho mỗi lần quét. */
+  quantity?: number;
+  location?: string;
+  kind?: NppGlassStockKind;
+  note?: string;
+  reason?: string;
+  /** Mỗi lần quét một khóa riêng: quét lặp hoặc gửi lại khi mất mạng không bị cộng/trừ hai lần. */
+  idempotencyKey: string;
+}
+
 export interface CreateNppFactoryInput {
   name: string;
   phone?: string;

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { DeviceSessionService, resolveDeviceKind } from './device-session.service';
 import { LoginDto } from './dto/login.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import type { RegisterFactoryInput } from '@eurohouse/types';
@@ -10,15 +11,43 @@ import { RegisterWorkshopDto } from './dto/register-workshop.dto';
 import { RegisterWorkshopPhoneDto } from './dto/register-workshop-phone.dto';
 import { VerificationConfirmDto, VerificationResendDto } from './dto/verification.dto';
 
+/** Tên thiết bị web gửi lên đã mã hóa URL (tiêu đề HTTP chỉ cho phép ASCII). */
+function decodeLabel(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return decodeURIComponent(raw).slice(0, 80);
+  } catch {
+    return undefined;
+  }
+}
+
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService, private readonly deviceSessions: DeviceSessionService) {}
 
   @Post('login')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body.identifier, body.password);
+  login(
+    @Body() body: LoginDto,
+    @Headers('x-device-kind') deviceKind?: string,
+    @Headers('x-device-label') deviceLabel?: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.authService.login(body.identifier, body.password, {
+      kind: resolveDeviceKind(deviceKind, userAgent),
+      label: decodeLabel(deviceLabel),
+      userAgent,
+      revokeSessionId: body.revokeSessionId,
+    });
+  }
+
+  /** Đăng xuất phiên thiết bị hiện tại (token NPP); với token cũ không có sid thì không làm gì. */
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(@CurrentUser() user: JwtUser) {
+    if (user.sid) await this.deviceSessions.revokeById(user.sid);
+    return { ok: true };
   }
 
   @Post('register-factory')

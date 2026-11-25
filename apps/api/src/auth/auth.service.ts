@@ -18,6 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { JwtUser } from './current-user.decorator';
 import { normalizeIdentity, normalizeOptionalIdentities } from './identity-normalization';
 import { VerificationService } from './verification.service';
+import { DeviceSessionService, type DeviceKind } from './device-session.service';
 import { FormulaAccessService } from '../modules/formula-access/formula-access.service';
 import { EurohouseAccessService } from '../modules/eurohouse-access/eurohouse-access.service';
 
@@ -25,6 +26,8 @@ import { EurohouseAccessService } from '../modules/eurohouse-access/eurohouse-ac
 export const DELETED_ROLE = 'DELETED';
 const DELETED_DISPLAY_NAME = 'Tài khoản đã xóa';
 const DELETED_ORGANIZATION_NAME = 'Cơ sở đã xóa';
+
+export type LoginDeviceInfo = { kind?: DeviceKind; label?: string; userAgent?: string; revokeSessionId?: string };
 
 function parseModules(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -44,9 +47,10 @@ export class AuthService {
     private readonly verificationService: VerificationService,
     @Optional() private readonly formulaAccessService?: FormulaAccessService,
     @Optional() private readonly eurohouseAccessService?: EurohouseAccessService,
+    @Optional() private readonly deviceSessions?: DeviceSessionService,
   ) {}
 
-  async login(identifier: string, password: string): Promise<LoginResponse> {
+  async login(identifier: string, password: string, device?: LoginDeviceInfo): Promise<LoginResponse> {
     let identity;
     try {
       identity = normalizeIdentity(identifier);
@@ -67,10 +71,10 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu.');
     }
-    return this.issueLogin(user);
+    return this.issueLogin(user, device);
   }
 
-  private async issueLogin(user: any): Promise<LoginResponse> {
+  private async issueLogin(user: any, device?: LoginDeviceInfo): Promise<LoginResponse> {
     const modules = parseModules(user.moduleAccess);
     const permissions = parseModules(user.rbacRole?.permissions);
     const payload: JwtUser = {
@@ -87,6 +91,19 @@ export class AuthService {
       permissions,
       rbacRoleId: user.rbacRoleId ?? undefined,
     };
+    // NPP đăng nhập theo thiết bị: mỗi NPP tối đa 2 máy tính và 3 điện thoại (DEVICE_LIMIT nếu vượt, xem device-session.service.ts).
+    if (user.role === 'NPP' && user.organizationId && this.deviceSessions) {
+      const kind: DeviceKind = device?.kind ?? 'DESKTOP';
+      const session = await this.deviceSessions.register({
+        userId: user.id,
+        organizationId: user.organizationId,
+        kind,
+        label: device?.label?.trim() || (kind === 'PHONE' ? 'Điện thoại' : 'Máy tính'),
+        userAgent: device?.userAgent,
+        revokeSessionId: device?.revokeSessionId,
+      });
+      payload.sid = session.id;
+    }
     const token = await this.jwtService.signAsync(payload);
     const result: DemoAdminUser = {
       id: user.id,

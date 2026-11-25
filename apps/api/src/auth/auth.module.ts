@@ -3,6 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { DeviceSessionService } from './device-session.service';
+import { NppDevicesController } from './devices.controller';
 import { RolesGuard } from './roles.guard';
 import { ModuleGuard } from './module.guard';
 import {
@@ -35,9 +37,10 @@ export function resolveJwtSecret(env: NodeJS.ProcessEnv = process.env) {
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, NppDevicesController],
   providers: [
     AuthService,
+    DeviceSessionService,
     JwtAuthGuard,
     RolesGuard,
     ModuleGuard,
@@ -47,6 +50,6 @@ export function resolveJwtSecret(env: NodeJS.ProcessEnv = process.env) {
       useFactory: () => resolveVerificationDelivery(),
     },
   ],
-  exports: [AuthService, JwtAuthGuard, RolesGuard, ModuleGuard, VerificationService],
+  exports: [AuthService, DeviceSessionService, JwtAuthGuard, RolesGuard, ModuleGuard, VerificationService],
 })
 export class AuthModule {}

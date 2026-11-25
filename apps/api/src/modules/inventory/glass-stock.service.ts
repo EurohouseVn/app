@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   NppBarcodeSchemeItem,
   NppGlassSheetItem,
   NppGlassStockKind,
   ReceiveNppGlassStockInput,
+  ScanGlassStockInput,
   UpsertNppBarcodeSchemeInput,
 } from '@eurohouse/types';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -168,6 +169,78 @@ export class NppGlassStockService {
         data: { nppOrgId, stockId: stock.id, type: 'RECEIVE', quantity: input.quantity, direction: 'IN', reason: input.note?.trim() ?? '', actorId, idempotencyKey: key },
       });
       return toStockItem(stock);
+    });
+  }
+
+  /** Quét mã để nhập kho: lấy mã đầu và kích thước từ chính mã vạch, mỗi lần quét cộng thêm số lượng (mặc định 1). */
+  async scanReceive(nppOrgId: string, actorId: string, input: Omit<ScanGlassStockInput, 'mode'>): Promise<NppGlassSheetItem> {
+    const parsed = parseGlassBarcode(input.barcode);
+    if (!parsed) throw new BadRequestException('Mã vạch không đúng dạng MÃĐẦU-RỘNG-CAO.');
+    const scheme = (await this.prisma.nppBarcodeScheme.findFirst({ where: { nppOrgId, prefix: parsed.prefix } })) as SchemeRow | null;
+    if (!scheme) throw new NotFoundException(`Mã đầu ${parsed.prefix} chưa được thiết lập.`);
+    return this.receiveStock(nppOrgId, actorId, {
+      schemeId: scheme.id,
+      widthMm: parsed.shortMm,
+      heightMm: parsed.longMm,
+      quantity: input.quantity ?? 1,
+      location: input.location,
+      kind: input.kind,
+      note: input.note,
+      idempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  /**
+   * Quét mã để xuất kho. Cùng một mã có thể nằm ở nhiều vị trí hoặc nhiều loại hàng (tấm nguyên, tấm dư, tấm cắt):
+   * nếu chưa chỉ rõ thì trả AMBIGUOUS_STOCK kèm danh sách để người dùng chọn. Chỉ trừ khi còn đủ tồn.
+   */
+  async scanIssue(nppOrgId: string, actorId: string, input: Omit<ScanGlassStockInput, 'mode'>): Promise<NppGlassSheetItem> {
+    const key = input.idempotencyKey?.trim();
+    if (!key) throw new BadRequestException('Thiếu mã chống ghi trùng (idempotencyKey).');
+    const quantity = input.quantity ?? 1;
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new BadRequestException('Số lượng phải là số nguyên lớn hơn 0.');
+    const parsed = parseGlassBarcode(input.barcode);
+    if (!parsed) throw new BadRequestException('Mã vạch không đúng dạng MÃĐẦU-RỘNG-CAO.');
+    if (input.kind !== undefined && !KINDS.includes(input.kind)) throw new BadRequestException('Loại hàng kính không hợp lệ.');
+    const barcode = `${parsed.prefix}-${String(parsed.shortMm).padStart(4, '0')}-${String(parsed.longMm).padStart(4, '0')}`;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.issueOnce(nppOrgId, actorId, barcode, quantity, key, input);
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'P2002' || attempt >= 4) throw error;
+      }
+    }
+  }
+
+  private issueOnce(
+    nppOrgId: string, actorId: string, barcode: string, quantity: number, key: string, input: Omit<ScanGlassStockInput, 'mode'>,
+  ): Promise<NppGlassSheetItem> {
+    return this.prisma.$transaction(async (tx) => {
+      const replay = await tx.nppGlassMovement.findUnique({ where: { nppOrgId_idempotencyKey: { nppOrgId, idempotencyKey: key } } });
+      if (replay) {
+        const current = (await tx.nppGlassSheet.findUnique({ where: { id: replay.stockId } })) as StockRow | null;
+        if (current) return toStockItem(current);
+      }
+      const rows = (await tx.nppGlassSheet.findMany({
+        where: { nppOrgId, barcode, quantity: { gt: 0 }, ...(input.kind ? { kind: input.kind } : {}), ...(input.location !== undefined ? { location: input.location.trim() } : {}) },
+      })) as StockRow[];
+      if (rows.length === 0) throw new NotFoundException(`Không có tồn kho cho mã ${barcode}.`);
+      if (rows.length > 1) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'AMBIGUOUS_STOCK',
+          message: `Mã ${barcode} có ở nhiều vị trí hoặc loại hàng. Hãy chọn một dòng để xuất.`,
+          options: rows.map((row) => ({ kind: row.kind, location: row.location, quantity: row.quantity })),
+        });
+      }
+      const row = rows[0];
+      const updated = await tx.nppGlassSheet.updateMany({ where: { id: row.id, nppOrgId, quantity: { gte: quantity } }, data: { quantity: { decrement: quantity } } });
+      if (updated.count === 0) throw new ConflictException(`Tồn kho không đủ: còn ${row.quantity} tấm ${barcode}, cần xuất ${quantity}.`);
+      await tx.nppGlassMovement.create({
+        data: { nppOrgId, stockId: row.id, type: 'ISSUE', quantity, direction: 'OUT', reason: input.reason?.trim() ?? input.note?.trim() ?? '', actorId, idempotencyKey: key },
+      });
+      const after = (await tx.nppGlassSheet.findUnique({ where: { id: row.id } })) as StockRow;
+      return toStockItem(after);
     });
   }
 

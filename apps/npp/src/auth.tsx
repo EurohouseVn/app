@@ -4,12 +4,15 @@ import { FormEvent, useEffect, useState, type CSSProperties } from 'react';
 import { Building2, Eye, EyeOff, Lock, LogIn, Mail, Trash2 } from 'lucide-react';
 import type { DemoAdminUser, LoginResponse } from '@eurohouse/types';
 import { ui } from './ui';
+import { deviceHeaders } from './lib/device';
 
 const storageKey = 'eurohouse-npp-user';
 const rememberedLoginKey = 'eurohouse-npp-remember-login';
 const allowedRoles = new Set(['NPP', 'ADMIN']);
 const authClearedEvent = 'eurohouse:npp-auth-cleared';
 const authChangedEvent = 'eurohouse:npp-auth-changed';
+
+type DeviceLimitInfo = { code: 'DEVICE_LIMIT'; message?: string; kind: 'DESKTOP' | 'PHONE'; limit: number; devices: Array<{ id: string; label: string; lastSeenAt: string }> };
 
 export const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -68,6 +71,11 @@ export function useDemoAuth() {
   }
 
   function logout() {
+    const token = getToken();
+    if (token) {
+      // Gỡ phiên thiết bị trên máy chủ để chiếm lại chỗ trong giới hạn 2 máy tính + 3 điện thoại; lỗi mạng không chặn việc đăng xuất.
+      void fetch(`${apiUrl}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, keepalive: true }).catch(() => undefined);
+    }
     window.localStorage.removeItem(storageKey);
     setUser(null);
   }
@@ -82,6 +90,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
   const [rememberPassword, setRememberPassword] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deviceLimit, setDeviceLimit] = useState<DeviceLimitInfo | null>(null);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(rememberedLoginKey);
@@ -97,16 +106,26 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    await submitLogin();
+  }
+
+  async function submitLogin(revokeSessionId?: string) {
     setError('');
+    setDeviceLimit(null);
     setLoading(true);
     try {
       const response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
+        body: JSON.stringify({ identifier, password, ...(revokeSessionId ? { revokeSessionId } : {}) }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
+        if (response.status === 409 && payload?.code === 'DEVICE_LIMIT') {
+          setDeviceLimit(payload as DeviceLimitInfo);
+          setError(payload.message ?? 'Đã đủ số thiết bị đăng nhập.');
+          return;
+        }
         throw new Error(payload?.message ?? 'Đăng nhập thất bại.');
       }
       const payload = (await response.json()) as LoginResponse;
@@ -156,9 +175,11 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
   };
 
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1.05fr 1fr', background: ui.bg }}>
+    <main className="eh-login" style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1.05fr 1fr', background: ui.bg }}>
+      <style>{`@media (max-width: 860px) { .eh-login { grid-template-columns: 1fr !important; } .eh-login-hero { display: none !important; } .eh-login-form { padding: 28px 20px !important; } }`}</style>
       {/* Bên trái: giới thiệu, nền gradient teal→cam dịu */}
       <section
+        className="eh-login-hero"
         style={{
           background: `linear-gradient(150deg, #0B3B37 0%, #0E5C54 45%, #12756B 100%)`,
           color: '#fff',
@@ -183,7 +204,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
       </section>
 
       {/* Bên phải: form đăng nhập */}
-      <section style={{ padding: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <section className="eh-login-form" style={{ padding: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: 400, display: 'grid', gap: 18 }}>
           <div>
             <h2 style={{ color: ui.text, fontSize: 30, margin: 0, fontWeight: 800 }}>Đăng nhập</h2>
@@ -219,6 +240,22 @@ export function LoginScreen({ onSuccess }: { onSuccess: (user: DemoAdminUser) =>
 
           {error ? (
             <p style={{ color: ui.danger, margin: 0, background: ui.dangerSoft, padding: '10px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>{error}</p>
+          ) : null}
+
+          {deviceLimit ? (
+            <div style={{ display: 'grid', gap: 8 }} aria-label="Thiết bị đang đăng nhập">
+              {deviceLimit.devices.map((device) => (
+                <div key={device.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: `1px solid ${ui.border}`, borderRadius: 12, padding: '10px 14px', background: ui.surface }}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ color: ui.text, fontSize: 14, display: 'block' }}>{device.label || 'Thiết bị'}</strong>
+                    <span style={{ color: ui.textMuted, fontSize: 12 }}>Dùng lần cuối {new Date(device.lastSeenAt).toLocaleString('vi-VN')}</span>
+                  </div>
+                  <button type="button" disabled={loading} onClick={() => void submitLogin(device.id)} style={{ border: `1px solid ${ui.borderStrong}`, borderRadius: 10, background: ui.surface, color: ui.text, padding: '8px 12px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Đăng xuất máy này
+                  </button>
+                </div>
+              ))}
+            </div>
           ) : null}
 
           <button

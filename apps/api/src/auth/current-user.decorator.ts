@@ -14,6 +14,8 @@ export interface JwtUser {
   departmentId?: string;
   permissions?: string[];
   rbacRoleId?: string;
+  /** Id phiên thiết bị (chỉ token NPP); gỡ phiên là thu hồi token ngay. */
+  sid?: string;
 }
 
 export const CurrentUser = createParamDecorator(

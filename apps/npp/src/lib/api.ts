@@ -74,3 +74,18 @@ export async function apiSend<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' 
   }
   return (await response.json()) as T;
 }
+
+/**
+ * Gọi API và trả cả mã trạng thái lẫn nội dung lỗi (apiSend chỉ giữ lại thông báo).
+ * Chỉ ném lỗi khi mất mạng; lỗi 4xx/5xx trả về với ok=false để nơi gọi đọc mã lỗi (ví dụ AMBIGUOUS_STOCK) và quyết định.
+ */
+export async function apiRequest<T = unknown>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<{ ok: boolean; status: number; data: T | null }> {
+  const response = await authenticatedFetch(`${apiUrl}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) handleUnauthorized(response.status);
+  const data = (await response.json().catch(() => null)) as T | null;
+  return { ok: response.ok, status: response.status, data };
+}

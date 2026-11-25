@@ -8,6 +8,7 @@ import type {
   GlassCutPieceInput,
   NppCutPlanStatus,
   ReceiveNppGlassStockInput,
+  ScanGlassStockInput,
   UpdateMaterialInput,
   UpsertNppAccessoryInput,
   UpsertNppBarcodeSchemeInput,
@@ -205,6 +206,16 @@ export class InventoryController {
   @Roles('NPP')
   lookupNppGlassStock(@Query('code') code: string, @CurrentUser() user: JwtUser) {
     return this.glass.lookupByBarcode(user.organizationId!, code ?? '');
+  }
+
+  @Post('npp/glass/stock/scan')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  scanNppGlassStock(@Body() body: ScanGlassStockInput, @CurrentUser() user: JwtUser, @Headers('idempotency-key') key?: string) {
+    const input = { ...body, idempotencyKey: body.idempotencyKey || key || '' };
+    if (body.mode === 'ISSUE') return this.glass.scanIssue(user.organizationId!, user.sub, input);
+    if (body.mode === 'RECEIVE') return this.glass.scanReceive(user.organizationId!, user.sub, input);
+    throw new BadRequestException('mode phải là RECEIVE hoặc ISSUE.');
   }
 
   @Post('npp/glass/stock/receive')

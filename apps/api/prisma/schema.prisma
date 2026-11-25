@@ -41,6 +41,7 @@ model Organization {
   nppBarcodeSchemes      NppBarcodeScheme[]       @relation("NppBarcodeSchemeOrg")
   nppGlassMovements      NppGlassMovement[]       @relation("NppGlassMovementOrg")
   nppCutPlans            NppCutPlan[]             @relation("NppCutPlanOrg")
+  nppDeviceSessions      NppDeviceSession[]       @relation("NppDeviceSessionOrg")
   salesTargets           SalesTarget[]            @relation("NppSalesTarget")
   workshopWorkers        WorkshopWorker[]         @relation("WorkshopWorkerOrg")
   workshopAttendances    WorkshopAttendance[]     @relation("WorkshopAttendanceOrg")
@@ -3927,4 +3928,22 @@ model NppCutPlan {
 
   @@index([nppOrgId, status, createdAt])
   @@index([schemeId])
+}
+
+// Phiên đăng nhập theo thiết bị của NPP: mỗi NPP tối đa 2 máy tính và 3 điện thoại cùng lúc (docs/design/NPP_GLASS_BARCODE_STOCK_DESIGN.md mục 6).
+// Token NPP mang claim sid trỏ tới dòng này; gỡ dòng là thu hồi token ngay.
+model NppDeviceSession {
+  id         String       @id @default(cuid())
+  nppOrgId   String
+  nppOrg     Organization @relation("NppDeviceSessionOrg", fields: [nppOrgId], references: [id])
+  userId     String
+  kind       String // DESKTOP | PHONE
+  label      String       @default("")
+  userAgent  String       @default("")
+  createdAt  DateTime     @default(now())
+  lastSeenAt DateTime     @default(now())
+  revokedAt  DateTime?
+
+  @@index([nppOrgId, kind, revokedAt])
+  @@index([userId])
 }
