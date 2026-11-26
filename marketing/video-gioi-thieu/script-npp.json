@@ -1,0 +1,328 @@
+[
+ {
+  "id": "q-p00-hook",
+  "kind": "pain",
+  "tag": "CÂU HỎI CHO NHÀ PHÂN PHỐI",
+  "lines": [
+   [
+    "QUẢN LÝ THỢ",
+    "ink"
+   ],
+   [
+    "KHO, CÔNG NỢ",
+    "white"
+   ],
+   [
+    "BẰNG SỔ TAY?",
+    "ink"
+   ]
+  ],
+  "text": "Chủ nhà phân phối nhôm ơi! Quản lý thợ, quản lý kho, quản lý công nợ... anh chị vẫn đang làm bằng sổ tay và Zalo sao?"
+ },
+ {
+  "id": "q-p01-order",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 1",
+  "lines": [
+   [
+    "THỢ NHẮN ĐƠN QUA ZALO",
+    "ink"
+   ],
+   [
+    "SAI MÃ, SAI MÀU",
+    "white"
+   ],
+   [
+    "GIAO NHẦM LÀ LỖ",
+    "ink"
+   ]
+  ],
+  "text": "Thợ nhắn đơn qua Zalo, viết tay, ảnh chụp mờ. Sai mã, sai màu, sai số lượng. Giao nhầm một lô là mất tiền, mất luôn uy tín!"
+ },
+ {
+  "id": "q-p02-stock",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 2",
+  "lines": [
+   [
+    "KHO ĐẾM BẰNG MẮT",
+    "ink"
+   ],
+   [
+    "SỔ GHI MỘT NẺO",
+    "white"
+   ],
+   [
+    "HÀNG THẬT MỘT NẺO",
+    "ink"
+   ]
+  ],
+  "text": "Kho thì đếm bằng mắt, sổ ghi một nẻo, hàng thật một nẻo. Hết hàng mới biết, tồn kho lệch hàng chục cây mà không biết đi đâu!"
+ },
+ {
+  "id": "q-p03-weigh",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 3",
+  "lines": [
+   [
+    "CÂN XONG",
+    "ink"
+   ],
+   [
+    "QUÊN GHI SỐ KÝ",
+    "white"
+   ],
+   [
+    "GIÁ MỖI NGƯỜI MỘT KIỂU",
+    "ink"
+   ]
+  ],
+  "text": "Cân hàng xong quên ghi số ký. Đơn giá mỗi người nhớ một kiểu. Tới lúc đối chiếu thì cãi nhau cả buổi!"
+ },
+ {
+  "id": "q-p04-debt",
+  "kind": "pain",
+  "tag": "NỖI ĐAU SỐ 4",
+  "lines": [
+   [
+    "CÔNG NỢ THỢ",
+    "ink"
+   ],
+   [
+    "AI NỢ BAO NHIÊU?",
+    "white"
+   ],
+   [
+    "NỢ TỪ KHI NÀO?",
+    "ink"
+   ]
+  ],
+  "text": "Còn công nợ? Mười mấy xưởng, hàng trăm đơn, ai nợ bao nhiêu, nợ từ khi nào, không ai nhớ nổi. Tiền nằm ngoài thị trường, dòng tiền nghẹt thở!"
+ },
+ {
+  "id": "q-p05-turn",
+  "kind": "turn",
+  "tag": "GIẢI PHÁP",
+  "title": "EUROHOUSE NPP",
+  "sub": "Web quản lý dành cho nhà phân phối nhôm",
+  "text": "Dừng lại! Eurohouse en pê pê: web quản lý dành riêng cho nhà phân phối nhôm. Từ đơn của thợ, tồn kho, cân hàng, cho tới công nợ, gói gọn trên một màn hình!"
+ },
+ {
+  "id": "q-f01-order",
+  "kind": "feat",
+  "clip": "n01-tho-order",
+  "clipdir": "clips-npp",
+  "tag": "BƯỚC 1 · THỢ ĐẶT ĐƠN",
+  "title": "Thợ đặt nhôm trên app",
+  "sub": "Chọn màu · Chọn mã thanh · App tự tính kg · Gửi thẳng NPP",
+  "text": "Bước một. Thợ mở app Eurohouse, chọn màu Café Metalic, chọn mã thanh rồi bấm số cây: hai mươi cây E70D110, mười bốn cây E70D150, ba mươi cây E701A. App tự tính sáu trăm tám mươi lăm phẩy tám bảy ki-lô-gam dự tính. Bấm gửi, đơn bay thẳng tới nhà phân phối!",
+  "device": "phone",
+  "stats": [
+   [
+    "Số thanh",
+    "64 cây"
+   ],
+   [
+    "Dự tính",
+    "685,87 kg"
+   ]
+  ]
+ },
+ {
+  "id": "q-f02-receive",
+  "kind": "feat",
+  "clip": "n02-orders",
+  "clipdir": "clips-npp",
+  "tag": "BƯỚC 2 · NPP NHẬN ĐƠN",
+  "title": "Đơn mới hiện ngay",
+  "sub": "Đủ tên xưởng, địa chỉ · Chi tiết từng thanh · Tiếp nhận một chạm",
+  "text": "Bước hai. Bên nhà phân phối, đơn mới hiện lên ngay: đủ tên xưởng, địa chỉ giao, từng mã thanh, từng màu. Một chạm là tiếp nhận, thợ thấy ngay đơn đã được nhận.",
+  "device": "web",
+  "stats": [
+   [
+    "Xưởng",
+    "Hùng Phát"
+   ],
+   [
+    "Trạng thái",
+    "Mới → Đã tiếp nhận"
+   ]
+  ]
+ },
+ {
+  "id": "q-f03-stock",
+  "kind": "feat",
+  "clip": "n03-inventory",
+  "clipdir": "clips-npp",
+  "tag": "BƯỚC 3 · KIỂM TỒN KHO",
+  "title": "Kiểm tra tồn kho theo màu",
+  "sub": "Lọc theo màu nhôm · Tồn từng mã thanh · Cảnh báo sắp hết",
+  "text": "Bước ba, kiểm tra tồn kho. Lọc theo màu Café Metalic, thấy ngay từng mã còn bao nhiêu cây. E70D110 còn bốn mươi cây, đơn cần hai mươi. E70D150 còn bảy mươi, cần mười bốn. E701A còn chín mươi sáu, cần ba mươi. Đủ hàng, giao được!",
+  "device": "web",
+  "stats": [
+   [
+    "E70D110",
+    "Còn 40 · cần 20"
+   ],
+   [
+    "E70D150",
+    "Còn 70 · cần 14"
+   ],
+   [
+    "E701A",
+    "Còn 96 · cần 30"
+   ]
+  ]
+ },
+ {
+  "id": "q-f04-weigh",
+  "kind": "feat",
+  "clip": "n04-weigh",
+  "clipdir": "clips-npp",
+  "tag": "BƯỚC 4 · CÂN VÀ LẬP PHIẾU GIAO",
+  "title": "Cân xong, nhập số ký thực",
+  "sub": "Kg thực cân · Đơn giá · Thành tiền tự tính · Phiếu giao PDF",
+  "text": "Bước bốn, cân hàng và lập phiếu giao. Hệ thống tính sẵn sáu trăm tám mươi lăm phẩy tám bảy ki-lô-gam theo tỷ trọng. Cân thực tế sáu trăm chín mươi chín phẩy sáu ki-lô-gam, nhập đơn giá tám mươi bảy nghìn năm trăm đồng một ký. Thành tiền sáu mươi mốt triệu hai trăm mười lăm nghìn đồng, tự tính, không sai một đồng! Ký thực không được thấp hơn tỷ trọng, chặn gian lận ngay từ cửa.",
+  "device": "web",
+  "stats": [
+   [
+    "Kg thực cân",
+    "699,6 kg"
+   ],
+   [
+    "Đơn giá",
+    "87.500 đ/kg"
+   ],
+   [
+    "Thành tiền",
+    "61.215.000 đ"
+   ]
+  ]
+ },
+ {
+  "id": "q-f05-debt",
+  "kind": "feat",
+  "clip": "n05-debts",
+  "clipdir": "clips-npp",
+  "tag": "BƯỚC 5 · CÔNG NỢ TỰ SINH",
+  "title": "Hoàn thành đơn, công nợ tự sinh",
+  "sub": "Kho tự trừ đúng số cây · Công nợ tự ghi · Không sót một đồng",
+  "text": "Xác nhận một lần, kho tự trừ đúng số cây. Bấm hoàn thành đơn, công nợ tự sinh: xưởng Hùng Phát nợ sáu mươi mốt triệu hai trăm mười lăm nghìn đồng. Không ghi sổ tay, không sót một đồng!",
+  "device": "web",
+  "stats": [
+   [
+    "Xưởng nợ",
+    "61.215.000 đ"
+   ],
+   [
+    "Kho nhôm",
+    "Tự trừ 64 cây"
+   ]
+  ]
+ },
+ {
+  "id": "q-f06-thoapp",
+  "kind": "feat",
+  "clip": "n06-tho-debt",
+  "clipdir": "clips-npp",
+  "tag": "TRÊN APP CỦA THỢ",
+  "title": "Thợ thấy nợ ngay trên app",
+  "sub": "Số tiền · Mã đơn · Còn phải trả · Báo thanh toán",
+  "text": "Ngay trên app của thợ, khoản nợ hiện rõ: số tiền, mã đơn, còn phải trả bao nhiêu. Thợ chuyển khoản hay đưa tiền mặt rồi báo thanh toán, nhà phân phối xác nhận là trừ nợ. Minh bạch hai bên, hết cãi nhau!",
+  "device": "phone"
+ },
+ {
+  "id": "q-f07-dash",
+  "kind": "feat",
+  "clip": "n10-dashboard",
+  "clipdir": "clips-npp",
+  "tag": "TỔNG QUAN",
+  "title": "Cả cơ nghiệp trên một màn hình",
+  "sub": "Tổng đơn · Số xưởng · Công nợ còn mở · Doanh thu tháng",
+  "text": "Còn đây là trang tổng quan: tổng số đơn, số xưởng đang quản lý, công nợ còn mở và doanh thu tháng này, nhìn một lần là nắm.",
+  "device": "web",
+  "stats": [
+   [
+    "Tổng đơn",
+    "29"
+   ],
+   [
+    "Số xưởng",
+    "6"
+   ],
+   [
+    "Công nợ còn mở",
+    "193,8 triệu"
+   ],
+   [
+    "Doanh thu tháng",
+    "148,4 triệu"
+   ]
+  ]
+ },
+ {
+  "id": "q-f08-glass",
+  "kind": "feat",
+  "clip": "n11-glass",
+  "clipdir": "clips-npp",
+  "tag": "KHO KÍNH",
+  "title": "Kho kính có mã vạch",
+  "sub": "Mã đầu theo loại kính · Tự sinh mã vạch · In nhãn · Tính hướng cắt",
+  "text": "Có cả kho kính. Mỗi loại kính một mã đầu, nhập kích thước là hệ thống tự sinh mã vạch để in nhãn dán lên tấm. Tính hướng cắt thông minh, ưu tiên dùng đầu thừa trước, tiết kiệm từng tấm.",
+  "device": "web"
+ },
+ {
+  "id": "q-f09-scan",
+  "kind": "feat",
+  "clip": "n12-scan",
+  "clipdir": "clips-npp",
+  "tag": "QUÉT MÃ VÀ KIỂM KÊ",
+  "title": "Điện thoại là máy quét mã",
+  "sub": "Quét là cộng, trừ kho · Mất mạng vẫn quét · Nhiều máy kiểm kê cùng lúc",
+  "text": "Điện thoại chính là máy quét mã vạch. Mỗi lần quét tự cộng hoặc trừ kho. Mất mạng vẫn quét tiếp, có mạng tự gửi lại. Kiểm kê thì nhiều điện thoại cùng quét, số đếm hiện ngay trên máy tính.",
+  "device": "web"
+ },
+ {
+  "id": "q-f10-recon",
+  "kind": "feat",
+  "clip": "n16-recon",
+  "clipdir": "clips-npp",
+  "tag": "ĐỐI CHIẾU",
+  "title": "Đối chiếu theo từng xưởng",
+  "sub": "Số đơn theo trạng thái · Tổng kg · Tổng giá trị · Theo tháng",
+  "text": "Cuối tháng đối chiếu cực nhanh: mỗi xưởng bao nhiêu đơn, bao nhiêu ký, tổng giá trị là bao nhiêu, lọc theo từng tháng, số liệu nằm sẵn đó.",
+  "device": "web",
+  "stats": [
+   [
+    "Xưởng nhiều đơn nhất",
+    "Hùng Phát · 7 đơn"
+   ],
+   [
+    "Tổng kg",
+    "1.628 kg"
+   ],
+   [
+    "Giá trị",
+    "142,3 triệu"
+   ]
+  ]
+ },
+ {
+  "id": "q-f11-acct",
+  "kind": "feat",
+  "clip": "n18-profile",
+  "clipdir": "clips-npp",
+  "tag": "TÀI KHOẢN",
+  "title": "Bảo mật theo thiết bị",
+  "sub": "Tối đa 2 máy tính và 3 điện thoại · Đăng xuất từ xa · Thông tin trên PDF",
+  "text": "Bảo mật theo thiết bị: tối đa hai máy tính và ba điện thoại cùng đăng nhập, đăng xuất từ xa khi cần. Thông tin doanh nghiệp tự in lên phiếu giao và báo giá.",
+  "device": "web"
+ },
+ {
+  "id": "q-f20-outro",
+  "kind": "outro",
+  "tag": "Liên hệ Eurohouse để mở tài khoản NPP",
+  "sub": "Đơn, kho, cân, công nợ: một màn hình!",
+  "text": "Eurohouse en pê pê! Từ đơn của thợ, tồn kho, cân hàng cho tới công nợ, tất cả trong một màn hình. Liên hệ Eurohouse để mở tài khoản nhà phân phối ngay hôm nay! Nhôm của sự thịnh vượng!"
+ }
+]

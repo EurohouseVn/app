@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const [email, out] = process.argv.slice(2);
+const BASE = process.env.EH_BASE || 'http://localhost:8095';
+const b = await chromium.launch({ channel: 'msedge' });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, locale: 'vi-VN' });
+const p = await ctx.newPage();
+await p.goto(BASE + '/auth', { waitUntil: 'load', timeout: 180000 }); await p.waitForTimeout(8000);
+await p.screenshot({ path: process.env.TEMP + '/eh-auth.png' });
+console.log(await p.locator('input').evaluateAll(l => l.map(i => i.type + ':' + (i.placeholder || ''))));
+await p.locator('input').nth(0).fill(email); await p.locator('input').nth(1).fill('Eurohouse@2026');
+await p.getByText('Đăng nhập', { exact: true }).last().click(); await p.waitForTimeout(7000);
+await p.screenshot({ path: process.env.TEMP + '/eh-auth2.png' });
+await ctx.storageState({ path: out }); console.log('saved', out, p.url());
+await b.close();
