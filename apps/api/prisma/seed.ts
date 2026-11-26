@@ -328,8 +328,8 @@ async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   await prisma.user.upsert({
-    where: { email: 'tho@eurohouse.vn' }, update: { passwordHash },
-    create: { email: 'tho@eurohouse.vn', displayName: 'Thợ / Xưởng', passwordHash, role: 'FACTORY', organizationId: factory.id },
+    where: { email: 'tho@eurohouse.vn' }, update: { passwordHash, emailNormalized: 'tho@eurohouse.vn' },
+    create: { email: 'tho@eurohouse.vn', emailNormalized: 'tho@eurohouse.vn', displayName: 'Thợ / Xưởng', passwordHash, role: 'FACTORY', organizationId: factory.id },
   });
   // Tài khoản CEO gốc — toàn quyền, dùng để đăng nhập và cấp quyền module cho nhân sự khác.
   await prisma.user.upsert({
@@ -341,8 +341,8 @@ async function main() {
     },
   });
   await prisma.user.upsert({
-    where: { email: 'npp@eurohouse.vn' }, update: { passwordHash },
-    create: { email: 'npp@eurohouse.vn', displayName: 'NPP Miền Nam', passwordHash, role: 'NPP', organizationId: npp.id },
+    where: { email: 'npp@eurohouse.vn' }, update: { passwordHash, emailNormalized: 'npp@eurohouse.vn' },
+    create: { email: 'npp@eurohouse.vn', emailNormalized: 'npp@eurohouse.vn', displayName: 'NPP Miền Nam', passwordHash, role: 'NPP', organizationId: npp.id },
   });
 
   // Xoá màu cũ, nạp 6 màu chuẩn

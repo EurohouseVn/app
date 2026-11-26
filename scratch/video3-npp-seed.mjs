@@ -33,7 +33,7 @@ for (const [name, contact, key, area] of factoryDefs) {
   let f = await prisma.organization.findFirst({ where: { name } });
   if (!f) f = await prisma.organization.create({ data: { code: 'XUONG-' + key.toUpperCase(), name, type: 'FACTORY', shortLabel: key.slice(0, 8), phone: '09' + Math.floor(10000000 + Math.random() * 89999999), address: area, managedByNppId: npp.id } });
   const email = `${key}@eurohouse.vn`;
-  const u = await prisma.user.upsert({ where: { email }, update: { passwordHash: hash, verifiedAt: new Date() }, create: { email, displayName: contact, passwordHash: hash, role: 'FACTORY', organizationId: f.id, verifiedAt: new Date() } });
+  const u = await prisma.user.upsert({ where: { email }, update: { passwordHash: hash, verifiedAt: new Date(), emailNormalized: email }, create: { email, emailNormalized: email, displayName: contact, passwordHash: hash, role: 'FACTORY', organizationId: f.id, verifiedAt: new Date() } });
   factories.push({ org: f, email, user: u, key });
 }
 const nppUser = await prisma.user.findUnique({ where: { email: 'npp@eurohouse.vn' } });

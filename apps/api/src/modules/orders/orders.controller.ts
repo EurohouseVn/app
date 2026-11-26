@@ -360,11 +360,14 @@ export class OrdersController {
     return this.service.nppOrderReconciliation(user.organizationId!, { month });
   }
 
-  @Get('npp/financial-report')
+  // `npp/reports/pnl` là đường web NPP gọi (trang Báo cáo); `npp/financial-report` giữ lại cho tương thích.
+  @Get(['npp/reports/pnl', 'npp/financial-report'])
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('NPP')
-  nppFinancialReport(@CurrentUser() user: JwtUser) {
-    return this.service.nppFinancialReport(user.organizationId!);
+  nppFinancialReport(@Query('months') months: string | undefined, @CurrentUser() user: JwtUser) {
+    const parsed = months ? parseInt(months, 10) : 6;
+    const safeMonths = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 24) : 6;
+    return this.service.nppFinancialReport(user.organizationId!, safeMonths);
   }
 }
 
