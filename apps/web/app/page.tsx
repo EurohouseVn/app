@@ -1,4 +1,5 @@
 import './home.css';
+import { AppDownload } from '@/components/AppDownload';
 import { CapabilityStrip } from '@/components/home/CapabilityStrip';
 import { ConversionPanel } from '@/components/home/ConversionPanel';
 import { FeaturedProjects } from '@/components/home/FeaturedProjects';
@@ -34,6 +35,7 @@ export default async function HomePage() {
       <FeaturedProjects content={content} />
       <PrimaryVideo video={content.primaryVideo} />
       <ConversionPanel />
+      <AppDownload />
     </>
   );
 }

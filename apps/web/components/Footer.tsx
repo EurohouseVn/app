@@ -30,7 +30,7 @@ export function Footer() {
 
         <div className="footer-column">
           <h3>EUROHOUSE</h3>
-          <div className="footer-links">{companyNavigation.map((item) => <Link key={item.id} href={item.href}>{item.label}</Link>)}<Link href="/he-sinh-thai">Hệ sinh thái số</Link></div>
+          <div className="footer-links">{companyNavigation.map((item) => <Link key={item.id} href={item.href}>{item.label}</Link>)}<Link href="/he-sinh-thai">Hệ sinh thái số</Link><Link href="/#tai-ung-dung">Tải ứng dụng</Link></div>
         </div>
 
         <div className="footer-column">

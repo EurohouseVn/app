@@ -1,0 +1,13 @@
+.app-dl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 320px)); gap: 24px; justify-content: center; margin-top: 32px; }
+.app-dl-card { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-align: center; }
+.app-dl-qr { width: 200px; height: 200px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.app-dl-qr svg { display: block; width: 100%; height: 100%; }
+.app-dl-qr--soon { display: grid; place-items: center; border-style: dashed; color: var(--muted); font-weight: 600; background: var(--canvas); }
+.app-dl-badge { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 18px; border-radius: 10px; background: #000; color: #fff; text-decoration: none; }
+.app-dl-badge span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.app-dl-badge small { font-size: 11px; opacity: .85; }
+.app-dl-badge strong { font-size: 18px; font-weight: 600; }
+.app-dl-badge:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+.app-dl-badge--soon { background: #4a525e; cursor: default; }
+.app-dl-card p { margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 720px) { .app-dl-grid { grid-template-columns: minmax(0, 320px); } }

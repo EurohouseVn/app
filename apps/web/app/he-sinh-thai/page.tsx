@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AppDownload } from '@/components/AppDownload';
 import { ArrowUpRight, Boxes, Building2, Factory, QrCode, Smartphone, Truck } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ const portals = [
   { icon: Factory, title: 'Eurohouse Admin', audience: 'Vận hành công ty', text: 'Quản lý catalog, kỹ thuật, đơn hàng, sản xuất, nội dung và mạng lưới phân phối.', href: 'https://admin.nhomeurohouse.com', action: 'Đăng nhập nội bộ' },
 ];
 
-export default function EcosystemPage() {
+export default async function EcosystemPage() {
   return (
     <>
       <section className="page-hero compact-hero"><div className="container"><p className="kicker">Nền tảng vận hành</p><h1>Hệ sinh thái Eurohouse</h1><p>Một luồng dữ liệu xuyên suốt từ catalog kỹ thuật đến đơn giao và bảo hành công trình.</p></div></section>
@@ -25,6 +26,7 @@ export default function EcosystemPage() {
         { icon: QrCode, title: 'Truy xuất bảo hành', text: 'QR kết nối sản phẩm, đơn hàng và hồ sơ sau bàn giao.' },
       ].map(({ icon: Icon, title, text }) => <article key={title}><Icon size={24} /><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
       <section className="section narrow-cta"><div className="container"><h2>Cần kích hoạt tài khoản cho xưởng hoặc NPP?</h2><Link className="button button-primary" href="/lien-he">Gửi thông tin đăng ký</Link></div></section>
+      <AppDownload />
     </>
   );
 }
