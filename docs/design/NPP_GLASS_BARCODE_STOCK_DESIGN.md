@@ -1,6 +1,6 @@
 # Thiết kế: Kính, mã vạch và kiểm kê bằng điện thoại cho web NPP
 
-Ngày: 2026-11-25. Trạng thái: **đã duyệt**. Tiến độ: giai đoạn 1 (mã đầu, kho kính theo mã vạch, in nhãn) xong, commit 033554f và 2629b5c; giai đoạn 2 (tính hướng cắt, chốt cắt, tấm dư, sổ kính) xong; giai đoạn 3 (thiết bị 2 máy tính + 3 điện thoại, PWA, quét camera, kiểm kê nhiều máy, trạm in) xong, chưa thử camera trên điện thoại thật; giai đoạn 4 (đọc đơn viết tay, hóa đơn in) chưa làm.
+Ngày: 2026-11-25. Trạng thái: **đã duyệt**. Tiến độ: giai đoạn 1 (mã đầu, kho kính theo mã vạch, in nhãn) xong, commit 033554f và 2629b5c; giai đoạn 2 (tính hướng cắt, chốt cắt, tấm dư, sổ kính) xong; giai đoạn 3 (thiết bị 2 máy tính + 3 điện thoại, PWA, quét camera, kiểm kê nhiều máy, trạm in) xong, chưa thử camera trên điện thoại thật; giai đoạn 4 (đọc đơn viết tay, hóa đơn in) xong phần ghép danh mục, bản nháp, xác nhận bắt buộc, học từ điển, tạo đơn và nhập kho; **chưa chạy mô hình đọc ảnh thật** (cổng `OCR_SERVICE_URL` để trống thì chỉ nhập tay có gợi ý) và chưa có dòng kính/phụ kiện trong phiếu nhập.
 Phạm vi: `apps/npp` và các route `npp/*` trong `apps/api/src/modules/inventory`. NPP là khu độc lập (xem ghi nhớ NPP boundary): mọi bảng mới gắn `nppOrgId`, không dùng chung bảng Workshop OS, chỉ mượn mẫu thiết kế.
 
 ## 1. Quyết định của chủ dự án (đã chốt)

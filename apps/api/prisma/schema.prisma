@@ -45,6 +45,8 @@ model Organization {
   nppStocktakes          NppStocktake[]           @relation("NppStocktakeOrg")
   nppPrintJobs           NppPrintJob[]            @relation("NppPrintJobOrg")
   nppPrintStations       NppPrintStation[]        @relation("NppPrintStationOrg")
+  nppDocumentDrafts      NppDocumentDraft[]       @relation("NppDocumentDraftOrg")
+  nppOcrGlossary         NppOcrGlossary[]         @relation("NppOcrGlossaryOrg")
   salesTargets           SalesTarget[]            @relation("NppSalesTarget")
   workshopWorkers        WorkshopWorker[]         @relation("WorkshopWorkerOrg")
   workshopAttendances    WorkshopAttendance[]     @relation("WorkshopAttendanceOrg")
@@ -4020,4 +4022,40 @@ model NppPrintStation {
 
   @@unique([nppOrgId, deviceSessionId])
   @@index([nppOrgId, lastSeenAt])
+}
+
+// Bản nháp đọc từ ảnh phiếu (đơn viết tay của thợ hoặc hóa đơn in): máy đọc, người xem và sửa, chốt thì mới thành đơn hoặc nhập kho.
+model NppDocumentDraft {
+  id            String       @id @default(cuid())
+  nppOrgId      String
+  nppOrg        Organization @relation("NppDocumentDraftOrg", fields: [nppOrgId], references: [id])
+  kind          String // ORDER | RECEIPT
+  status        String       @default("DRAFT") // DRAFT | CONFIRMED | REJECTED
+  imageObjectId String?
+  engine        String       @default("")
+  note          String       @default("")
+  lines         Json
+  factoryOrgId  String?
+  resultRef     String       @default("")
+  createdById   String?
+  confirmedById String?
+  confirmedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([nppOrgId, status, createdAt])
+}
+
+// Từ điển viết tắt học được của từng NPP: mỗi lần người dùng chọn thanh đúng cho một dòng máy không ghép được thì lưu lại.
+model NppOcrGlossary {
+  id        String       @id @default(cuid())
+  nppOrgId  String
+  nppOrg    Organization @relation("NppOcrGlossaryOrg", fields: [nppOrgId], references: [id])
+  term      String
+  profileId String?
+  hits      Int          @default(1)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([nppOrgId, term])
 }

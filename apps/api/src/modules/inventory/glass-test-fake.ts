@@ -32,6 +32,10 @@ export function fakeGlassPrisma() {
     stocktakeScans: [] as Row[],
     printJobs: [] as Row[],
     printStations: [] as Row[],
+    profiles: [] as Row[],
+    organizations: [] as Row[],
+    drafts: [] as Row[],
+    glossary: [] as Row[],
   };
   let seq = 0;
   const nextId = (prefix: string) => `${prefix}${++seq}`;
@@ -177,6 +181,42 @@ export function fakeGlassPrisma() {
         return made;
       },
       findFirst: async ({ where }: Row) => tables.printStations.find((r) => matches(r, where)) ?? null,
+    },
+    profile: {
+      findMany: async ({ where }: Row = {}) => tables.profiles.filter((r) => matches(r, where)),
+    },
+    organization: {
+      findFirst: async ({ where }: Row) => tables.organizations.find((r) => matches(r, where)) ?? null,
+    },
+    nppDocumentDraft: {
+      create: async ({ data }: Row) => {
+        const row = { id: nextId('doc'), status: 'DRAFT', imageObjectId: null, engine: '', note: '', factoryOrgId: null, resultRef: '', confirmedAt: null, confirmedById: null, createdAt: now(), updatedAt: now(), ...data };
+        tables.drafts.push(row);
+        return row;
+      },
+      findFirst: async ({ where }: Row) => tables.drafts.find((r) => matches(r, where)) ?? null,
+      findMany: async ({ where, take }: Row) => tables.drafts.filter((r) => matches(r, where)).slice().reverse().slice(0, take ?? 1000),
+      update: async ({ where, data }: Row) => {
+        const row = tables.drafts.find((r) => r.id === where.id)!;
+        applyData(row, data);
+        return row;
+      },
+      updateMany: async ({ where, data }: Row) => {
+        const rows = tables.drafts.filter((r) => matches(r, where));
+        rows.forEach((row) => applyData(row, data));
+        return { count: rows.length };
+      },
+    },
+    nppOcrGlossary: {
+      findMany: async ({ where }: Row) => tables.glossary.filter((r) => matches(r, where)),
+      upsert: async ({ where, create, update }: Row) => {
+        const k = where.nppOrgId_term;
+        const row = tables.glossary.find((r) => r.nppOrgId === k.nppOrgId && r.term === k.term);
+        if (row) { applyData(row, update); return row; }
+        const made = { id: nextId('gl'), hits: 1, createdAt: now(), updatedAt: now(), ...create };
+        tables.glossary.push(made);
+        return made;
+      },
     },
     $transaction: async (fn: (tx: Row) => unknown) => {
       const snapshot = Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))])) as Record<string, Row[]>;

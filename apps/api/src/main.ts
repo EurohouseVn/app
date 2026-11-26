@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { AppModule } from './app.module';
+import { configureBodyParsers } from './body-parsers';
 
 function getCorsOrigins(): string[] {
   return process.env.CORS_ORIGIN?.split(',')
@@ -28,7 +29,8 @@ function getStaticPublicDirs() {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  configureBodyParsers(app);
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),

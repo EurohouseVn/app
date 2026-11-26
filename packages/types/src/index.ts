@@ -1257,6 +1257,96 @@ export interface NppPrintJobWithLabels extends NppPrintJobItem {
   labels: PrintLabelData[];
 }
 
+export type DocumentDraftKind = 'ORDER' | 'RECEIPT';
+export type DocumentDraftStatus = 'DRAFT' | 'CONFIRMED' | 'REJECTED';
+export type DocumentUnit = 'BUNDLE' | 'BAR' | 'SET' | null;
+export type DocumentConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+
+/** Kết quả của bước đọc chữ: các nhóm theo tiêu đề (màu nhôm, hệ nhôm...) và các dòng chữ + số lượng trong từng nhóm. */
+export interface ExtractedGroup {
+  heading: string;
+  lines: Array<{ text: string; quantity?: number | null; unit?: string | null }>;
+}
+
+export interface DocumentCandidate {
+  profileId: string;
+  code: string;
+  name: string;
+  systemCode: string;
+  score: number;
+  reason: 'CODE' | 'GLOSSARY' | 'NAME';
+}
+
+export interface DocumentDraftLine {
+  id: string;
+  group: string;
+  text: string;
+  quantity: number | null;
+  unit: DocumentUnit;
+  /** Số cây sau khi đổi từ bó; null nếu chưa tính được. */
+  bars: number | null;
+  colorCode: string | null;
+  profileId: string | null;
+  profileCode?: string;
+  profileName?: string;
+  confidence: DocumentConfidence;
+  candidates: DocumentCandidate[];
+  warnings: string[];
+  /** Người dùng đã tự chọn thanh cho dòng này. */
+  userChosen: boolean;
+  removed: boolean;
+}
+
+export interface DocumentDraftItem {
+  id: string;
+  kind: DocumentDraftKind;
+  status: DocumentDraftStatus;
+  engine: string;
+  note: string;
+  factoryOrgId: string | null;
+  resultRef: string;
+  hasImage: boolean;
+  lines: DocumentDraftLine[];
+  createdAt: string;
+  confirmedAt?: string;
+}
+
+export interface CreateDocumentDraftInput {
+  kind: DocumentDraftKind;
+  /** Ảnh phiếu dạng base64 (không có tiền tố data:). */
+  imageBase64?: string;
+  mime?: string;
+  /** Có sẵn kết quả đọc chữ (nhập tay hoặc đọc ở nơi khác) thì không cần ảnh. */
+  groups?: ExtractedGroup[];
+  note?: string;
+  factoryOrgId?: string;
+}
+
+export interface DocumentDraftLineInput {
+  id?: string;
+  group?: string;
+  text: string;
+  quantity: number | null;
+  unit: string | null;
+  /** undefined: tự ghép; null: bỏ chọn; có giá trị: người dùng chọn thanh này. */
+  profileId?: string | null;
+  colorCode?: string | null;
+  removed?: boolean;
+}
+
+export interface UpdateDocumentDraftInput {
+  lines: DocumentDraftLineInput[];
+  factoryOrgId?: string | null;
+  note?: string;
+  /** Mặc định true: lưu lựa chọn của người dùng vào từ điển viết tắt của NPP. */
+  learn?: boolean;
+}
+
+export interface DocumentServiceStatus {
+  ocrConfigured: boolean;
+  engine: string;
+}
+
 export interface CreateNppFactoryInput {
   name: string;
   phone?: string;

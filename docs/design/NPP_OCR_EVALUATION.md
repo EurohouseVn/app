@@ -103,3 +103,17 @@ Hệ quả:
 - Cho biết các tờ giấy viết tay dùng để làm gì (đơn đặt hàng của thợ, kiểm kho hay nhập hàng) và ai viết (cùng một vài người hay nhiều xưởng khác nhau).
 - Xác nhận kiểu thùng máy của Lenovo (rack hay tower) có luồng gió làm mát cho Tesla P4.
 - Gửi thêm ảnh mẫu nếu có (đặc biệt phiếu in từ nhà cung cấp, nếu có loại đó).
+
+## 8. Hợp đồng dịch vụ đọc ảnh (đã cài sẵn phía API)
+
+API chỉ biết "ảnh vào, các nhóm dòng ra"; mô hình đọc chữ nằm sau một dịch vụ HTTP riêng, bật bằng biến môi trường `OCR_SERVICE_URL` (và `OCR_SERVICE_TOKEN` nếu có). Để trống thì phiếu vẫn lập bản nháp nhập tay.
+
+```
+POST {OCR_SERVICE_URL}/v1/extract        Authorization: Bearer <token>
+{ "imageBase64": "...", "mime": "image/jpeg", "kind": "ORDER" | "RECEIPT" }
+-> { "engine": "tên-mô-hình", "groups": [ { "heading": "Cẩm lai", "lines": [ { "text": "CS03", "quantity": 2, "unit": "c" } ] } ] }
+```
+
+- `heading`: tiêu đề nhóm đọc được (màu nhôm, hệ nhôm); `unit`: chữ như đọc được ("bó", "cây", "b", "c").
+- Dịch vụ không cần biết danh mục: ghép mã, từ điển học theo từng NPP và xác nhận của người dùng nằm ở API.
+- Hết 180 giây hoặc lỗi thì API báo "đọc chậm/lỗi", người dùng vẫn nhập tay được.
