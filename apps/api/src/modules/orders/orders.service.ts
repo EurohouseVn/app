@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { InventoryType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
+  NppColorPriceItem, UpsertNppColorPricesInput,
   ConvertQuoteToOrderInput,
   CreateNppFactoryInput,
   CreateAdminToNppShipmentInput,
@@ -18,6 +19,7 @@ import type { JwtUser } from '../../auth/current-user.decorator';
 import { QuotationBomService } from '../quotations/quotation-bom.service';
 import { InventoryCommandService, type InventoryCommandContext } from '../inventory/inventory-command.service';
 import { businessDateUtcRange, formatNppInvoiceNumber, formatNppPoNumber } from './order-identifiers';
+import { calculateNppColorPricing } from './npp-color-pricing';
 import { EurohouseAccessService } from '../eurohouse-access/eurohouse-access.service';
 
 const STD_BAR_M = 6;
@@ -47,7 +49,7 @@ function requireSingleColorCode(colorCode?: string) {
 const ORDER_KG_PER_BLOCK = 100;
 const ORDER_POINTS_PER_KG_BLOCK = 10;
 
-export function calculateNppDeliveryPricing(input: CreateNppDeliveryInput) {
+export function calculateNppDeliveryPricing(input: Pick<CreateNppDeliveryInput, 'actualTotalKg' | 'finalUnitPricePerKg' | 'discountAmount' | 'surchargeAmount'>) {
   const actualTotalKg = Number(input.actualTotalKg);
   const finalUnitPricePerKg = Number(input.finalUnitPricePerKg);
   const discountAmount = Number(input.discountAmount ?? 0);
@@ -441,6 +443,7 @@ export class OrdersService {
         },
         items: { include: { profile: true } },
         histories: { orderBy: { createdAt: 'desc' } },
+        colorWeighings: { orderBy: [{ colorCode: 'asc' }, { basis: 'asc' }] },
       },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
@@ -1010,7 +1013,18 @@ export class OrdersService {
     const theoreticalTotalKg = order.theoreticalTotalKg
       || order.items.reduce((sum: number, item: { theoreticalTotalKg: number; totalKg: number }) => sum + (item.theoreticalTotalKg || item.totalKg || 0), 0)
       || order.totalKg;
-    const pricing = calculateNppDeliveryPricing(input);
+    const theoreticalKgByColor: Record<string, number> = {};
+    for (const item of order.items) {
+      const color = requireSingleColorCode(item.colorCode);
+      theoreticalKgByColor[color] = (theoreticalKgByColor[color] ?? 0) + (item.theoreticalTotalKg || item.totalKg || 0);
+    }
+    const colorPricing = input.colorLines?.length
+      ? calculateNppColorPricing({ theoreticalKgByColor, lines: input.colorLines, discountAmount: input.discountAmount, surchargeAmount: input.surchargeAmount })
+      : null;
+    const pricing = colorPricing ?? calculateNppDeliveryPricing(input);
+    const colorNote = colorPricing
+      ? colorPricing.lines.map((l) => `${l.colorCode} ${l.basis === 'BUNDLE' ? 'bó nguyên' : 'nhôm trần'} ${l.actualKg} kg × ${l.unitPricePerKg.toLocaleString('vi-VN')}`).join('; ')
+      : '';
     if (pricing.actualTotalKg + 0.01 < theoreticalTotalKg) {
       throw new BadRequestException(`Kg thực tế không được thấp hơn kg theo tỷ trọng (${theoreticalTotalKg.toFixed(2)} kg).`);
     }
@@ -1055,12 +1069,18 @@ export class OrdersService {
           finalUnitPricePerKg: pricing.finalUnitPricePerKg,
           pricingDiscountAmount: pricing.discountAmount,
           pricingSurchargeAmount: pricing.surchargeAmount,
-          pricingNote: input.pricingNote?.trim() || '',
+          pricingNote: [input.pricingNote?.trim(), colorNote ? `Cân theo màu: ${colorNote}` : ''].filter(Boolean).join(' | '),
           priceConfirmedAt: new Date(),
           priceConfirmedById: user.sub,
         },
       });
       if (transitioned.count === 0) throw new BadRequestException('Trạng thái đơn đã thay đổi. Vui lòng tải lại trước khi tạo đơn giao.');
+      if (colorPricing) {
+        await tx.orderColorWeighing.deleteMany({ where: { orderId: order.id } });
+        await tx.orderColorWeighing.createMany({
+          data: colorPricing.lines.map((l) => ({ orderId: order.id, colorCode: l.colorCode, basis: l.basis, actualKg: l.actualKg, unitPricePerKg: l.unitPricePerKg, amount: l.amount })),
+        });
+      }
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
@@ -1074,6 +1094,28 @@ export class OrdersService {
     });
 
     return this.getOrder(id, user);
+  }
+
+  /** Bảng giá niêm yết theo màu của NPP: mỗi màu hai giá, bó nguyên và nhôm trần (đ/kg). Màu chưa thiết lập trả 0. */
+  async listNppColorPrices(nppOrgId: string, colors: Array<{ code: string; name: string }>): Promise<NppColorPriceItem[]> {
+    const rows = await this.prisma.nppColorPrice.findMany({ where: { nppOrgId } });
+    return colors.map((c) => {
+      const row = rows.find((r) => r.colorCode === c.code);
+      return { colorCode: c.code, colorName: c.name, bundlePricePerKg: row?.bundlePricePerKg ?? 0, barePricePerKg: row?.barePricePerKg ?? 0 };
+    });
+  }
+
+  async saveNppColorPrices(nppOrgId: string, input: UpsertNppColorPricesInput, validCodes: string[]): Promise<void> {
+    for (const p of input.prices ?? []) {
+      if (!validCodes.includes(p.colorCode)) throw new BadRequestException(`Màu ${p.colorCode} không có trong danh mục.`);
+      const bundle = Math.round(Number(p.bundlePricePerKg)); const bare = Math.round(Number(p.barePricePerKg));
+      if (!Number.isFinite(bundle) || bundle < 0 || !Number.isFinite(bare) || bare < 0) throw new BadRequestException(`Giá của màu ${p.colorCode} không hợp lệ.`);
+      await this.prisma.nppColorPrice.upsert({
+        where: { nppOrgId_colorCode: { nppOrgId, colorCode: p.colorCode } },
+        update: { bundlePricePerKg: bundle, barePricePerKg: bare },
+        create: { nppOrgId, colorCode: p.colorCode, bundlePricePerKg: bundle, barePricePerKg: bare },
+      });
+    }
   }
 
   async completeNppDelivery(id: string, user: JwtUser) {

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import type {
   AdjustProfileStockInput,
@@ -15,6 +15,9 @@ import type {
   StocktakeScanInput,
   UpdateMaterialInput,
   UpsertNppAccessoryInput,
+  NppAccessorySettings,
+  ReadAccessoryPhotoInput,
+  ReceiveAccessoriesInput,
   UpsertNppBarcodeSchemeInput,
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
@@ -149,6 +152,34 @@ export class InventoryController {
   @Roles('NPP')
   createNppAccessory(@Body() body: UpsertNppAccessoryInput, @CurrentUser() user: JwtUser) {
     return this.service.createNppAccessory(user.organizationId!, body);
+  }
+
+  @Get('npp/accessory-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  nppAccessorySettings(@CurrentUser() user: JwtUser) {
+    return this.service.getAccessorySettings(user.organizationId!);
+  }
+
+  @Put('npp/accessory-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  updateNppAccessorySettings(@Body() body: NppAccessorySettings, @CurrentUser() user: JwtUser) {
+    return this.service.updateAccessorySettings(user.organizationId!, body);
+  }
+
+  @Post('npp/accessories/read-photo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  readNppAccessoryPhoto(@Body() body: ReadAccessoryPhotoInput) {
+    return this.service.readAccessoryPhoto(body);
+  }
+
+  @Post('npp/accessories/receive')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  receiveNppAccessories(@Body() body: ReceiveAccessoriesInput, @CurrentUser() user: JwtUser) {
+    return this.service.receiveAccessories(user.organizationId!, body.lines);
   }
 
   @Patch('npp/accessories/:id')

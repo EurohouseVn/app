@@ -6,6 +6,8 @@ type UseTarget = { use: (...args: any[]) => unknown };
 export const DEFAULT_JSON_LIMIT = '100kb';
 export const DOCUMENT_UPLOAD_PATH = '/api/npp/documents';
 export const DOCUMENT_UPLOAD_LIMIT = '14mb';
+/** Ảnh phiếu nhập phụ kiện cũng gửi dạng base64: chỉ đường đọc ảnh này được nới giới hạn. */
+export const ACCESSORY_PHOTO_PATH = '/api/npp/accessories/read-photo';
 
 /**
  * Ảnh phiếu gửi dạng base64 trong JSON nên đường /api/npp/documents cần giới hạn lớn hơn; mọi đường khác giữ 100 KB.
@@ -15,6 +17,7 @@ export const DOCUMENT_UPLOAD_LIMIT = '14mb';
  */
 export function configureBodyParsers(app: UseTarget) {
   app.use(DOCUMENT_UPLOAD_PATH, json({ limit: DOCUMENT_UPLOAD_LIMIT }));
+  app.use(ACCESSORY_PHOTO_PATH, json({ limit: DOCUMENT_UPLOAD_LIMIT }));
   app.use(json({ limit: DEFAULT_JSON_LIMIT }));
   app.use(urlencoded({ extended: true }));
 }

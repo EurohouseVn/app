@@ -480,6 +480,7 @@ model Order {
   poNo                   String                 @default("") // Số đơn đặt hàng
   items                  OrderItem[]
   histories              OrderStatusHistory[]
+  colorWeighings         OrderColorWeighing[]
   profileStockMovements  ProfileStockMovement[]
   nppStockMovements      NppStockMovement[]     @relation("OrderNppStockMovements")
   debts                  Debt[]
@@ -505,6 +506,40 @@ model OrderItem {
   theoreticalTotalKg Float    @default(0)
   unitPrice          Int      @default(0)
   totalPrice         Int      @default(0)
+}
+
+// Kg cân thực và thành tiền theo từng màu của đơn giao NPP; trong một màu tách hai dòng giá: BUNDLE (bó nguyên, chưa bóc nilon) và BARE (nhôm trần).
+model OrderColorWeighing {
+  id             String @id @default(cuid())
+  orderId        String
+  order          Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  colorCode      String
+  basis          String
+  actualKg       Float
+  unitPricePerKg Int
+  amount         Int
+
+  @@unique([orderId, colorCode, basis])
+  @@index([orderId])
+}
+
+// Bảng giá niêm yết theo màu do NPP tự thiết lập: giá bó nguyên và giá nhôm trần (đ/kg).
+model NppColorPrice {
+  id               String   @id @default(cuid())
+  nppOrgId         String
+  colorCode        String
+  bundlePricePerKg Int      @default(0)
+  barePricePerKg   Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([nppOrgId, colorCode])
+}
+
+// Cài đặt kho phụ kiện của NPP: % lãi dùng cho giá bán tự động.
+model NppAccessorySetting {
+  nppOrgId      String   @id
+  markupPercent Float    @default(20)
+  updatedAt     DateTime @updatedAt
 }
 
 model OrderStatusHistory {
@@ -831,6 +866,8 @@ model NppAccessory {
   unit      String       @default("cai")
   quantity  Int          @default(0)
   unitCost  Int          @default(0)
+  salePrice Int          @default(0)
+  priceMode String       @default("AUTO") // AUTO = giá nhập + % lãi | MANUAL = NPP tự nhập
   note      String       @default("")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

@@ -5,7 +5,7 @@ import type { ExtractedGroup } from '@eurohouse/types';
  * (Qwen3-VL trên card Tesla P4, PaddleOCR, hay một API trả phí) chỉ là đổi cấu hình dịch vụ phía sau, không sửa nghiệp vụ
  * (docs/design/NPP_OCR_EVALUATION.md mục 6).
  */
-export type OcrExtractInput = { imageBase64: string; mime: string; kind: 'ORDER' | 'RECEIPT' };
+export type OcrExtractInput = { imageBase64: string; mime: string; kind: 'ORDER' | 'RECEIPT' | 'ACCESSORY' };
 export type OcrExtractResult = { engine: string; groups: ExtractedGroup[] };
 
 export interface OcrProviderPort {
@@ -36,9 +36,15 @@ function cleanGroups(value: unknown): ExtractedGroup[] {
       heading: typeof g.heading === 'string' ? g.heading.slice(0, 120) : '',
       lines: g.lines
         .map((line) => {
-          const l = line as { text?: unknown; quantity?: unknown; unit?: unknown };
+          const l = line as { text?: unknown; quantity?: unknown; unit?: unknown; unitCost?: unknown; brand?: unknown; category?: unknown };
           const quantity = typeof l.quantity === 'number' && Number.isFinite(l.quantity) ? l.quantity : null;
-          return { text: typeof l.text === 'string' ? l.text.slice(0, 200) : '', quantity, unit: typeof l.unit === 'string' ? l.unit.slice(0, 20) : null };
+          const unitCost = typeof l.unitCost === 'number' && Number.isFinite(l.unitCost) && l.unitCost >= 0 ? Math.round(l.unitCost) : null;
+          return {
+            text: typeof l.text === 'string' ? l.text.slice(0, 200) : '', quantity, unit: typeof l.unit === 'string' ? l.unit.slice(0, 20) : null,
+            ...(unitCost !== null ? { unitCost } : {}),
+            ...(typeof l.brand === 'string' ? { brand: l.brand.slice(0, 80) } : {}),
+            ...(typeof l.category === 'string' ? { category: l.category.slice(0, 80) } : {}),
+          };
         })
         .filter((line) => line.text.trim().length > 0),
     };

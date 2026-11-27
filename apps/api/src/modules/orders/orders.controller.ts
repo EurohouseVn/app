@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import type { ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateNppDeliveryInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
+import type {
+  UpsertNppColorPricesInput, ConvertQuoteToOrderInput, CreateAdminToNppShipmentInput, CreateNppDeliveryInput, CreateOrderInput, UpdateOrderInput } from '@eurohouse/types';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -337,6 +338,22 @@ export class OrdersController {
   @Roles('NPP')
   completeNppDelivery(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     return this.service.completeNppDelivery(id, user);
+  }
+
+  @Get('npp/color-prices')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  async nppColorPrices(@CurrentUser() user: JwtUser) {
+    return this.service.listNppColorPrices(user.organizationId!, await this.catalogService.colors());
+  }
+
+  @Put('npp/color-prices')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('NPP')
+  async saveNppColorPrices(@Body() body: UpsertNppColorPricesInput, @CurrentUser() user: JwtUser) {
+    const colors = await this.catalogService.colors();
+    await this.service.saveNppColorPrices(user.organizationId!, body, colors.map((c) => c.code));
+    return this.service.listNppColorPrices(user.organizationId!, colors);
   }
 
   @Get('npp/factories')

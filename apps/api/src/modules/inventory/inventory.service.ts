@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateMaterialInput,
@@ -13,11 +13,18 @@ import type {
   GlassCutPlanResult,
   GlassCutPieceInput,
   NppAccessoryItem,
+  NppAccessorySettings,
+  AccessoryPhotoLine,
+  ReadAccessoryPhotoInput,
+  ReadAccessoryPhotoResult,
+  AccessoryPriceMode,
   NppGlassSheetItem,
   UpsertNppAccessoryInput,
   UpsertNppGlassSheetInput,
 } from '@eurohouse/types';
 import { InventoryCommandService, type InventoryCommandContext } from './inventory-command.service';
+import { OCR_PROVIDER, type OcrProviderPort } from './ocr-provider';
+import { computeAccessorySalePrice, normalizeMarkupPercent } from './npp-accessory-pricing';
 
 const EUROHOUSE_SYSTEM_NAMES: Record<string, string> = {
   'EU-55': 'Hệ 55 Vát Cạnh',
@@ -47,10 +54,10 @@ function displaySystemName(code?: string, fallback?: string) {
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService, private readonly commands: InventoryCommandService) {}
+  constructor(private readonly prisma: PrismaService, private readonly commands: InventoryCommandService, @Optional() @Inject(OCR_PROVIDER) private readonly ocr?: OcrProviderPort) {}
 
   private toNppAccessory(item: {
-    id: string; name: string; brand: string; category: string; unit: string; quantity: number; unitCost: number; note: string; createdAt: Date;
+    id: string; name: string; brand: string; category: string; unit: string; quantity: number; unitCost: number; salePrice: number; priceMode: string; note: string; createdAt: Date;
   }): NppAccessoryItem {
     return {
       id: item.id,
@@ -60,9 +67,80 @@ export class InventoryService {
       unit: item.unit,
       quantity: item.quantity,
       unitCost: item.unitCost,
+      salePrice: item.salePrice,
+      priceMode: item.priceMode === 'MANUAL' ? 'MANUAL' : 'AUTO',
       note: item.note || undefined,
       createdAt: item.createdAt.toISOString(),
     };
+  }
+
+  async getAccessorySettings(nppOrgId: string): Promise<NppAccessorySettings> {
+    const row = await this.prisma.nppAccessorySetting.findUnique({ where: { nppOrgId } });
+    return { markupPercent: row?.markupPercent ?? 20 };
+  }
+
+  /** Đổi % lãi: giá bán của mọi phụ kiện đang để tự động được tính lại, giá nhập tay giữ nguyên. */
+  async updateAccessorySettings(nppOrgId: string, input: Partial<NppAccessorySettings>): Promise<NppAccessorySettings> {
+    const markupPercent = normalizeMarkupPercent(input.markupPercent);
+    await this.prisma.nppAccessorySetting.upsert({ where: { nppOrgId }, update: { markupPercent }, create: { nppOrgId, markupPercent } });
+    const autos = await this.prisma.nppAccessory.findMany({ where: { nppOrgId, priceMode: 'AUTO' } });
+    for (const item of autos) {
+      const salePrice = computeAccessorySalePrice({ unitCost: item.unitCost, markupPercent, mode: 'AUTO', manualPrice: 0 });
+      if (salePrice !== item.salePrice) await this.prisma.nppAccessory.update({ where: { id: item.id }, data: { salePrice } });
+    }
+    return { markupPercent };
+  }
+
+  /** Đọc ảnh chụp phiếu nhập phụ kiện bằng dịch vụ đọc ảnh; chưa cài dịch vụ thì trả bảng trống để nhập tay. */
+  async readAccessoryPhoto(input: ReadAccessoryPhotoInput): Promise<ReadAccessoryPhotoResult> {
+    if (!input.imageBase64 || !input.mime || !['image/jpeg', 'image/png', 'image/webp'].includes(input.mime)) throw new BadRequestException('Ảnh phải là JPEG, PNG hoặc WebP.');
+    if ((input.imageBase64.length * 3) / 4 > 10 * 1024 * 1024) throw new BadRequestException('Ảnh quá lớn (tối đa 10 MB). Hãy chụp lại hoặc thu nhỏ ảnh.');
+    if (!this.ocr?.configured) return { engine: 'none', configured: false, note: 'Chưa cài dịch vụ đọc ảnh tự động. Hãy nhập các dòng bằng tay.', lines: [] };
+    try {
+      const result = await this.ocr.extract({ imageBase64: input.imageBase64, mime: input.mime, kind: 'ACCESSORY' });
+      const lines: AccessoryPhotoLine[] = [];
+      for (const group of result.groups) {
+        for (const line of group.lines) {
+          lines.push({
+            name: line.text.trim(), brand: (line.brand ?? '').trim(), category: (line.category ?? group.heading ?? '').trim(),
+            unit: (line.unit ?? '').trim() || 'cái', quantity: Math.max(0, Math.round(line.quantity ?? 1)), unitCost: Math.max(0, Math.round(line.unitCost ?? 0)),
+          });
+        }
+      }
+      return { engine: result.engine, configured: true, note: lines.length ? '' : 'Không thấy dòng phụ kiện nào trong ảnh.', lines };
+    } catch (error) {
+      return { engine: this.ocr.engine, configured: true, note: `Không đọc được ảnh tự động: ${(error as Error).message} Hãy nhập các dòng bằng tay.`, lines: [] };
+    }
+  }
+
+  /** Nhập kho phụ kiện theo các dòng đã duyệt: trùng tên và hãng thì cộng số lượng, cập nhật giá nhập, tính lại giá bán nếu để tự động. */
+  async receiveAccessories(nppOrgId: string, lines: AccessoryPhotoLine[]): Promise<NppAccessoryItem[]> {
+    const clean = (lines ?? []).filter((l) => l?.name?.trim() && Number(l.quantity) > 0);
+    if (!clean.length) throw new BadRequestException('Không có dòng phụ kiện hợp lệ để nhập kho.');
+    const { markupPercent } = await this.getAccessorySettings(nppOrgId);
+    const out: NppAccessoryItem[] = [];
+    for (const line of clean) {
+      const name = line.name.trim();
+      const brand = (line.brand ?? '').trim();
+      const quantity = Math.round(Number(line.quantity));
+      const unitCost = Math.max(0, Math.round(Number(line.unitCost) || 0));
+      const existing = await this.prisma.nppAccessory.findFirst({ where: { nppOrgId, name: { equals: name, mode: 'insensitive' }, brand: { equals: brand, mode: 'insensitive' } } });
+      if (existing) {
+        const cost = unitCost > 0 ? unitCost : existing.unitCost;
+        const mode: AccessoryPriceMode = existing.priceMode === 'MANUAL' ? 'MANUAL' : 'AUTO';
+        const saved = await this.prisma.nppAccessory.update({
+          where: { id: existing.id },
+          data: { quantity: { increment: quantity }, unitCost: cost, salePrice: computeAccessorySalePrice({ unitCost: cost, markupPercent, mode, manualPrice: existing.salePrice }) },
+        });
+        out.push(this.toNppAccessory(saved));
+      } else {
+        const saved = await this.prisma.nppAccessory.create({
+          data: { nppOrgId, name, brand, category: (line.category ?? '').trim(), unit: (line.unit ?? '').trim() || 'cái', quantity, unitCost, priceMode: 'AUTO', salePrice: computeAccessorySalePrice({ unitCost, markupPercent, mode: 'AUTO', manualPrice: 0 }) },
+        });
+        out.push(this.toNppAccessory(saved));
+      }
+    }
+    return out;
   }
 
   async listNppAccessories(nppOrgId: string, query?: string): Promise<NppAccessoryItem[]> {
@@ -80,6 +158,8 @@ export class InventoryService {
 
   async createNppAccessory(nppOrgId: string, input: UpsertNppAccessoryInput): Promise<NppAccessoryItem> {
     if (!input.name?.trim()) throw new BadRequestException('Ten phu kien la bat buoc.');
+    const { markupPercent } = await this.getAccessorySettings(nppOrgId);
+    const priceMode: AccessoryPriceMode = input.priceMode === 'MANUAL' ? 'MANUAL' : 'AUTO';
     const created = await this.prisma.nppAccessory.create({
       data: {
         nppOrgId,
@@ -89,6 +169,8 @@ export class InventoryService {
         unit: input.unit?.trim() || 'cai',
         quantity: input.quantity ?? 0,
         unitCost: input.unitCost ?? 0,
+        priceMode,
+        salePrice: computeAccessorySalePrice({ unitCost: input.unitCost ?? 0, markupPercent, mode: priceMode, manualPrice: input.salePrice ?? 0 }),
         note: input.note?.trim() ?? '',
       },
     });
@@ -98,9 +180,14 @@ export class InventoryService {
   async updateNppAccessory(nppOrgId: string, id: string, input: Partial<UpsertNppAccessoryInput>): Promise<NppAccessoryItem> {
     const existing = await this.prisma.nppAccessory.findFirst({ where: { id, nppOrgId } });
     if (!existing) throw new NotFoundException('Khong tim thay phu kien.');
+    const { markupPercent } = await this.getAccessorySettings(nppOrgId);
+    const mode: AccessoryPriceMode = (input.priceMode ?? existing.priceMode) === 'MANUAL' ? 'MANUAL' : 'AUTO';
+    const salePrice = computeAccessorySalePrice({ unitCost: input.unitCost ?? existing.unitCost, markupPercent, mode, manualPrice: input.salePrice ?? existing.salePrice });
     const updated = await this.prisma.nppAccessory.update({
       where: { id },
       data: {
+        priceMode: mode,
+        salePrice,
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
         ...(input.brand !== undefined ? { brand: input.brand.trim() } : {}),
         ...(input.category !== undefined ? { category: input.category.trim() } : {}),

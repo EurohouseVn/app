@@ -343,9 +343,36 @@ export interface CreateAdminToNppShipmentInput {
 
 export type OrderPricingStatus = 'PENDING_NPP' | 'FINALIZED' | 'ESTIMATED_COMPANY';
 
+/** Hai dòng giá trong một màu: BUNDLE = bó nguyên (chưa bóc nilon), BARE = nhôm trần (không gồm vỏ). */
+export type NppPriceBasis = 'BUNDLE' | 'BARE';
+
+export interface NppColorWeighLineInput {
+  colorCode: string;
+  basis: NppPriceBasis;
+  actualKg: number;
+  unitPricePerKg: number;
+}
+
+export interface OrderColorWeighingItem extends NppColorWeighLineInput {
+  amount: number;
+}
+
+export interface NppColorPriceItem {
+  colorCode: string;
+  colorName: string;
+  bundlePricePerKg: number;
+  barePricePerKg: number;
+}
+
+export interface UpsertNppColorPricesInput {
+  prices: Array<{ colorCode: string; bundlePricePerKg: number; barePricePerKg: number }>;
+}
+
 export interface CreateNppDeliveryInput {
-  actualTotalKg: number;
-  finalUnitPricePerKg: number;
+  /** Cân theo từng màu (ưu tiên). Khi có colorLines, tổng kg, đơn giá bình quân và thành tiền do máy chủ tính. */
+  colorLines?: NppColorWeighLineInput[];
+  actualTotalKg?: number;
+  finalUnitPricePerKg?: number;
   discountAmount?: number;
   surchargeAmount?: number;
   pricingNote?: string;
@@ -961,6 +988,8 @@ export interface NppInboundShipment {
   }[];
 }
 
+export type AccessoryPriceMode = 'AUTO' | 'MANUAL';
+
 export interface NppAccessoryItem {
   id: string;
   name: string;
@@ -969,6 +998,8 @@ export interface NppAccessoryItem {
   unit: string;
   quantity: number;
   unitCost: number;
+  salePrice: number;
+  priceMode: AccessoryPriceMode;
   note?: string;
   createdAt: string;
 }
@@ -980,7 +1011,39 @@ export interface UpsertNppAccessoryInput {
   unit?: string;
   quantity?: number;
   unitCost?: number;
+  salePrice?: number;
+  priceMode?: AccessoryPriceMode;
   note?: string;
+}
+
+export interface NppAccessorySettings {
+  markupPercent: number;
+}
+
+/** Một dòng đọc từ ảnh phiếu nhập phụ kiện (hóa đơn nhà cung cấp, phiếu giao hàng). */
+export interface AccessoryPhotoLine {
+  name: string;
+  brand: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface ReadAccessoryPhotoInput {
+  imageBase64: string;
+  mime: string;
+}
+
+export interface ReadAccessoryPhotoResult {
+  engine: string;
+  configured: boolean;
+  note: string;
+  lines: AccessoryPhotoLine[];
+}
+
+export interface ReceiveAccessoriesInput {
+  lines: AccessoryPhotoLine[];
 }
 
 export type NppGlassStockKind = 'SHEET' | 'REMNANT' | 'CUT_PIECE';
@@ -1265,7 +1328,7 @@ export type DocumentConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
 /** Kết quả của bước đọc chữ: các nhóm theo tiêu đề (màu nhôm, hệ nhôm...) và các dòng chữ + số lượng trong từng nhóm. */
 export interface ExtractedGroup {
   heading: string;
-  lines: Array<{ text: string; quantity?: number | null; unit?: string | null }>;
+  lines: Array<{ text: string; quantity?: number | null; unit?: string | null; unitCost?: number | null; brand?: string | null; category?: string | null }>;
 }
 
 export interface DocumentCandidate {

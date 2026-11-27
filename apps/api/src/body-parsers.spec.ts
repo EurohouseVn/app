@@ -11,6 +11,8 @@ async function withServer(run: (base: string) => Promise<void>) {
   app.post('/api/auth/login', echo);
   app.post('/api/npp/documents', echo);
   app.post('/api/npp/documents/:id/lines', echo);
+  app.post('/api/npp/accessories/read-photo', echo);
+  app.post('/api/npp/accessories', echo);
   app.use((error: { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => res.status(error.status ?? 500).json({ error: 'failed' }));
   const server = app.listen(0);
   try {
@@ -52,5 +54,14 @@ test('even the upload path has an upper bound', async () => {
   await withServer(async (base) => {
     const response = await post(`${base}/api/npp/documents`, { imageBase64: 'A'.repeat(16 * 1024 * 1024) });
     assert.equal(response.status, 413);
+  });
+});
+
+test('the accessory photo path accepts a photo-sized body but the other accessory routes keep 100 KB', async () => {
+  await withServer(async (base) => {
+    const photo = await post(`${base}/api/npp/accessories/read-photo`, { imageBase64: 'A'.repeat(3 * 1024 * 1024), mime: 'image/png' });
+    assert.equal(photo.status, 200);
+    const plain = await post(`${base}/api/npp/accessories`, { name: 'x'.repeat(200 * 1024) });
+    assert.equal(plain.status, 413);
   });
 });
