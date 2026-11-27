@@ -25,7 +25,7 @@ import { taxRuleForYear, type TaxYearRule } from './tax-rules';
 export const TAX_CLOCK = Symbol('TAX_CLOCK');
 
 const ENTITY_TYPES: TaxEntityType[] = ['HKD', 'DN'];
-const BUSINESS_LINES: TaxBusinessLine[] = ['MANUFACTURING', 'CONSTRUCTION_WITH_MATERIALS'];
+const BUSINESS_LINES: TaxBusinessLine[] = ['MANUFACTURING', 'CONSTRUCTION_WITH_MATERIALS', 'TRADING'];
 const PIT_METHODS: TaxPitMethod[] = ['REVENUE_RATE', 'INCOME'];
 const PROVIDERS: InvoiceProviderCode[] = ['NONE', 'SANDBOX', 'MISA'];
 const DN_VAT_RATES = [0, 5, 8, 10];
@@ -91,6 +91,13 @@ export class TaxInvoiceService {
     return user.organizationId;
   }
 
+  /** Nhà phân phối không có công trình: tiền thu là các phiếu thu gắn với công nợ của chính NPP. */
+  private receiptsWhere(user: JwtUser, organizationId: string, range: { gte: Date; lt: Date }) {
+    return user.role === 'NPP'
+      ? { type: 'RECEIPT', transDate: range, debt: { nppOrgId: organizationId } }
+      : { type: 'RECEIPT', transDate: range, project: { organizationId } };
+  }
+
   private actor(user: JwtUser) {
     return { actorId: user.sub, actorName: user.displayName || user.email || '' };
   }
@@ -100,8 +107,14 @@ export class TaxInvoiceService {
     return { year: rule.year, exemptThreshold: rule.exemptThreshold, vatPct: line.vatPct, pitPct: line.pitPct, confirmed: rule.confirmed, source: rule.source };
   }
 
-  private async profileRow(organizationId: string): Promise<ProfileRow> {
-    return ((await this.prisma.workshopTaxProfile.findUnique({ where: { organizationId } })) as ProfileRow | null) ?? EMPTY_PROFILE;
+  /** Hồ sơ chưa lập: nhà phân phối mặc định ngành phân phối, xưởng mặc định sản xuất. */
+  private emptyProfile(user: JwtUser): ProfileRow {
+    return user.role === 'NPP' ? { ...EMPTY_PROFILE, businessLine: 'TRADING' } : EMPTY_PROFILE;
+  }
+
+  private async profileRow(user: JwtUser): Promise<ProfileRow> {
+    const organizationId = this.organizationId(user);
+    return ((await this.prisma.workshopTaxProfile.findUnique({ where: { organizationId } })) as ProfileRow | null) ?? this.emptyProfile(user);
   }
 
   private toProfile(row: ProfileRow): WorkshopTaxProfile {
@@ -128,7 +141,7 @@ export class TaxInvoiceService {
   // ---- Hồ sơ thuế ----
 
   async profile(user: JwtUser): Promise<WorkshopTaxProfile> {
-    return this.toProfile(await this.profileRow(this.organizationId(user)));
+    return this.toProfile(await this.profileRow(user));
   }
 
   async updateProfile(user: JwtUser, body: UpdateWorkshopTaxProfileInput): Promise<WorkshopTaxProfile> {
@@ -175,7 +188,7 @@ export class TaxInvoiceService {
       data.einvoiceRegisteredAt = body.einvoiceRegisteredAt ? vnNoon(parseDateKey(body.einvoiceRegisteredAt, '')) : null;
     }
     data.updatedById = user.sub;
-    const { updatedAt: _ignored, ...defaults } = EMPTY_PROFILE;
+    const { updatedAt: _ignored, ...defaults } = this.emptyProfile(user);
     const row = await this.prisma.workshopTaxProfile.upsert({
       where: { organizationId },
       create: { ...defaults, ...data, organizationId } as never,
@@ -316,7 +329,7 @@ export class TaxInvoiceService {
 
   private async createDraft(user: JwtUser, body: SaveWorkshopSalesInvoiceInput, extra: { projectId?: string | null; projectCode?: string; customerId?: string | null; replacesId?: string | null; detail: string; action?: string }) {
     const organizationId = this.organizationId(user);
-    const profile = await this.profileRow(organizationId);
+    const profile = await this.profileRow(user);
     const { fields, lines } = this.invoiceData(body, profile.entityType);
     const row = await this.prisma.workshopSalesInvoice.create({
       data: {
@@ -387,10 +400,50 @@ export class TaxInvoiceService {
     }, { projectId: project.id, projectCode: project.code, customerId: customer?.id ?? null, detail: `Lập nháp từ ${project.code}` });
   }
 
+  /** Nhà phân phối lập nháp từ đơn hàng đã giao xưởng: dòng theo kg từng màu đã cân, chưa cân thì theo cây. */
+  async createFromOrder(user: JwtUser, orderId: string): Promise<WorkshopSalesInvoice> {
+    if (user.role !== 'NPP') throw new ForbiddenException('Chỉ tài khoản nhà phân phối lập hoá đơn từ đơn hàng giao xưởng.');
+    const organizationId = this.organizationId(user);
+    const order: any = await this.prisma.order.findFirst({ where: { id: orderId, nppOrgId: organizationId }, include: { items: true, colorWeighings: true } });
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng của nhà phân phối này.');
+
+    const lines: SaveWorkshopSalesInvoiceInput['lines'] = [];
+    if (order.colorWeighings?.length) {
+      for (const w of order.colorWeighings) {
+        lines.push({ name: `Nhôm màu ${w.colorCode} (${w.basis === 'BUNDLE' ? 'bó nguyên' : 'nhôm trần'})`, unit: 'kg', quantity: w.actualKg, unitPrice: w.unitPricePerKg });
+      }
+    } else {
+      for (const item of order.items ?? []) {
+        const quantity = Math.max(1, Number(item.quantity) || 1);
+        lines.push({
+          name: [item.productName || item.productCode, item.colorCode ? `màu ${item.colorCode}` : ''].filter(Boolean).join(' · '),
+          unit: item.unit || 'cây',
+          quantity,
+          unitPrice: item.unitPrice || Math.round((Number(item.totalPrice) || 0) / quantity),
+        });
+      }
+    }
+    const linesTotal = lines.reduce((s, l) => s + lineAmount(l), 0);
+    const rest = (Number(order.totalAmount) || 0) - linesTotal;
+    if (lines.length && rest !== 0) {
+      lines.push(rest > 0
+        ? { name: 'Phụ thu, chi phí khác theo đơn hàng', unit: 'gói', quantity: 1, unitPrice: rest }
+        : { name: 'Chiết khấu theo đơn hàng', unit: 'gói', quantity: 1, unitPrice: rest });
+    }
+    if (!lines.length) lines.push({ name: `Hàng hoá theo đơn ${order.code}`, unit: 'gói', quantity: 1, unitPrice: Math.max(0, Number(order.totalAmount) || 0) });
+
+    return this.createDraft(user, {
+      buyerName: order.factoryName || order.customerName || '',
+      buyerAddress: order.deliveryAddress || '',
+      buyerPhone: order.customerPhone || '',
+      lines,
+    }, { projectId: null, projectCode: order.code, detail: `Lập nháp từ đơn ${order.code}` });
+  }
+
   async updateInvoice(user: JwtUser, id: string, body: SaveWorkshopSalesInvoiceInput): Promise<WorkshopSalesInvoice> {
     const current = await this.scoped(user, id);
     this.requireDraft(current);
-    const profile = await this.profileRow(this.organizationId(user));
+    const profile = await this.profileRow(user);
     const { fields, lines } = this.invoiceData(body, profile.entityType);
     const row = await this.prisma.workshopSalesInvoice.update({
       where: { id },
@@ -429,7 +482,7 @@ export class TaxInvoiceService {
     const current = await this.scoped(user, id);
     this.requireDraft(current);
     this.assertReplaceable(current);
-    const profile = await this.profileRow(organizationId);
+    const profile = await this.profileRow(user);
     const provider = providerFor(profile.provider as InvoiceProviderCode);
     const errors = validateForIssue({ buyerName: current.buyerName, buyerTaxCode: current.buyerTaxCode, lines: current.lines }, profile);
     if (errors.length) throw new BadRequestException(errors.join(' '));
@@ -549,9 +602,9 @@ export class TaxInvoiceService {
     if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new BadRequestException('Năm không hợp lệ.');
     const range = { gte: vnStart(`${year}-01-01`), lt: vnStart(`${year + 1}-01-01`) };
     const [profileRow, invoices, receipts, draftCount] = await Promise.all([
-      this.profileRow(organizationId),
+      this.profileRow(user),
       this.prisma.workshopSalesInvoice.findMany({ where: { organizationId, issueDate: range, status: 'ISSUED' }, select: { issueDate: true, total: true, status: true } }),
-      this.prisma.cashTransaction.findMany({ where: { type: 'RECEIPT', transDate: range, project: { organizationId } }, select: { transDate: true, amount: true } }),
+      this.prisma.cashTransaction.findMany({ where: this.receiptsWhere(user, organizationId, range), select: { transDate: true, amount: true } }),
       this.prisma.workshopSalesInvoice.count({ where: { organizationId, status: 'DRAFT' } }),
     ]);
     const rule = taxRuleForYear(year);
@@ -588,7 +641,7 @@ export class TaxInvoiceService {
     const organizationId = this.organizationId(user);
     const range = { gte: vnStart(`${year}-01-01`), lt: vnStart(`${year + 1}-01-01`) };
     const [profileRow, organization, invoices, receipts] = await Promise.all([
-      this.profileRow(organizationId),
+      this.profileRow(user),
       this.prisma.organization.findUnique({ where: { id: organizationId } }),
       this.prisma.workshopSalesInvoice.findMany({
         where: { organizationId, issueDate: range, status: { not: 'DRAFT' } },
@@ -596,7 +649,7 @@ export class TaxInvoiceService {
         orderBy: [{ issueDate: 'asc' }, { number: 'asc' }],
       }),
       this.prisma.cashTransaction.findMany({
-        where: { type: 'RECEIPT', transDate: range, project: { organizationId } },
+        where: this.receiptsWhere(user, organizationId, range),
         include: { project: { select: { code: true, name: true } } },
         orderBy: { transDate: 'asc' },
       }),
@@ -608,7 +661,7 @@ export class TaxInvoiceService {
     const invoice = await this.invoice(user, id);
     const organizationId = this.organizationId(user);
     const [profileRow, organization] = await Promise.all([
-      this.profileRow(organizationId),
+      this.profileRow(user),
       this.prisma.organization.findUnique({ where: { id: organizationId } }),
     ]);
     return { invoice, profile: this.toProfile(profileRow), organization };

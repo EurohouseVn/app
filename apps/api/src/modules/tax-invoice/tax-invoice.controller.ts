@@ -18,8 +18,8 @@ function yearOf(value?: string): number {
 @Roles('FACTORY', 'DAILY')
 export class TaxInvoiceController {
   constructor(
-    private readonly service: TaxInvoiceService,
-    private readonly documents: InvoiceDocumentsService,
+    protected readonly service: TaxInvoiceService,
+    protected readonly documents: InvoiceDocumentsService,
   ) {}
 
   @Get('profile')
@@ -114,5 +114,23 @@ export class TaxInvoiceController {
     const file = await this.documents.renderInvoiceList(await this.service.reportData(user, y), q && q >= 1 && q <= 4 ? q : undefined);
     res.set({ 'Content-Type': XLSX, 'Content-Disposition': `attachment; filename="bang-ke-hoa-don-${y}${q ? `-Q${q}` : ''}.xlsx"`, 'Content-Length': file.length });
     res.end(file);
+  }
+}
+
+/**
+ * Nhà phân phối dùng chung bộ hoá đơn và sổ doanh thu, nhưng đi đường riêng `npp/tax` và chỉ tài khoản NPP vào được
+ * (NPP là khu vực độc lập với xưởng). Hoá đơn được lập từ đơn hàng giao xưởng thay cho công trình.
+ */
+@Controller('npp/tax')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('NPP')
+export class NppTaxInvoiceController extends TaxInvoiceController {
+  constructor(service: TaxInvoiceService, documents: InvoiceDocumentsService) {
+    super(service, documents);
+  }
+
+  @Post('invoices/from-order/:orderId')
+  createFromOrder(@CurrentUser() user: JwtUser, @Param('orderId') orderId: string) {
+    return this.service.createFromOrder(user, orderId);
   }
 }

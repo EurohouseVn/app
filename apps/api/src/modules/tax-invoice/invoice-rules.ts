@@ -35,7 +35,8 @@ export function validateForIssue(
   invoice.lines.forEach((line, i) => {
     if (!line.name.trim()) errors.push(`Dòng ${i + 1}: thiếu tên hàng hoá, dịch vụ.`);
     if (!(Number(line.quantity) > 0)) errors.push(`Dòng ${i + 1}: số lượng phải lớn hơn 0.`);
-    if (!(Number(line.unitPrice) >= 0)) errors.push(`Dòng ${i + 1}: đơn giá không hợp lệ.`);
+    if (!Number.isFinite(Number(line.unitPrice))) errors.push(`Dòng ${i + 1}: đơn giá không hợp lệ.`);
   });
+  if (invoice.lines.reduce((s, l) => s + lineAmount(l), 0) < 0) errors.push('Tổng tiền hoá đơn không được âm.');
   return errors;
 }

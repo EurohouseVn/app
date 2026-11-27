@@ -1961,7 +1961,7 @@ export * from './website-homepage.js';
 // ---------------------------------------------------------------------------
 
 export type TaxEntityType = 'HKD' | 'DN';
-export type TaxBusinessLine = 'MANUFACTURING' | 'CONSTRUCTION_WITH_MATERIALS';
+export type TaxBusinessLine = 'MANUFACTURING' | 'CONSTRUCTION_WITH_MATERIALS' | 'TRADING';
 export type TaxPitMethod = 'REVENUE_RATE' | 'INCOME';
 export type InvoiceProviderCode = 'NONE' | 'SANDBOX' | 'MISA';
 export type SalesInvoiceStatus = 'DRAFT' | 'ISSUED' | 'CANCELLED' | 'REPLACED';

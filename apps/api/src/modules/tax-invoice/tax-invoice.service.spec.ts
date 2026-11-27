@@ -10,7 +10,7 @@ const other: JwtUser = { sub: 'u2', displayName: 'Xưởng khác', role: 'FACTOR
 type Row = Record<string, any>;
 
 /** Prisma giả, lưu trong bộ nhớ, đủ cho các truy vấn của TaxInvoiceService. */
-function fakePrisma(seed: { profile?: Row | null; receipts?: Row[]; project?: Row | null; quotation?: Row | null } = {}) {
+function fakePrisma(seed: { profile?: Row | null; receipts?: Row[]; project?: Row | null; quotation?: Row | null; order?: Row | null } = {}) {
   let seq = 0;
   const id = (p: string) => `${p}-${++seq}`;
   const invoices: Row[] = [];
@@ -84,6 +84,7 @@ function fakePrisma(seed: { profile?: Row | null; receipts?: Row[]; project?: Ro
     },
     project: { findFirst: async ({ where }: Row) => (seed.project && seed.project.organizationId === where.organizationId && seed.project.id === where.id ? seed.project : null) },
     quotation: { findUnique: async () => seed.quotation ?? null },
+    order: { findFirst: async ({ where }: Row) => (seed.order && seed.order.id === where.id && seed.order.nppOrgId === where.nppOrgId ? seed.order : null) },
     workshopCustomer: { findFirst: async () => null },
     organization: { findUnique: async () => ({ name: 'Xưởng Nhôm Kính An Phát', address: '', phone: '' }) },
     $transaction: async (fn: (tx: unknown) => unknown) => fn(prisma),
@@ -233,4 +234,78 @@ test('sổ năm: lọc phiếu thu theo công trình của xưởng, đếm nhá
   assert.ok(ledger.projectedYearRevenue! > 1_000_000_000);
   assert.equal(ledger.projectedTax?.exempt, false);
   assert.equal(ledger.profile.isComplete, true);
+});
+
+const npp: JwtUser = { sub: 'u9', displayName: 'Nhà phân phối Hưng Phát', role: 'NPP', organizationId: 'npp-1' };
+const nppProfile = { ...fullProfile, organizationId: 'npp-1', businessLine: 'TRADING', invoiceSeries: '1C26THP' };
+const nppOrder = {
+  id: 'o1', code: 'XUONG-01-261126-01', nppOrgId: 'npp-1', factoryName: 'Xưởng Minh Tâm', deliveryAddress: 'Thủ Đức', customerPhone: '0909', totalAmount: 0,
+  pricingDiscountAmount: 0, pricingSurchargeAmount: 0, items: [], colorWeighings: [],
+};
+
+test('ngành phân phối: nhận ngành TRADING, có tỷ lệ mặc định riêng', async () => {
+  const service = new TaxInvoiceService(fakePrisma({ profile: { ...nppProfile, businessLine: 'MANUFACTURING' } }));
+  const saved = await service.updateProfile(npp, { businessLine: 'TRADING' });
+  assert.equal(saved.businessLine, 'TRADING');
+  assert.equal(saved.defaults.vatPct, 1);
+  assert.equal(saved.defaults.pitPct, 0.5);
+  await assert.rejects(() => service.updateProfile(npp, { businessLine: 'KHAC' as never }), /Ngành nghề/);
+});
+
+test('lập từ đơn hàng NPP: mỗi màu cân là một dòng theo kg, người mua là xưởng', async () => {
+  const order = { ...nppOrder, totalAmount: 7_500_000, colorWeighings: [
+    { colorCode: 'Trắng', basis: 'BUNDLE', actualKg: 100, unitPricePerKg: 50_000, amount: 5_000_000 },
+    { colorCode: 'Trắng', basis: 'BARE', actualKg: 50, unitPricePerKg: 50_000, amount: 2_500_000 },
+  ] };
+  const service = new TaxInvoiceService(fakePrisma({ profile: nppProfile, order }));
+  const draft = await service.createFromOrder(npp, 'o1');
+  assert.equal(draft.buyerName, 'Xưởng Minh Tâm');
+  assert.equal(draft.projectCode, 'XUONG-01-261126-01');
+  assert.equal(draft.lines.length, 2);
+  assert.equal(draft.lines[0].unit, 'kg');
+  assert.equal(draft.lines[0].quantity, 100);
+  assert.match(draft.lines[0].name, /Trắng/);
+  assert.match(draft.lines[0].name, /bó/i);
+  assert.match(draft.lines[1].name, /trần/i);
+  assert.equal(draft.total, 7_500_000);
+});
+
+test('lập từ đơn hàng NPP: chưa cân thì lấy theo cây, chiết khấu thành dòng âm cho khớp tổng đơn', async () => {
+  const order = { ...nppOrder, totalAmount: 9_000_000, items: [
+    { productCode: 'EH-55', productName: 'Thanh 55 khung', colorCode: 'Xám', quantity: 20, unit: 'cây', unitPrice: 500_000, totalPrice: 10_000_000 },
+  ] };
+  const service = new TaxInvoiceService(fakePrisma({ profile: nppProfile, order }));
+  const draft = await service.createFromOrder(npp, 'o1');
+  assert.equal(draft.lines[0].unit, 'cây');
+  assert.equal(draft.lines[0].quantity, 20);
+  assert.equal(draft.lines.length, 2);
+  assert.equal(draft.lines[1].amount, -1_000_000);
+  assert.equal(draft.total, 9_000_000);
+  const issued = await service.issue(npp, draft.id);
+  assert.equal(issued.status, 'ISSUED');
+});
+
+test('lập từ đơn hàng NPP: đơn của NPP khác hoặc tài khoản không phải NPP thì bị từ chối', async () => {
+  const service = new TaxInvoiceService(fakePrisma({ profile: nppProfile, order: nppOrder }));
+  await assert.rejects(() => service.createFromOrder({ ...npp, organizationId: 'npp-2' }, 'o1'), NotFoundException);
+  await assert.rejects(() => service.createFromOrder(owner, 'o1'), /nhà phân phối/);
+});
+
+test('sổ năm của NPP: tiền thu lấy từ công nợ của NPP, không lấy theo công trình', async () => {
+  const prisma = fakePrisma({ profile: nppProfile, receipts: [] });
+  const service = new TaxInvoiceService(prisma, () => new Date('2026-07-02T03:00:00Z'));
+  await service.ledger(npp, 2026);
+  const where = prisma.calls.receipts[0].where;
+  assert.equal(where.type, 'RECEIPT');
+  assert.equal(where.debt.nppOrgId, 'npp-1');
+  assert.equal(where.project, undefined);
+});
+
+test('hồ sơ NPP chưa có: ngành mặc định là phân phối, xưởng vẫn mặc định sản xuất', async () => {
+  const service = new TaxInvoiceService(fakePrisma());
+  assert.equal((await service.profile(npp)).businessLine, 'TRADING');
+  assert.equal((await service.profile(npp)).defaults.vatPct, 1);
+  assert.equal((await service.profile(owner)).businessLine, 'MANUFACTURING');
+  const saved = await service.updateProfile(npp, { taxCode: '0312345678' });
+  assert.equal(saved.businessLine, 'TRADING');
 });

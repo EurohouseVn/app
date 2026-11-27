@@ -15,6 +15,7 @@ import {
   LogOut,
   Package,
   Printer,
+  Receipt,
   Scale,
   ScanLine,
   Settings,
@@ -40,6 +41,7 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: 'Bảng giá màu', href: '/prices', icon: FileText },
   { label: 'Đối chiếu', href: '/reconciliation', icon: Scale },
   { label: 'Công nợ', href: '/debts', icon: HandCoins },
+  { label: 'Hoá đơn', href: '/invoices', icon: Receipt },
   { label: 'Báo cáo', href: '/reports', icon: FileBarChart },
   { label: 'Tài khoản', href: '/profile', icon: Settings },
 ];

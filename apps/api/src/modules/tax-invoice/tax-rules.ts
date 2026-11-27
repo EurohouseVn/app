@@ -1,7 +1,7 @@
 // Quy tắc thuế hộ kinh doanh theo năm. Quy định đổi nhiều lần trong 2026, nên mọi con số nằm ở bảng này,
 // logic tính chỉ đọc bảng. Năm mới: thêm một dòng. Xem docs/hoa-don-dien-tu/NGHIEN_CUU_MODULE_HOA_DON.md.
 
-export type TaxBusinessLine = 'MANUFACTURING' | 'CONSTRUCTION_WITH_MATERIALS';
+export type TaxBusinessLine = 'MANUFACTURING' | 'CONSTRUCTION_WITH_MATERIALS' | 'TRADING';
 export type TaxPitMethod = 'REVENUE_RATE' | 'INCOME';
 export type TaxEntityType = 'HKD' | 'DN';
 
@@ -32,6 +32,7 @@ export const TAX_YEAR_RULES: TaxYearRule[] = [
     lines: {
       MANUFACTURING: { vatPct: 3, pitPct: 1.5, label: 'Sản xuất, gia công nhôm kính' },
       CONSTRUCTION_WITH_MATERIALS: { vatPct: 3, pitPct: 1.5, label: 'Xây lắp có bao thầu vật tư' },
+      TRADING: { vatPct: 1, pitPct: 0.5, label: 'Phân phối, bán buôn nhôm kính, phụ kiện' },
     },
     incomeBrackets: [
       { revenueUpTo: 3_000_000_000, pct: 15 },
@@ -51,4 +52,5 @@ export function taxRuleForYear(year: number): TaxYearRule {
 export const BUSINESS_LINE_LABELS: Record<TaxBusinessLine, string> = {
   MANUFACTURING: 'Sản xuất, gia công nhôm kính',
   CONSTRUCTION_WITH_MATERIALS: 'Xây lắp có bao thầu vật tư',
+  TRADING: 'Phân phối, bán buôn nhôm kính, phụ kiện',
 };
