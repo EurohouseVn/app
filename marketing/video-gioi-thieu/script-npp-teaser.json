@@ -17,7 +17,7 @@
     "ink"
    ]
   ],
-  "text": "Nhà phân phối nhôm! Quản lý thợ, kho và công nợ bằng sổ tay sao?"
+  "text": "Nhà Phân Phối nhôm! Quản lý thợ, kho và công nợ bằng sổ tay sao?"
  },
  {
   "id": "tq-p01-order",
@@ -44,8 +44,8 @@
   "kind": "turn",
   "tag": "GIẢI PHÁP",
   "title": "EUROHOUSE NPP",
-  "sub": "Web quản lý dành cho nhà phân phối nhôm",
-  "text": "Eurohouse en pê pê! Từ đơn của thợ đến công nợ, một màn hình!"
+  "sub": "Web quản lý dành cho Nhà Phân Phối nhôm",
+  "text": "Eurohouse Nhà Phân Phối! Từ đơn của thợ đến công nợ, một màn hình, hoàn toàn miễn phí!"
  },
  {
   "id": "tq-f01-order",
@@ -54,43 +54,21 @@
   "clipdir": "clips-npp",
   "tag": "BƯỚC 1 · THỢ ĐẶT ĐƠN",
   "title": "Thợ đặt nhôm trên app",
-  "sub": "Chọn màu · Chọn mã thanh · App tự tính kg · Gửi thẳng NPP",
-  "text": "Thợ đặt nhôm ngay trên app. Chọn màu, chọn thanh, bấm gửi!",
+  "sub": "Chọn nhiều màu · Chọn mã thanh · App tự tính kg · Gửi thẳng Nhà Phân Phối",
+  "text": "Thợ chọn ba màu, bấm số cây, gửi đơn ngay trên app!",
   "device": "phone",
   "stats": [
    [
+    "Số màu",
+    "3 màu"
+   ],
+   [
     "Số thanh",
-    "64 cây"
+    "72 cây"
    ],
    [
     "Dự tính",
-    "685,87 kg"
-   ]
-  ],
-  "short": true
- },
- {
-  "id": "tq-f03-stock",
-  "kind": "feat",
-  "clip": "n03-inventory",
-  "clipdir": "clips-npp",
-  "tag": "BƯỚC 3 · KIỂM TỒN KHO",
-  "title": "Kiểm tra tồn kho theo màu",
-  "sub": "Lọc theo màu nhôm · Tồn từng mã thanh · Cảnh báo sắp hết",
-  "text": "Nhà phân phối kiểm tồn kho theo màu, đủ hàng là giao!",
-  "device": "web",
-  "stats": [
-   [
-    "E70D110",
-    "Còn 40 · cần 20"
-   ],
-   [
-    "E70D150",
-    "Còn 70 · cần 14"
-   ],
-   [
-    "E701A",
-    "Còn 96 · cần 30"
+    "790,41 kg"
    ]
   ],
   "short": true
@@ -100,23 +78,27 @@
   "kind": "feat",
   "clip": "n04-weigh",
   "clipdir": "clips-npp",
-  "tag": "BƯỚC 4 · CÂN VÀ LẬP PHIẾU GIAO",
-  "title": "Cân xong, nhập số ký thực",
-  "sub": "Kg thực cân · Đơn giá · Thành tiền tự tính · Phiếu giao PDF",
-  "text": "Cân xong nhập số ký thực, thành tiền tự tính: sáu mươi mốt triệu hai trăm mười lăm nghìn!",
+  "tag": "BƯỚC 4 · CÂN THEO TỪNG MÀU",
+  "title": "Cân tách theo màu, tính tiền từng màu",
+  "sub": "Mỗi màu một khối nhập kg · Mỗi màu 2 dòng giá · Thành tiền tự tính · Phiếu giao PDF",
+  "text": "Cân tách theo từng màu, thành tiền tự tính: một trăm hai mươi bảy triệu ba trăm nghìn đồng!",
   "device": "web",
   "stats": [
    [
-    "Kg thực cân",
-    "699,6 kg"
+    "Metalic",
+    "39.075.000 đ"
    ],
    [
-    "Đơn giá",
-    "87.500 đ/kg"
+    "Xám Ngọc Trai",
+    "41.070.400 đ"
    ],
    [
-    "Thành tiền",
-    "61.215.000 đ"
+    "Cẩm Lai",
+    "47.157.400 đ"
+   ],
+   [
+    "Tổng 807 kg",
+    "127.302.800 đ"
    ]
   ],
   "short": true
@@ -134,11 +116,11 @@
   "stats": [
    [
     "Xưởng nợ",
-    "61.215.000 đ"
+    "127.302.800 đ"
    ],
    [
     "Kho nhôm",
-    "Tự trừ 64 cây"
+    "Tự trừ 72 cây"
    ]
   ],
   "short": true
@@ -158,8 +140,8 @@
  {
   "id": "tq-f20-outro",
   "kind": "outro",
-  "tag": "Liên hệ Eurohouse để mở tài khoản NPP",
+  "tag": "Miễn phí cho Nhà Phân Phối của Eurohouse",
   "sub": "Đơn, kho, cân, công nợ: một màn hình!",
-  "text": "Eurohouse en pê pê! Nhôm của sự thịnh vượng!"
+  "text": "Eurohouse Nhà Phân Phối, miễn phí cho Nhà Phân Phối của Eurohouse! Nhôm của sự thịnh vượng!"
  }
 ]

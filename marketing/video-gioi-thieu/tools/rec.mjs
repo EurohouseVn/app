@@ -1,5 +1,6 @@
 // Bộ quay màn hình app (web, 390x844 @2x) bằng CDP screencast + Edge. Chỉ chạy với API/CSDL tạm, dữ liệu giả.
 import { chromium } from 'playwright';
+import { rewriteApi } from './route-api.mjs';
 import fs from 'node:fs'; import path from 'node:path'; import { spawnSync } from 'node:child_process';
 export const BASE = process.env.EH_BASE || 'http://localhost:8083';
 export const OUT = 'E:/LELOIGLOBAL_CODEX/APP EUROHOUSE/marketing/video-gioi-thieu/assets/clips';
@@ -20,6 +21,7 @@ export async function record(name, fn, { auth = true, w = 390, h = 844, init = '
   const dir = path.join(process.env.TEMP, 'eh-frames', name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   const browser = await chromium.launch({ channel: 'msedge' });
   const ctx = await browser.newContext({ ...(auth ? { storageState: state } : {}), viewport: { width: w, height: h }, deviceScaleFactor: scale, locale: 'vi-VN' });
+  await rewriteApi(ctx);
   await ctx.addInitScript(RIPPLE);
   if (cursor) await ctx.addInitScript(CURSOR);
   if (init) await ctx.addInitScript(init);

@@ -41,9 +41,11 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#F5F6F7;font-fam
 .win{position:absolute;z-index:4;background:#151A22;border-radius:18px;overflow:hidden;box-shadow:0 40px 90px rgba(21,26,34,.35)}
 .wbar{height:44px;background:#EEF0F3;display:flex;align-items:center;gap:9px;padding:0 18px}.wbar i{width:14px;height:14px;border-radius:50%;background:#F47C20;display:block}.wbar i:nth-child(2){background:#F9A82F}.wbar i:nth-child(3){background:#98A2B3}.wbar span{margin-left:14px;font-size:20px;font-weight:700;color:#475467}
 .wscr{position:relative;overflow:hidden;background:#fff}
+.chips.l li{max-width:640px}
 .stats{position:absolute;z-index:5;display:flex;gap:18px}
 .stats.p{left:40px;right:40px;top:1400px}.stats.l{left:770px;top:930px;width:1060px}
 .stat{flex:1;background:#fff;border:2px solid #DFE3E8;border-left:10px solid #F47C20;border-radius:8px;padding:14px 20px;box-shadow:0 10px 26px rgba(21,26,34,.1)}
+.stats.p.n4{flex-wrap:wrap}.stats.p.n4 .stat{flex:1 1 calc(50% - 9px)}
 .stats.n3 .stat b,.stats.n4 .stat b{font-size:32px;white-space:nowrap}.stats.n4 .stat small{font-size:22px}.stats.n4 .stat{padding:12px 14px}
 .stat small{display:block;font-size:26px;font-weight:700;color:#667085;letter-spacing:.04em}.stat b{display:block;font-size:44px;font-weight:800;color:#151A22;line-height:1.15;margin-top:4px}
 .prog{position:absolute;left:110px;bottom:70px;display:flex;gap:8px;z-index:3}
@@ -58,7 +60,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#F5F6F7;font-fam
 .scene.l .textcol .title{line-height:1.05}
 .outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;text-align:center;z-index:3}
 .logoblock{background:#F9A82F;border-radius:8px;padding:14px;box-shadow:0 20px 60px rgba(244,124,32,.35)}.logoblock img{width:640px;display:block;border-radius:6px}
-.title.big{font-size:92px;white-space:normal}
+.title.big{font-size:78px;white-space:normal}
 .stores{display:flex;gap:22px}.store{background:#151A22;color:#fff;border-radius:12px;padding:16px 34px;text-align:left;box-shadow:0 14px 30px rgba(21,26,34,.3)}.store small{display:block;font-size:20px;letter-spacing:.14em;font-weight:700;opacity:.8}.store b{font-size:46px;font-weight:800}
 .cta{background:#F47C20;color:#fff;font-weight:800;font-size:36px;padding:24px 40px;border-radius:8px;box-shadow:0 18px 40px rgba(244,124,32,.4)}
 .prods{display:flex;gap:22px}.prods img{width:200px;height:266px;object-fit:cover;border-radius:8px;border:2px solid #DFE3E8;background:#fff}
@@ -77,136 +79,122 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#F5F6F7;font-fam
 .homescr em{font-style:normal;font-size:21px;font-weight:700;color:#151A22}
 </style></head>
 <body>
-<div id="root" data-composition-id="main" data-start="0" data-duration="45.696" data-width="1080" data-height="1920">
-<div id="s0" class="clip scene p pain" data-start="0" data-duration="3.613" data-track-index="1"><div class="stripes"></div>
+<div id="root" data-composition-id="main" data-start="0" data-duration="42.36" data-width="1080" data-height="1920">
+<div id="s0" class="clip scene p pain" data-start="0" data-duration="3.759" data-track-index="1"><div class="stripes"></div>
 <div class="ptag" id="s0-tag">CÂU HỎI CHO NHÀ PHÂN PHỐI</div>
 <div class="pstack" id="s0-stack"><div class="pl ink" id="s0-l0" style="font-size:132px">QUẢN LÝ THỢ</div><div class="pl white" id="s0-l1" style="font-size:123px">KHO, CÔNG NỢ</div><div class="pl ink" id="s0-l2" style="font-size:123px">BẰNG SỔ TAY?</div></div></div>
-<div id="s1" class="clip scene p pain" data-start="3.613" data-duration="5.117" data-track-index="1"><div class="stripes"></div><div class="bignum" id="s1-num">1</div>
+<div id="s1" class="clip scene p pain" data-start="3.759" data-duration="4.748" data-track-index="1"><div class="stripes"></div><div class="bignum" id="s1-num">1</div>
 <div class="ptag" id="s1-tag">NỖI ĐAU SỐ 1</div>
 <div class="pstack" id="s1-stack"><div class="pl ink" id="s1-l0" style="font-size:70px">THỢ NHẮN ĐƠN QUA ZALO</div><div class="pl white" id="s1-l1" style="font-size:98px">SAI MÃ, SAI MÀU</div><div class="pl ink" id="s1-l2" style="font-size:98px">GIAO NHẦM LÀ LỖ</div></div></div>
-<div id="sw1" class="clip cut" data-start="3.553" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw1-i"></div></div>
-<div id="s2" class="clip scene p " data-start="8.73" data-duration="5.6" data-track-index="1"><div class="hero"><img id="s2-hero" src="assets/brand/hero-ecento-70.jpg"></div><div class="flash" id="s2-flash"></div>
-<div class="panel intro-panel"><img class="logo" id="s2-logo" src="assets/brand/logo-landscape.png"><div class="tag" id="s2-tag">GIẢI PHÁP</div><h1 class="title" id="s2-title" style="font-size:80px;white-space:normal"><span class="w"><span class="wi">EUROHOUSE</span></span> <span class="w"><span class="wi">NPP</span></span></h1><p class="sub" id="s2-sub">Web quản lý dành cho nhà phân phối nhôm</p></div></div>
-<div id="sw2" class="clip cut" data-start="8.67" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw2-i"></div></div>
-<div id="s3" class="clip scene p fx" data-start="14.33" data-duration="8.133" data-track-index="1"><div class="orb" id="s3-orb"></div><div class="head"><div class="tag" id="s3-tag">BƯỚC 1 · THỢ ĐẶT ĐƠN</div><h1 class="title" id="s3-title" style="font-size:79px"><span class="w"><span class="wi">Thợ</span></span> <span class="w"><span class="wi">đặt</span></span> <span class="w"><span class="wi">nhôm</span></span> <span class="w"><span class="wi">trên</span></span> <span class="w"><span class="wi">app</span></span></h1>
-<ul class="chips p"><li id="s3-chip0"><i></i>Chọn màu</li><li id="s3-chip1"><i></i>Chọn mã thanh</li><li id="s3-chip2"><i></i>App tự tính kg</li><li id="s3-chip3"><i></i>Gửi thẳng NPP</li></ul></div><div class="phone" id="s3-phone" style="left:220px;top:540px;width:640px;height:1355px"><div class="screen" style="inset:13px;border-radius:50px"><video id="s3-v" class="clip scr" src="assets/clips30/n01-tho-order.mp4" data-start="14.45" data-duration="8.013" data-media-start="0.35" data-playback-rate="3.966" data-track-index="19" muted playsinline></video></div><div class="notch"></div></div><div class="stats p n2" id="s3-stats"><div class="stat" id="s3-st0"><small>Số thanh</small><b>64 cây</b></div><div class="stat" id="s3-st1"><small>Dự tính</small><b>685,87 kg</b></div></div>
+<div id="sw1" class="clip cut" data-start="3.699" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw1-i"></div></div>
+<div id="s2" class="clip scene p " data-start="8.508" data-duration="5.6" data-track-index="1"><div class="hero"><img id="s2-hero" src="assets/brand/hero-ecento-70.jpg"></div><div class="flash" id="s2-flash"></div>
+<div class="panel intro-panel"><img class="logo" id="s2-logo" src="assets/brand/logo-landscape.png"><div class="tag" id="s2-tag">GIẢI PHÁP</div><h1 class="title" id="s2-title" style="font-size:80px;white-space:normal"><span class="w"><span class="wi">EUROHOUSE</span></span> <span class="w"><span class="wi">NPP</span></span></h1><p class="sub" id="s2-sub">Web quản lý dành cho Nhà Phân Phối nhôm</p></div></div>
+<div id="sw2" class="clip cut" data-start="8.448" data-duration="0.3" data-track-index="90"><div class="cuti" id="sw2-i"></div></div>
+<div id="s3" class="clip scene p fx" data-start="14.108" data-duration="6.883" data-track-index="1"><div class="orb" id="s3-orb"></div><div class="head"><div class="tag" id="s3-tag">BƯỚC 1 · THỢ ĐẶT ĐƠN</div><h1 class="title" id="s3-title" style="font-size:79px"><span class="w"><span class="wi">Thợ</span></span> <span class="w"><span class="wi">đặt</span></span> <span class="w"><span class="wi">nhôm</span></span> <span class="w"><span class="wi">trên</span></span> <span class="w"><span class="wi">app</span></span></h1>
+<ul class="chips p"><li id="s3-chip0"><i></i>Chọn nhiều màu</li><li id="s3-chip1"><i></i>Chọn mã thanh</li><li id="s3-chip2"><i></i>App tự tính kg</li><li id="s3-chip3"><i></i>Gửi thẳng Nhà Phân Phối</li></ul></div><div class="phone" id="s3-phone" style="left:220px;top:540px;width:640px;height:1355px"><div class="screen" style="inset:13px;border-radius:50px"><video id="s3-v" class="clip scr" src="assets/clips30/n01-tho-order.mp4" data-start="14.228" data-duration="6.763" data-media-start="0.35" data-playback-rate="3.96" data-track-index="19" muted playsinline></video></div><div class="notch"></div></div><div class="stats p n3" id="s3-stats"><div class="stat" id="s3-st0"><small>Số màu</small><b>3 màu</b></div><div class="stat" id="s3-st1"><small>Số thanh</small><b>72 cây</b></div><div class="stat" id="s3-st2"><small>Dự tính</small><b>790,41 kg</b></div></div>
 </div>
-<div id="sw3" class="clip swipe" data-start="14.03" data-duration="0.75" data-track-index="90"><div class="swi" id="sw3-i"></div></div>
-<div id="s4" class="clip scene p fx" data-start="22.463" data-duration="5.5" data-track-index="1"><div class="orb" id="s4-orb"></div><div class="head"><div class="tag" id="s4-tag">BƯỚC 3 · KIỂM TỒN KHO</div><h1 class="title" id="s4-title" style="font-size:66px"><span class="w"><span class="wi">Kiểm</span></span> <span class="w"><span class="wi">tra</span></span> <span class="w"><span class="wi">tồn</span></span> <span class="w"><span class="wi">kho</span></span> <span class="w"><span class="wi">theo</span></span> <span class="w"><span class="wi">màu</span></span></h1>
-<ul class="chips p"><li id="s4-chip0"><i></i>Lọc theo màu nhôm</li><li id="s4-chip1"><i></i>Tồn từng mã thanh</li><li id="s4-chip2"><i></i>Cảnh báo sắp hết</li></ul></div><div class="win" id="s4-phone" style="left:40px;top:620px;width:1000px;height:726px"><div class="wbar"><i></i><i></i><i></i><span>NPP Web Manager</span></div><div class="wscr" style="height:682px"><video id="s4-v" class="clip scr" style="position:absolute;width:1213px;height:682px;left:-213px;top:0" src="assets/clips30/n03-inventory.mp4" data-start="22.583" data-duration="5.38" data-media-start="0.35" data-playback-rate="3.95" data-track-index="34" muted playsinline></video></div></div><div class="stats p n3" id="s4-stats"><div class="stat" id="s4-st0"><small>E70D110</small><b>Còn 40 · cần 20</b></div><div class="stat" id="s4-st1"><small>E70D150</small><b>Còn 70 · cần 14</b></div><div class="stat" id="s4-st2"><small>E701A</small><b>Còn 96 · cần 30</b></div></div>
+<div id="sw3" class="clip swipe" data-start="13.808" data-duration="0.75" data-track-index="90"><div class="swi" id="sw3-i"></div></div>
+<div id="s4" class="clip scene p fx" data-start="20.991" data-duration="7.867" data-track-index="1"><div class="orb" id="s4-orb"></div><div class="head"><div class="tag" id="s4-tag">BƯỚC 4 · CÂN THEO TỪNG MÀU</div><h1 class="title" id="s4-title" style="font-size:66px;white-space:normal;line-height:1.1"><span class="w"><span class="wi">Cân</span></span> <span class="w"><span class="wi">tách</span></span> <span class="w"><span class="wi">theo</span></span> <span class="w"><span class="wi">màu,</span></span> <span class="w"><span class="wi">tính</span></span> <span class="w"><span class="wi">tiền</span></span> <span class="w"><span class="wi">từng</span></span> <span class="w"><span class="wi">màu</span></span></h1>
+<ul class="chips p"><li id="s4-chip0"><i></i>Mỗi màu một khối nhập kg</li><li id="s4-chip1"><i></i>Mỗi màu 2 dòng giá</li><li id="s4-chip2"><i></i>Thành tiền tự tính</li><li id="s4-chip3"><i></i>Phiếu giao PDF</li></ul></div><div class="win" id="s4-phone" style="left:40px;top:620px;width:1000px;height:726px"><div class="wbar"><i></i><i></i><i></i><span>NPP Web Manager</span></div><div class="wscr" style="height:682px"><video id="s4-v" class="clip scr" style="position:absolute;width:1213px;height:682px;left:-213px;top:0" src="assets/clips30/n04-weigh.mp4" data-start="21.111" data-duration="7.747" data-media-start="0.35" data-playback-rate="3.965" data-track-index="36" muted playsinline></video></div></div><div class="stats p n4" id="s4-stats"><div class="stat" id="s4-st0"><small>Metalic</small><b>39.075.000 đ</b></div><div class="stat" id="s4-st1"><small>Xám Ngọc Trai</small><b>41.070.400 đ</b></div><div class="stat" id="s4-st2"><small>Cẩm Lai</small><b>47.157.400 đ</b></div><div class="stat" id="s4-st3"><small>Tổng 807 kg</small><b>127.302.800 đ</b></div></div>
 </div>
-<div id="sw4" class="clip swipe" data-start="22.163" data-duration="0.75" data-track-index="90"><div class="swi" id="sw4-i"></div></div>
-<div id="s5" class="clip scene p fx" data-start="27.963" data-duration="5.333" data-track-index="1"><div class="orb" id="s5-orb"></div><div class="head"><div class="tag" id="s5-tag">BƯỚC 4 · CÂN VÀ LẬP PHIẾU GIAO</div><h1 class="title" id="s5-title" style="font-size:66px"><span class="w"><span class="wi">Cân</span></span> <span class="w"><span class="wi">xong,</span></span> <span class="w"><span class="wi">nhập</span></span> <span class="w"><span class="wi">số</span></span> <span class="w"><span class="wi">ký</span></span> <span class="w"><span class="wi">thực</span></span></h1>
-<ul class="chips p"><li id="s5-chip0"><i></i>Kg thực cân</li><li id="s5-chip1"><i></i>Đơn giá</li><li id="s5-chip2"><i></i>Thành tiền tự tính</li><li id="s5-chip3"><i></i>Phiếu giao PDF</li></ul></div><div class="win" id="s5-phone" style="left:40px;top:620px;width:1000px;height:726px"><div class="wbar"><i></i><i></i><i></i><span>NPP Web Manager</span></div><div class="wscr" style="height:682px"><video id="s5-v" class="clip scr" style="position:absolute;width:1213px;height:682px;left:-213px;top:0" src="assets/clips30/n04-weigh.mp4" data-start="28.083" data-duration="5.213" data-media-start="0.35" data-playback-rate="3.948" data-track-index="49" muted playsinline></video></div></div><div class="stats p n3" id="s5-stats"><div class="stat" id="s5-st0"><small>Kg thực cân</small><b>699,6 kg</b></div><div class="stat" id="s5-st1"><small>Đơn giá</small><b>87.500 đ/kg</b></div><div class="stat" id="s5-st2"><small>Thành tiền</small><b>61.215.000 đ</b></div></div>
+<div id="sw4" class="clip swipe" data-start="20.691" data-duration="0.75" data-track-index="90"><div class="swi" id="sw4-i"></div></div>
+<div id="s5" class="clip scene p fx" data-start="28.858" data-duration="3.063" data-track-index="1"><div class="orb" id="s5-orb"></div><div class="head"><div class="tag" id="s5-tag">BƯỚC 5 · CÔNG NỢ TỰ SINH</div><h1 class="title" id="s5-title" style="font-size:66px;white-space:normal;line-height:1.1"><span class="w"><span class="wi">Hoàn</span></span> <span class="w"><span class="wi">thành</span></span> <span class="w"><span class="wi">đơn,</span></span> <span class="w"><span class="wi">công</span></span> <span class="w"><span class="wi">nợ</span></span> <span class="w"><span class="wi">tự</span></span> <span class="w"><span class="wi">sinh</span></span></h1>
+<ul class="chips p"><li id="s5-chip0"><i></i>Kho tự trừ đúng số cây</li><li id="s5-chip1"><i></i>Công nợ tự ghi</li><li id="s5-chip2"><i></i>Không sót một đồng</li></ul></div><div class="win" id="s5-phone" style="left:40px;top:620px;width:1000px;height:726px"><div class="wbar"><i></i><i></i><i></i><span>NPP Web Manager</span></div><div class="wscr" style="height:682px"><video id="s5-v" class="clip scr" style="position:absolute;width:1213px;height:682px;left:-213px;top:0" src="assets/clips30/n05-debts.mp4" data-start="28.978" data-duration="2.943" data-media-start="0.35" data-playback-rate="3.29" data-track-index="55" muted playsinline></video></div></div><div class="stats p n2" id="s5-stats"><div class="stat" id="s5-st0"><small>Xưởng nợ</small><b>127.302.800 đ</b></div><div class="stat" id="s5-st1"><small>Kho nhôm</small><b>Tự trừ 72 cây</b></div></div>
 </div>
-<div id="sw5" class="clip swipe" data-start="27.663" data-duration="0.75" data-track-index="90"><div class="swi" id="sw5-i"></div></div>
-<div id="s6" class="clip scene p fx" data-start="33.296" data-duration="3" data-track-index="1"><div class="orb" id="s6-orb"></div><div class="head"><div class="tag" id="s6-tag">BƯỚC 5 · CÔNG NỢ TỰ SINH</div><h1 class="title" id="s6-title" style="font-size:62px"><span class="w"><span class="wi">Hoàn</span></span> <span class="w"><span class="wi">thành</span></span> <span class="w"><span class="wi">đơn,</span></span> <span class="w"><span class="wi">công</span></span> <span class="w"><span class="wi">nợ</span></span> <span class="w"><span class="wi">tự</span></span> <span class="w"><span class="wi">sinh</span></span></h1>
-<ul class="chips p"><li id="s6-chip0"><i></i>Kho tự trừ đúng số cây</li><li id="s6-chip1"><i></i>Công nợ tự ghi</li><li id="s6-chip2"><i></i>Không sót một đồng</li></ul></div><div class="win" id="s6-phone" style="left:40px;top:620px;width:1000px;height:726px"><div class="wbar"><i></i><i></i><i></i><span>NPP Web Manager</span></div><div class="wscr" style="height:682px"><video id="s6-v" class="clip scr" style="position:absolute;width:1213px;height:682px;left:-213px;top:0" src="assets/clips30/n05-debts.mp4" data-start="33.416" data-duration="2.88" data-media-start="0.35" data-playback-rate="3.351" data-track-index="66" muted playsinline></video></div></div><div class="stats p n2" id="s6-stats"><div class="stat" id="s6-st0"><small>Xưởng nợ</small><b>61.215.000 đ</b></div><div class="stat" id="s6-st1"><small>Kho nhôm</small><b>Tự trừ 64 cây</b></div></div>
+<div id="sw5" class="clip swipe" data-start="28.558" data-duration="0.75" data-track-index="90"><div class="swi" id="sw5-i"></div></div>
+<div id="s6" class="clip scene p fx" data-start="31.92" data-duration="3" data-track-index="1"><div class="orb" id="s6-orb"></div><div class="head"><div class="tag" id="s6-tag">TRÊN APP CỦA THỢ</div><h1 class="title" id="s6-title" style="font-size:66px"><span class="w"><span class="wi">Thợ</span></span> <span class="w"><span class="wi">thấy</span></span> <span class="w"><span class="wi">nợ</span></span> <span class="w"><span class="wi">ngay</span></span> <span class="w"><span class="wi">trên</span></span> <span class="w"><span class="wi">app</span></span></h1>
+<ul class="chips p"><li id="s6-chip0"><i></i>Số tiền</li><li id="s6-chip1"><i></i>Mã đơn</li><li id="s6-chip2"><i></i>Còn phải trả</li><li id="s6-chip3"><i></i>Báo thanh toán</li></ul></div><div class="phone" id="s6-phone" style="left:220px;top:540px;width:640px;height:1355px"><div class="screen" style="inset:13px;border-radius:50px"><video id="s6-v" class="clip scr" src="assets/clips30/n06-tho-debt.mp4" data-start="32.04" data-duration="2.88" data-media-start="0.35" data-playback-rate="2.054" data-track-index="69" muted playsinline></video></div><div class="notch"></div></div>
 </div>
-<div id="sw6" class="clip swipe" data-start="32.996" data-duration="0.75" data-track-index="90"><div class="swi" id="sw6-i"></div></div>
-<div id="s7" class="clip scene p fx" data-start="36.296" data-duration="3" data-track-index="1"><div class="orb" id="s7-orb"></div><div class="head"><div class="tag" id="s7-tag">TRÊN APP CỦA THỢ</div><h1 class="title" id="s7-title" style="font-size:66px"><span class="w"><span class="wi">Thợ</span></span> <span class="w"><span class="wi">thấy</span></span> <span class="w"><span class="wi">nợ</span></span> <span class="w"><span class="wi">ngay</span></span> <span class="w"><span class="wi">trên</span></span> <span class="w"><span class="wi">app</span></span></h1>
-<ul class="chips p"><li id="s7-chip0"><i></i>Số tiền</li><li id="s7-chip1"><i></i>Mã đơn</li><li id="s7-chip2"><i></i>Còn phải trả</li><li id="s7-chip3"><i></i>Báo thanh toán</li></ul></div><div class="phone" id="s7-phone" style="left:220px;top:540px;width:640px;height:1355px"><div class="screen" style="inset:13px;border-radius:50px"><video id="s7-v" class="clip scr" src="assets/clips30/n06-tho-debt.mp4" data-start="36.416" data-duration="2.88" data-media-start="0.35" data-playback-rate="2.031" data-track-index="80" muted playsinline></video></div><div class="notch"></div></div>
-</div>
-<div id="sw7" class="clip swipe" data-start="35.996" data-duration="0.75" data-track-index="90"><div class="swi" id="sw7-i"></div></div>
-<div id="s8" class="clip scene p " data-start="39.296" data-duration="6.4" data-track-index="1"><div class="outro p"><div class="logoblock" id="s8-logo"><img src="assets/brand/logo-landscape.png"></div>
-<h1 class="title big" id="s8-title"><span class="w"><span class="wi">Đơn,</span></span> <span class="w"><span class="wi">kho,</span></span> <span class="w"><span class="wi">cân,</span></span> <span class="w"><span class="wi">công</span></span> <span class="w"><span class="wi">nợ:</span></span> <span class="w"><span class="wi">một</span></span> <span class="w"><span class="wi">màn</span></span> <span class="w"><span class="wi">hình!</span></span></h1>
-<div class="cta" id="s8-cta">Liên hệ Eurohouse để mở tài khoản NPP</div>
-<div class="prods" id="s8-prods"><img src="assets/brand/product-ecento-70.jpg"><img src="assets/brand/product-ecento-plus.jpg"><img src="assets/brand/product-he-55-vat-canh.jpg"><img src="assets/brand/product-preco.jpg"></div>
-<p class="note" id="s8-note">Hình ảnh và số liệu trong video là dữ liệu minh hoạ.</p></div></div>
-<div id="sw8" class="clip swipe" data-start="38.996" data-duration="0.75" data-track-index="90"><div class="swi" id="sw8-i"></div></div>
-<audio id="voice0" class="clip" src="assets/voice2/tq-p00-hook.wav" data-start="0.25" data-duration="2.863" data-track-index="2" data-volume="1"></audio>
+<div id="sw6" class="clip swipe" data-start="31.62" data-duration="0.75" data-track-index="90"><div class="swi" id="sw6-i"></div></div>
+<div id="s7" class="clip scene p " data-start="34.92" data-duration="7.44" data-track-index="1"><div class="outro p"><div class="logoblock" id="s7-logo"><img src="assets/brand/logo-landscape.png"></div>
+<h1 class="title big" id="s7-title"><span class="w"><span class="wi">Đơn,</span></span> <span class="w"><span class="wi">kho,</span></span> <span class="w"><span class="wi">cân,</span></span> <span class="w"><span class="wi">công</span></span> <span class="w"><span class="wi">nợ:</span></span> <span class="w"><span class="wi">một</span></span> <span class="w"><span class="wi">màn</span></span> <span class="w"><span class="wi">hình!</span></span></h1>
+<div class="cta" id="s7-cta">Miễn phí cho Nhà Phân Phối của Eurohouse</div>
+<div class="prods" id="s7-prods"><img src="assets/brand/product-ecento-70.jpg"><img src="assets/brand/product-ecento-plus.jpg"><img src="assets/brand/product-he-55-vat-canh.jpg"><img src="assets/brand/product-preco.jpg"></div>
+<p class="note" id="s7-note">Hình ảnh và số liệu trong video là dữ liệu minh hoạ.</p></div></div>
+<div id="sw7" class="clip swipe" data-start="34.62" data-duration="0.75" data-track-index="90"><div class="swi" id="sw7-i"></div></div>
+<audio id="voice0" class="clip" src="assets/voice2/tq-p00-hook.wav" data-start="0.25" data-duration="3.009" data-track-index="2" data-volume="1"></audio>
 <audio id="sfx0" class="clip" src="assets/sfx/boom.wav" data-start="0.27" data-duration="1.2" data-track-index="3" data-volume="0.85" ></audio>
-<audio id="sfx1" class="clip" src="assets/sfx/boom.wav" data-start="1.129" data-duration="1.2" data-track-index="4" data-volume="0.65" ></audio>
-<audio id="sfx2" class="clip" src="assets/sfx/boom.wav" data-start="1.988" data-duration="1.2" data-track-index="5" data-volume="0.65" ></audio>
-<audio id="sfx3" class="clip" src="assets/sfx/glitch-a.wav" data-start="2.218" data-duration="0.7" data-track-index="6" data-volume="0.45" data-fade-out="0.2"></audio>
-<audio id="sfx4" class="clip" src="assets/sfx/heart.wav" data-start="0" data-duration="3.613" data-track-index="7" data-volume="0.45" data-fade-out="0.2"></audio>
-<audio id="voice1" class="clip" src="assets/voice2/tq-p01-order.wav" data-start="3.863" data-duration="4.367" data-track-index="8" data-volume="1"></audio>
-<audio id="sfx5" class="clip" src="assets/sfx/boom.wav" data-start="3.883" data-duration="1.2" data-track-index="9" data-volume="0.85" ></audio>
-<audio id="sfx6" class="clip" src="assets/sfx/boom.wav" data-start="5.193" data-duration="1.2" data-track-index="10" data-volume="0.65" ></audio>
-<audio id="sfx7" class="clip" src="assets/sfx/boom.wav" data-start="6.503" data-duration="1.2" data-track-index="11" data-volume="0.65" ></audio>
-<audio id="sfx8" class="clip" src="assets/sfx/glitch-a.wav" data-start="6.733" data-duration="0.7" data-track-index="12" data-volume="0.45" data-fade-out="0.2"></audio>
-<audio id="sfx9" class="clip" src="assets/sfx/heart.wav" data-start="3.613" data-duration="5.117" data-track-index="13" data-volume="0.45" data-fade-out="0.2"></audio>
-<audio id="sfx10" class="clip" src="assets/sfx/glitch-b.wav" data-start="3.553" data-duration="0.5" data-track-index="14" data-volume="0.5" data-fade-out="0.2"></audio>
-<audio id="voice2" class="clip" src="assets/voice2/tq-p05-turn.wav" data-start="9.13" data-duration="2.728" data-track-index="15" data-volume="1"></audio>
-<audio id="sfx11" class="clip" src="assets/sfx/riser.wav" data-start="6.43" data-duration="2.5" data-track-index="16" data-volume="0.7" ></audio>
-<audio id="sfx12" class="clip" src="assets/sfx/impact.wav" data-start="8.73" data-duration="3" data-track-index="17" data-volume="0.8" ></audio>
-<audio id="sfx13" class="clip" src="assets/sfx/sparkle.wav" data-start="9.23" data-duration="1.829" data-track-index="18" data-volume="0.6" ></audio>
-<audio id="voice3" class="clip" src="assets/voice2/tq-f01-order.wav" data-start="14.63" data-duration="2.788" data-track-index="20" data-volume="1"></audio>
-<audio id="sfx14" class="clip" src="assets/sfx/ting-b.wav" data-start="14.93" data-duration="1" data-track-index="21" data-volume="0.95" ></audio>
-<audio id="sfx15" class="clip" src="assets/sfx/ting-c.wav" data-start="15.07" data-duration="0.72" data-track-index="22" data-volume="0.7" ></audio>
-<audio id="sfx16" class="clip" src="assets/sfx/ting-a.wav" data-start="15.25" data-duration="1" data-track-index="23" data-volume="0.95" ></audio>
-<audio id="sfx17" class="clip" src="assets/sfx/ting-c.wav" data-start="15.39" data-duration="0.72" data-track-index="24" data-volume="0.7" ></audio>
-<audio id="sfx18" class="clip" src="assets/sfx/ting-b.wav" data-start="15.57" data-duration="1" data-track-index="25" data-volume="0.95" ></audio>
-<audio id="sfx19" class="clip" src="assets/sfx/ting-c.wav" data-start="15.71" data-duration="0.72" data-track-index="26" data-volume="0.7" ></audio>
-<audio id="sfx20" class="clip" src="assets/sfx/ting-a.wav" data-start="15.89" data-duration="1" data-track-index="27" data-volume="0.95" ></audio>
-<audio id="sfx21" class="clip" src="assets/sfx/ting-c.wav" data-start="16.03" data-duration="0.72" data-track-index="28" data-volume="0.7" ></audio>
-<audio id="sfx22" class="clip" src="assets/sfx/ting-a.wav" data-start="16.606" data-duration="1" data-track-index="29" data-volume="0.95" ></audio>
-<audio id="sfx23" class="clip" src="assets/sfx/ting-c.wav" data-start="16.746" data-duration="0.72" data-track-index="30" data-volume="0.7" ></audio>
-<audio id="sfx24" class="clip" src="assets/sfx/ting-b.wav" data-start="16.926" data-duration="1" data-track-index="31" data-volume="0.95" ></audio>
-<audio id="sfx25" class="clip" src="assets/sfx/ting-c.wav" data-start="17.066" data-duration="0.72" data-track-index="32" data-volume="0.7" ></audio>
-<audio id="sfx26" class="clip" src="assets/sfx/whoosh-a.wav" data-start="14.05" data-duration="0.393" data-track-index="33" data-volume="0.85" ></audio>
-<audio id="voice4" class="clip" src="assets/voice2/tq-f03-stock.wav" data-start="22.763" data-duration="2.512" data-track-index="35" data-volume="1"></audio>
-<audio id="sfx27" class="clip" src="assets/sfx/ting-a.wav" data-start="23.063" data-duration="1" data-track-index="36" data-volume="0.95" ></audio>
-<audio id="sfx28" class="clip" src="assets/sfx/ting-c.wav" data-start="23.203" data-duration="0.72" data-track-index="37" data-volume="0.7" ></audio>
-<audio id="sfx29" class="clip" src="assets/sfx/ting-b.wav" data-start="23.383" data-duration="1" data-track-index="38" data-volume="0.95" ></audio>
-<audio id="sfx30" class="clip" src="assets/sfx/ting-c.wav" data-start="23.523" data-duration="0.72" data-track-index="39" data-volume="0.7" ></audio>
-<audio id="sfx31" class="clip" src="assets/sfx/ting-a.wav" data-start="23.703" data-duration="1" data-track-index="40" data-volume="0.95" ></audio>
-<audio id="sfx32" class="clip" src="assets/sfx/ting-c.wav" data-start="23.843" data-duration="0.72" data-track-index="41" data-volume="0.7" ></audio>
-<audio id="sfx33" class="clip" src="assets/sfx/ting-b.wav" data-start="24.419" data-duration="1" data-track-index="42" data-volume="0.95" ></audio>
-<audio id="sfx34" class="clip" src="assets/sfx/ting-c.wav" data-start="24.559" data-duration="0.72" data-track-index="43" data-volume="0.7" ></audio>
-<audio id="sfx35" class="clip" src="assets/sfx/ting-a.wav" data-start="24.739" data-duration="1" data-track-index="44" data-volume="0.95" ></audio>
-<audio id="sfx36" class="clip" src="assets/sfx/ting-c.wav" data-start="24.879" data-duration="0.72" data-track-index="45" data-volume="0.7" ></audio>
-<audio id="sfx37" class="clip" src="assets/sfx/ting-b.wav" data-start="25.059" data-duration="1" data-track-index="46" data-volume="0.95" ></audio>
-<audio id="sfx38" class="clip" src="assets/sfx/ting-c.wav" data-start="25.199" data-duration="0.72" data-track-index="47" data-volume="0.7" ></audio>
-<audio id="sfx39" class="clip" src="assets/sfx/whoosh-b.wav" data-start="22.183" data-duration="0.456" data-track-index="48" data-volume="0.85" ></audio>
-<audio id="voice5" class="clip" src="assets/voice2/tq-f04-weigh.wav" data-start="28.263" data-duration="3.781" data-track-index="50" data-volume="1"></audio>
-<audio id="sfx40" class="clip" src="assets/sfx/ting-b.wav" data-start="28.563" data-duration="1" data-track-index="51" data-volume="0.95" ></audio>
-<audio id="sfx41" class="clip" src="assets/sfx/ting-c.wav" data-start="28.703" data-duration="0.72" data-track-index="52" data-volume="0.7" ></audio>
-<audio id="sfx42" class="clip" src="assets/sfx/ting-a.wav" data-start="28.883" data-duration="1" data-track-index="53" data-volume="0.95" ></audio>
-<audio id="sfx43" class="clip" src="assets/sfx/ting-c.wav" data-start="29.023" data-duration="0.72" data-track-index="54" data-volume="0.7" ></audio>
-<audio id="sfx44" class="clip" src="assets/sfx/ting-b.wav" data-start="29.203" data-duration="1" data-track-index="55" data-volume="0.95" ></audio>
-<audio id="sfx45" class="clip" src="assets/sfx/ting-c.wav" data-start="29.343" data-duration="0.72" data-track-index="56" data-volume="0.7" ></audio>
-<audio id="sfx46" class="clip" src="assets/sfx/ting-a.wav" data-start="29.523" data-duration="1" data-track-index="57" data-volume="0.95" ></audio>
-<audio id="sfx47" class="clip" src="assets/sfx/ting-c.wav" data-start="29.663" data-duration="0.72" data-track-index="58" data-volume="0.7" ></audio>
-<audio id="sfx48" class="clip" src="assets/sfx/ting-a.wav" data-start="30.239" data-duration="1" data-track-index="59" data-volume="0.95" ></audio>
-<audio id="sfx49" class="clip" src="assets/sfx/ting-c.wav" data-start="30.379" data-duration="0.72" data-track-index="60" data-volume="0.7" ></audio>
-<audio id="sfx50" class="clip" src="assets/sfx/ting-b.wav" data-start="30.559" data-duration="1" data-track-index="61" data-volume="0.95" ></audio>
-<audio id="sfx51" class="clip" src="assets/sfx/ting-c.wav" data-start="30.699" data-duration="0.72" data-track-index="62" data-volume="0.7" ></audio>
-<audio id="sfx52" class="clip" src="assets/sfx/ting-a.wav" data-start="30.879" data-duration="1" data-track-index="63" data-volume="0.95" ></audio>
-<audio id="sfx53" class="clip" src="assets/sfx/ting-c.wav" data-start="31.019" data-duration="0.72" data-track-index="64" data-volume="0.7" ></audio>
-<audio id="sfx54" class="clip" src="assets/sfx/whoosh-c.wav" data-start="27.683" data-duration="0.788" data-track-index="65" data-volume="0.85" ></audio>
-<audio id="voice6" class="clip" src="assets/voice2/tq-f05-debt.wav" data-start="33.596" data-duration="2.364" data-track-index="67" data-volume="1"></audio>
-<audio id="sfx55" class="clip" src="assets/sfx/ting-a.wav" data-start="33.896" data-duration="1" data-track-index="68" data-volume="0.95" ></audio>
-<audio id="sfx56" class="clip" src="assets/sfx/ting-c.wav" data-start="34.036" data-duration="0.72" data-track-index="69" data-volume="0.7" ></audio>
-<audio id="sfx57" class="clip" src="assets/sfx/ting-b.wav" data-start="34.216" data-duration="1" data-track-index="70" data-volume="0.95" ></audio>
-<audio id="sfx58" class="clip" src="assets/sfx/ting-c.wav" data-start="34.356" data-duration="0.72" data-track-index="71" data-volume="0.7" ></audio>
-<audio id="sfx59" class="clip" src="assets/sfx/ting-a.wav" data-start="34.536" data-duration="1" data-track-index="72" data-volume="0.95" ></audio>
-<audio id="sfx60" class="clip" src="assets/sfx/ting-c.wav" data-start="34.676" data-duration="0.72" data-track-index="73" data-volume="0.7" ></audio>
-<audio id="sfx61" class="clip" src="assets/sfx/ting-b.wav" data-start="35.252" data-duration="1" data-track-index="74" data-volume="0.95" ></audio>
-<audio id="sfx62" class="clip" src="assets/sfx/ting-c.wav" data-start="35.392" data-duration="0.72" data-track-index="75" data-volume="0.7" ></audio>
-<audio id="sfx63" class="clip" src="assets/sfx/ting-a.wav" data-start="35.572" data-duration="1" data-track-index="76" data-volume="0.95" ></audio>
-<audio id="sfx64" class="clip" src="assets/sfx/ting-c.wav" data-start="35.712" data-duration="0.72" data-track-index="77" data-volume="0.7" ></audio>
-<audio id="sfx65" class="clip" src="assets/sfx/coin.wav" data-start="34.796" data-duration="0.888" data-track-index="78" data-volume="0.35" ></audio>
-<audio id="sfx66" class="clip" src="assets/sfx/whoosh-a.wav" data-start="33.016" data-duration="0.393" data-track-index="79" data-volume="0.85" ></audio>
-<audio id="voice7" class="clip" src="assets/voice2/tq-f06-thoapp.wav" data-start="36.596" data-duration="2.219" data-track-index="81" data-volume="1"></audio>
-<audio id="sfx67" class="clip" src="assets/sfx/ting-b.wav" data-start="36.896" data-duration="1" data-track-index="82" data-volume="0.95" ></audio>
-<audio id="sfx68" class="clip" src="assets/sfx/ting-c.wav" data-start="37.036" data-duration="0.72" data-track-index="83" data-volume="0.7" ></audio>
-<audio id="sfx69" class="clip" src="assets/sfx/ting-a.wav" data-start="37.216" data-duration="1" data-track-index="84" data-volume="0.95" ></audio>
-<audio id="sfx70" class="clip" src="assets/sfx/ting-c.wav" data-start="37.356" data-duration="0.72" data-track-index="85" data-volume="0.7" ></audio>
-<audio id="sfx71" class="clip" src="assets/sfx/ting-b.wav" data-start="37.536" data-duration="1" data-track-index="86" data-volume="0.95" ></audio>
-<audio id="sfx72" class="clip" src="assets/sfx/ting-c.wav" data-start="37.676" data-duration="0.72" data-track-index="87" data-volume="0.7" ></audio>
-<audio id="sfx73" class="clip" src="assets/sfx/ting-a.wav" data-start="37.856" data-duration="1" data-track-index="88" data-volume="0.95" ></audio>
-<audio id="sfx74" class="clip" src="assets/sfx/ting-c.wav" data-start="37.996" data-duration="0.72" data-track-index="89" data-volume="0.7" ></audio>
-<audio id="sfx75" class="clip" src="assets/sfx/whoosh-b.wav" data-start="36.016" data-duration="0.456" data-track-index="90" data-volume="0.85" ></audio>
-<audio id="voice8" class="clip" src="assets/voice2/tq-f20-outro.wav" data-start="39.696" data-duration="2.365" data-track-index="91" data-volume="1"></audio>
-<audio id="sfx76" class="clip" src="assets/sfx/jingle.wav" data-start="39.396" data-duration="5" data-track-index="92" data-volume="0.6" ></audio>
-<audio id="sfx77" class="clip" src="assets/sfx/ting-b.wav" data-start="40.346" data-duration="1" data-track-index="93" data-volume="0.95" ></audio>
-<audio id="sfx78" class="clip" src="assets/sfx/ting-c.wav" data-start="40.486" data-duration="0.72" data-track-index="94" data-volume="0.7" ></audio>
-<audio id="sfx79" class="clip" src="assets/sfx/ting-a.wav" data-start="40.546" data-duration="1" data-track-index="95" data-volume="0.95" ></audio>
-<audio id="sfx80" class="clip" src="assets/sfx/ting-c.wav" data-start="40.686" data-duration="0.72" data-track-index="96" data-volume="0.7" ></audio>
-<audio id="sfx81" class="clip" src="assets/sfx/whoosh-c.wav" data-start="39.016" data-duration="0.788" data-track-index="97" data-volume="0.85" ></audio>
-<audio id="bgm0" class="clip" src="assets/music/bgm-459.wav" data-start="0" data-duration="8.88" data-track-index="98" data-volume="0.32" data-fade-out="0.25"></audio>
-<audio id="bgm1" class="clip" src="assets/music/bgm-526.wav" data-start="8.73" data-duration="36.966" data-track-index="99" data-volume="0.24" data-fade-out="3"></audio>
+<audio id="sfx1" class="clip" src="assets/sfx/boom.wav" data-start="1.173" data-duration="1.2" data-track-index="4" data-volume="0.65" ></audio>
+<audio id="sfx2" class="clip" src="assets/sfx/boom.wav" data-start="2.076" data-duration="1.2" data-track-index="5" data-volume="0.65" ></audio>
+<audio id="sfx3" class="clip" src="assets/sfx/glitch-a.wav" data-start="2.306" data-duration="0.7" data-track-index="6" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx4" class="clip" src="assets/sfx/heart.wav" data-start="0" data-duration="3.759" data-track-index="7" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="voice1" class="clip" src="assets/voice2/tq-p01-order.wav" data-start="4.009" data-duration="3.998" data-track-index="8" data-volume="1"></audio>
+<audio id="sfx5" class="clip" src="assets/sfx/boom.wav" data-start="4.029" data-duration="1.2" data-track-index="9" data-volume="0.85" ></audio>
+<audio id="sfx6" class="clip" src="assets/sfx/boom.wav" data-start="5.228" data-duration="1.2" data-track-index="10" data-volume="0.65" ></audio>
+<audio id="sfx7" class="clip" src="assets/sfx/boom.wav" data-start="6.428" data-duration="1.2" data-track-index="11" data-volume="0.65" ></audio>
+<audio id="sfx8" class="clip" src="assets/sfx/glitch-a.wav" data-start="6.658" data-duration="0.7" data-track-index="12" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx9" class="clip" src="assets/sfx/heart.wav" data-start="3.759" data-duration="4.748" data-track-index="13" data-volume="0.45" data-fade-out="0.2"></audio>
+<audio id="sfx10" class="clip" src="assets/sfx/glitch-b.wav" data-start="3.699" data-duration="0.5" data-track-index="14" data-volume="0.5" data-fade-out="0.2"></audio>
+<audio id="voice2" class="clip" src="assets/voice2/tq-p05-turn.wav" data-start="8.908" data-duration="4.141" data-track-index="15" data-volume="1"></audio>
+<audio id="sfx11" class="clip" src="assets/sfx/riser.wav" data-start="6.208" data-duration="2.5" data-track-index="16" data-volume="0.7" ></audio>
+<audio id="sfx12" class="clip" src="assets/sfx/impact.wav" data-start="8.508" data-duration="3" data-track-index="17" data-volume="0.8" ></audio>
+<audio id="sfx13" class="clip" src="assets/sfx/sparkle.wav" data-start="9.008" data-duration="1.829" data-track-index="18" data-volume="0.6" ></audio>
+<audio id="voice3" class="clip" src="assets/voice2/tq-f01-order.wav" data-start="14.408" data-duration="2.5" data-track-index="20" data-volume="1"></audio>
+<audio id="sfx14" class="clip" src="assets/sfx/ting-b.wav" data-start="14.708" data-duration="1" data-track-index="21" data-volume="0.95" ></audio>
+<audio id="sfx15" class="clip" src="assets/sfx/ting-c.wav" data-start="14.848" data-duration="0.72" data-track-index="22" data-volume="0.7" ></audio>
+<audio id="sfx16" class="clip" src="assets/sfx/ting-a.wav" data-start="15.028" data-duration="1" data-track-index="23" data-volume="0.95" ></audio>
+<audio id="sfx17" class="clip" src="assets/sfx/ting-c.wav" data-start="15.168" data-duration="0.72" data-track-index="24" data-volume="0.7" ></audio>
+<audio id="sfx18" class="clip" src="assets/sfx/ting-b.wav" data-start="15.348" data-duration="1" data-track-index="25" data-volume="0.95" ></audio>
+<audio id="sfx19" class="clip" src="assets/sfx/ting-c.wav" data-start="15.488" data-duration="0.72" data-track-index="26" data-volume="0.7" ></audio>
+<audio id="sfx20" class="clip" src="assets/sfx/ting-a.wav" data-start="15.668" data-duration="1" data-track-index="27" data-volume="0.95" ></audio>
+<audio id="sfx21" class="clip" src="assets/sfx/ting-c.wav" data-start="15.808" data-duration="0.72" data-track-index="28" data-volume="0.7" ></audio>
+<audio id="sfx22" class="clip" src="assets/sfx/ting-a.wav" data-start="16.384" data-duration="1" data-track-index="29" data-volume="0.95" ></audio>
+<audio id="sfx23" class="clip" src="assets/sfx/ting-c.wav" data-start="16.524" data-duration="0.72" data-track-index="30" data-volume="0.7" ></audio>
+<audio id="sfx24" class="clip" src="assets/sfx/ting-b.wav" data-start="16.704" data-duration="1" data-track-index="31" data-volume="0.95" ></audio>
+<audio id="sfx25" class="clip" src="assets/sfx/ting-c.wav" data-start="16.844" data-duration="0.72" data-track-index="32" data-volume="0.7" ></audio>
+<audio id="sfx26" class="clip" src="assets/sfx/ting-a.wav" data-start="17.024" data-duration="1" data-track-index="33" data-volume="0.95" ></audio>
+<audio id="sfx27" class="clip" src="assets/sfx/ting-c.wav" data-start="17.164" data-duration="0.72" data-track-index="34" data-volume="0.7" ></audio>
+<audio id="sfx28" class="clip" src="assets/sfx/whoosh-a.wav" data-start="13.828" data-duration="0.393" data-track-index="35" data-volume="0.85" ></audio>
+<audio id="voice4" class="clip" src="assets/voice2/tq-f04-weigh.wav" data-start="21.291" data-duration="3.509" data-track-index="37" data-volume="1"></audio>
+<audio id="sfx29" class="clip" src="assets/sfx/ting-a.wav" data-start="21.591" data-duration="1" data-track-index="38" data-volume="0.95" ></audio>
+<audio id="sfx30" class="clip" src="assets/sfx/ting-c.wav" data-start="21.731" data-duration="0.72" data-track-index="39" data-volume="0.7" ></audio>
+<audio id="sfx31" class="clip" src="assets/sfx/ting-b.wav" data-start="21.911" data-duration="1" data-track-index="40" data-volume="0.95" ></audio>
+<audio id="sfx32" class="clip" src="assets/sfx/ting-c.wav" data-start="22.051" data-duration="0.72" data-track-index="41" data-volume="0.7" ></audio>
+<audio id="sfx33" class="clip" src="assets/sfx/ting-a.wav" data-start="22.231" data-duration="1" data-track-index="42" data-volume="0.95" ></audio>
+<audio id="sfx34" class="clip" src="assets/sfx/ting-c.wav" data-start="22.371" data-duration="0.72" data-track-index="43" data-volume="0.7" ></audio>
+<audio id="sfx35" class="clip" src="assets/sfx/ting-b.wav" data-start="22.551" data-duration="1" data-track-index="44" data-volume="0.95" ></audio>
+<audio id="sfx36" class="clip" src="assets/sfx/ting-c.wav" data-start="22.691" data-duration="0.72" data-track-index="45" data-volume="0.7" ></audio>
+<audio id="sfx37" class="clip" src="assets/sfx/ting-b.wav" data-start="23.267" data-duration="1" data-track-index="46" data-volume="0.95" ></audio>
+<audio id="sfx38" class="clip" src="assets/sfx/ting-c.wav" data-start="23.407" data-duration="0.72" data-track-index="47" data-volume="0.7" ></audio>
+<audio id="sfx39" class="clip" src="assets/sfx/ting-a.wav" data-start="23.587" data-duration="1" data-track-index="48" data-volume="0.95" ></audio>
+<audio id="sfx40" class="clip" src="assets/sfx/ting-c.wav" data-start="23.727" data-duration="0.72" data-track-index="49" data-volume="0.7" ></audio>
+<audio id="sfx41" class="clip" src="assets/sfx/ting-b.wav" data-start="23.907" data-duration="1" data-track-index="50" data-volume="0.95" ></audio>
+<audio id="sfx42" class="clip" src="assets/sfx/ting-c.wav" data-start="24.047" data-duration="0.72" data-track-index="51" data-volume="0.7" ></audio>
+<audio id="sfx43" class="clip" src="assets/sfx/ting-a.wav" data-start="24.227" data-duration="1" data-track-index="52" data-volume="0.95" ></audio>
+<audio id="sfx44" class="clip" src="assets/sfx/ting-c.wav" data-start="24.367" data-duration="0.72" data-track-index="53" data-volume="0.7" ></audio>
+<audio id="sfx45" class="clip" src="assets/sfx/whoosh-b.wav" data-start="20.711" data-duration="0.456" data-track-index="54" data-volume="0.85" ></audio>
+<audio id="voice5" class="clip" src="assets/voice2/tq-f05-debt.wav" data-start="29.158" data-duration="2.513" data-track-index="56" data-volume="1"></audio>
+<audio id="sfx46" class="clip" src="assets/sfx/ting-b.wav" data-start="29.458" data-duration="1" data-track-index="57" data-volume="0.95" ></audio>
+<audio id="sfx47" class="clip" src="assets/sfx/ting-c.wav" data-start="29.598" data-duration="0.72" data-track-index="58" data-volume="0.7" ></audio>
+<audio id="sfx48" class="clip" src="assets/sfx/ting-a.wav" data-start="29.778" data-duration="1" data-track-index="59" data-volume="0.95" ></audio>
+<audio id="sfx49" class="clip" src="assets/sfx/ting-c.wav" data-start="29.918" data-duration="0.72" data-track-index="60" data-volume="0.7" ></audio>
+<audio id="sfx50" class="clip" src="assets/sfx/ting-b.wav" data-start="30.098" data-duration="1" data-track-index="61" data-volume="0.95" ></audio>
+<audio id="sfx51" class="clip" src="assets/sfx/ting-c.wav" data-start="30.238" data-duration="0.72" data-track-index="62" data-volume="0.7" ></audio>
+<audio id="sfx52" class="clip" src="assets/sfx/ting-a.wav" data-start="30.814" data-duration="1" data-track-index="63" data-volume="0.95" ></audio>
+<audio id="sfx53" class="clip" src="assets/sfx/ting-c.wav" data-start="30.954" data-duration="0.72" data-track-index="64" data-volume="0.7" ></audio>
+<audio id="sfx54" class="clip" src="assets/sfx/ting-b.wav" data-start="31.134" data-duration="1" data-track-index="65" data-volume="0.95" ></audio>
+<audio id="sfx55" class="clip" src="assets/sfx/ting-c.wav" data-start="31.274" data-duration="0.72" data-track-index="66" data-volume="0.7" ></audio>
+<audio id="sfx56" class="clip" src="assets/sfx/coin.wav" data-start="30.358" data-duration="0.888" data-track-index="67" data-volume="0.35" ></audio>
+<audio id="sfx57" class="clip" src="assets/sfx/whoosh-c.wav" data-start="28.578" data-duration="0.788" data-track-index="68" data-volume="0.85" ></audio>
+<audio id="voice6" class="clip" src="assets/voice2/tq-f06-thoapp.wav" data-start="32.22" data-duration="2.012" data-track-index="70" data-volume="1"></audio>
+<audio id="sfx58" class="clip" src="assets/sfx/ting-a.wav" data-start="32.52" data-duration="1" data-track-index="71" data-volume="0.95" ></audio>
+<audio id="sfx59" class="clip" src="assets/sfx/ting-c.wav" data-start="32.66" data-duration="0.72" data-track-index="72" data-volume="0.7" ></audio>
+<audio id="sfx60" class="clip" src="assets/sfx/ting-b.wav" data-start="32.84" data-duration="1" data-track-index="73" data-volume="0.95" ></audio>
+<audio id="sfx61" class="clip" src="assets/sfx/ting-c.wav" data-start="32.98" data-duration="0.72" data-track-index="74" data-volume="0.7" ></audio>
+<audio id="sfx62" class="clip" src="assets/sfx/ting-a.wav" data-start="33.16" data-duration="1" data-track-index="75" data-volume="0.95" ></audio>
+<audio id="sfx63" class="clip" src="assets/sfx/ting-c.wav" data-start="33.3" data-duration="0.72" data-track-index="76" data-volume="0.7" ></audio>
+<audio id="sfx64" class="clip" src="assets/sfx/ting-b.wav" data-start="33.48" data-duration="1" data-track-index="77" data-volume="0.95" ></audio>
+<audio id="sfx65" class="clip" src="assets/sfx/ting-c.wav" data-start="33.62" data-duration="0.72" data-track-index="78" data-volume="0.7" ></audio>
+<audio id="sfx66" class="clip" src="assets/sfx/whoosh-a.wav" data-start="31.64" data-duration="0.393" data-track-index="79" data-volume="0.85" ></audio>
+<audio id="voice7" class="clip" src="assets/voice2/tq-f20-outro.wav" data-start="35.32" data-duration="4.44" data-track-index="80" data-volume="1"></audio>
+<audio id="sfx67" class="clip" src="assets/sfx/jingle.wav" data-start="35.02" data-duration="5" data-track-index="81" data-volume="0.6" ></audio>
+<audio id="sfx68" class="clip" src="assets/sfx/ting-b.wav" data-start="35.97" data-duration="1" data-track-index="82" data-volume="0.95" ></audio>
+<audio id="sfx69" class="clip" src="assets/sfx/ting-c.wav" data-start="36.11" data-duration="0.72" data-track-index="83" data-volume="0.7" ></audio>
+<audio id="sfx70" class="clip" src="assets/sfx/ting-a.wav" data-start="36.17" data-duration="1" data-track-index="84" data-volume="0.95" ></audio>
+<audio id="sfx71" class="clip" src="assets/sfx/ting-c.wav" data-start="36.31" data-duration="0.72" data-track-index="85" data-volume="0.7" ></audio>
+<audio id="sfx72" class="clip" src="assets/sfx/whoosh-b.wav" data-start="34.64" data-duration="0.456" data-track-index="86" data-volume="0.85" ></audio>
+<audio id="bgm0" class="clip" src="assets/music/bgm-459.wav" data-start="0" data-duration="8.658" data-track-index="87" data-volume="0.32" data-fade-out="0.25"></audio>
+<audio id="bgm1" class="clip" src="assets/music/bgm-526.wav" data-start="8.508" data-media-start="0" data-duration="33.852" data-track-index="88" data-volume="0.24" data-fade-out="3"></audio>
 </div>
 <script>
 window.__timelines = window.__timelines || {};
@@ -216,110 +204,99 @@ tl.fromTo('#s0-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,
 tl.fromTo('#s0-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},0.31);
 tl.to('#s0-stack',{x:-10,y:6,duration:.05,ease:'none'},0.36);
 tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},0.41);
-tl.fromTo('#s0-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},1.109);
-tl.fromTo('#s0-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},1.169);
-tl.to('#s0-stack',{x:10,y:-6,duration:.05,ease:'none'},1.219);
-tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},1.269);
-tl.fromTo('#s0-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},1.968);
-tl.fromTo('#s0-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},2.028);
-tl.to('#s0-stack',{x:-10,y:6,duration:.05,ease:'none'},2.078);
-tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},2.128);
-tl.fromTo('#s1-tag',{opacity:0,y:-30},{opacity:1,y:0,duration:.3,ease:'power3.out'},3.663);
-tl.fromTo('#s1-num',{scale:.6,opacity:0,rotate:-8},{scale:1,opacity:1,rotate:0,duration:.6,ease:'power4.out'},3.663);
-tl.fromTo('#s1-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},3.863);
-tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},3.923);
-tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},3.973);
-tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},4.023);
-tl.fromTo('#s1-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},5.173);
-tl.fromTo('#s1-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},5.233);
-tl.to('#s1-stack',{x:10,y:-6,duration:.05,ease:'none'},5.283);
-tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},5.333);
-tl.fromTo('#s1-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},6.483);
-tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},6.542999999999999);
-tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},6.593);
-tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},6.643);
-tl.fromTo('#sw1-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},3.553);
-tl.to('#sw1-i',{opacity:0,duration:.2,ease:'power2.out'},3.633);
-tl.fromTo('#s2-flash',{opacity:1},{opacity:0,duration:.5,ease:'power2.out'},8.73);
-tl.fromTo('#s2-hero',{scale:1.2},{scale:1.02,duration:5.6,ease:'power1.out'},8.73);
-tl.fromTo('#s2-logo',{y:60,opacity:0,scale:.9},{y:0,opacity:1,scale:1,duration:.6,ease:'back.out(1.6)'},8.93);
-tl.fromTo('#s2-tag',{opacity:0,y:20},{opacity:1,y:0,duration:.35,ease:'power3.out'},9.23);
-tl.fromTo('#s2-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.09,ease:'power4.out'},9.33);
-tl.fromTo('#s2-sub',{opacity:0,y:24},{opacity:1,y:0,duration:.5,ease:'power3.out'},10.03);
-tl.fromTo('#sw2-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},8.67);
-tl.to('#sw2-i',{opacity:0,duration:.2,ease:'power2.out'},8.75);
-tl.fromTo('#s3-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:8.133,ease:'none'},14.33);
-tl.fromTo('#s3-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},14.41);
-tl.fromTo('#s3-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},14.48);
-tl.fromTo('#s3-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},14.37);
-tl.to('#s3-phone',{y:-12,duration:7.233,ease:'sine.inOut'},15.13);
-tl.fromTo('#s3-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},14.88);
-tl.fromTo('#s3-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},15.2);
-tl.fromTo('#s3-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},15.52);
-tl.fromTo('#s3-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},15.84);
-tl.fromTo('#s3-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},16.556);
-tl.fromTo('#s3-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},16.876);
-tl.fromTo('#sw3-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},14.03);
-tl.to('#sw3-i',{xPercent:104,duration:.38,ease:'power3.out'},14.35);
-tl.fromTo('#s4-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.5,ease:'none'},22.463);
-tl.fromTo('#s4-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},22.543);
-tl.fromTo('#s4-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},22.613);
-tl.fromTo('#s4-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},22.503);
-tl.to('#s4-phone',{y:-12,duration:4.6,ease:'sine.inOut'},23.263);
-tl.fromTo('#s4-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.013);
-tl.fromTo('#s4-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.333);
-tl.fromTo('#s4-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},23.653);
-tl.fromTo('#s4-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},24.369);
-tl.fromTo('#s4-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},24.689);
-tl.fromTo('#s4-st2',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},25.009);
-tl.fromTo('#sw4-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},22.163);
-tl.to('#sw4-i',{xPercent:104,duration:.38,ease:'power3.out'},22.483);
-tl.fromTo('#s5-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:5.333,ease:'none'},27.963);
-tl.fromTo('#s5-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},28.043);
-tl.fromTo('#s5-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},28.113);
-tl.fromTo('#s5-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},28.003);
-tl.to('#s5-phone',{y:-12,duration:4.433,ease:'sine.inOut'},28.763);
-tl.fromTo('#s5-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},28.513);
-tl.fromTo('#s5-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},28.833);
-tl.fromTo('#s5-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},29.153);
-tl.fromTo('#s5-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},29.473);
-tl.fromTo('#s5-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},30.189);
-tl.fromTo('#s5-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},30.509);
-tl.fromTo('#s5-st2',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},30.829);
-tl.fromTo('#sw5-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},27.663);
-tl.to('#sw5-i',{xPercent:104,duration:.38,ease:'power3.out'},27.983);
-tl.fromTo('#s6-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:3,ease:'none'},33.296);
-tl.fromTo('#s6-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},33.376);
-tl.fromTo('#s6-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},33.446);
-tl.fromTo('#s6-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},33.336);
-tl.to('#s6-phone',{y:-12,duration:2.1,ease:'sine.inOut'},34.096);
-tl.fromTo('#s6-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},33.846);
-tl.fromTo('#s6-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},34.166);
-tl.fromTo('#s6-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},34.486);
-tl.fromTo('#s6-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},35.202);
-tl.fromTo('#s6-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},35.522);
-tl.fromTo('#sw6-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},32.996);
-tl.to('#sw6-i',{xPercent:104,duration:.38,ease:'power3.out'},33.316);
-tl.fromTo('#s7-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:3,ease:'none'},36.296);
-tl.fromTo('#s7-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},36.376);
-tl.fromTo('#s7-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},36.446);
-tl.fromTo('#s7-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},36.336);
-tl.to('#s7-phone',{y:-12,duration:2.1,ease:'sine.inOut'},37.096);
-tl.fromTo('#s7-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},36.846);
-tl.fromTo('#s7-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},37.166);
-tl.fromTo('#s7-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},37.486);
-tl.fromTo('#s7-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},37.806);
-tl.fromTo('#sw7-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},35.996);
-tl.to('#sw7-i',{xPercent:104,duration:.38,ease:'power3.out'},36.316);
-tl.fromTo('#s8-logo',{scale:.6,opacity:0,rotate:-4},{scale:1,opacity:1,rotate:0,duration:.7,ease:'back.out(1.8)'},39.396);
-tl.fromTo('#s8-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.08,ease:'power4.out'},39.746);
-tl.fromTo('#s8-prods img',{y:140,opacity:0,rotate:6},{y:0,opacity:1,rotate:0,duration:.6,stagger:.1,ease:'power3.out'},40.096);
-tl.fromTo('#s8-cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.45,ease:'back.out(2)'},40.996);
-tl.to('#s8-cta',{y:-8,duration:.45,ease:'sine.inOut'},41.096);
-tl.to('#s8-cta',{y:0,duration:.45,ease:'sine.inOut'},41.546);
-tl.fromTo('#s8-note',{opacity:0},{opacity:.8,duration:.5},41.096);
-tl.fromTo('#sw8-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},38.996);
-tl.to('#sw8-i',{xPercent:104,duration:.38,ease:'power3.out'},39.316);
+tl.fromTo('#s0-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},1.153);
+tl.fromTo('#s0-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},1.213);
+tl.to('#s0-stack',{x:10,y:-6,duration:.05,ease:'none'},1.263);
+tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},1.313);
+tl.fromTo('#s0-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},2.056);
+tl.fromTo('#s0-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},2.116);
+tl.to('#s0-stack',{x:-10,y:6,duration:.05,ease:'none'},2.166);
+tl.to('#s0-stack',{x:0,y:0,duration:.1,ease:'power2.out'},2.216);
+tl.fromTo('#s1-tag',{opacity:0,y:-30},{opacity:1,y:0,duration:.3,ease:'power3.out'},3.809);
+tl.fromTo('#s1-num',{scale:.6,opacity:0,rotate:-8},{scale:1,opacity:1,rotate:0,duration:.6,ease:'power4.out'},3.809);
+tl.fromTo('#s1-l0',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},4.009);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},4.069);
+tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},4.119);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},4.169);
+tl.fromTo('#s1-l1',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},5.208);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:-16,y:10,duration:.05,ease:'none'},5.268);
+tl.to('#s1-stack',{x:10,y:-6,duration:.05,ease:'none'},5.318);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},5.368);
+tl.fromTo('#s1-l2',{scale:1.7,opacity:0,filter:'blur(14px)'},{scale:1,opacity:1,filter:'blur(0px)',duration:.28,ease:'power4.out'},6.408);
+tl.fromTo('#s1-stack',{x:0,y:0},{x:16,y:-10,duration:.05,ease:'none'},6.468);
+tl.to('#s1-stack',{x:-10,y:6,duration:.05,ease:'none'},6.518);
+tl.to('#s1-stack',{x:0,y:0,duration:.1,ease:'power2.out'},6.568);
+tl.fromTo('#sw1-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},3.699);
+tl.to('#sw1-i',{opacity:0,duration:.2,ease:'power2.out'},3.779);
+tl.fromTo('#s2-flash',{opacity:1},{opacity:0,duration:.5,ease:'power2.out'},8.508);
+tl.fromTo('#s2-hero',{scale:1.2},{scale:1.02,duration:5.6,ease:'power1.out'},8.508);
+tl.fromTo('#s2-logo',{y:60,opacity:0,scale:.9},{y:0,opacity:1,scale:1,duration:.6,ease:'back.out(1.6)'},8.708);
+tl.fromTo('#s2-tag',{opacity:0,y:20},{opacity:1,y:0,duration:.35,ease:'power3.out'},9.008);
+tl.fromTo('#s2-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.09,ease:'power4.out'},9.108);
+tl.fromTo('#s2-sub',{opacity:0,y:24},{opacity:1,y:0,duration:.5,ease:'power3.out'},9.808);
+tl.fromTo('#sw2-i',{opacity:0},{opacity:1,duration:.06,ease:'none'},8.448);
+tl.to('#sw2-i',{opacity:0,duration:.2,ease:'power2.out'},8.528);
+tl.fromTo('#s3-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:6.883,ease:'none'},14.108);
+tl.fromTo('#s3-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},14.188);
+tl.fromTo('#s3-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},14.258);
+tl.fromTo('#s3-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},14.148);
+tl.to('#s3-phone',{y:-12,duration:5.983,ease:'sine.inOut'},14.908);
+tl.fromTo('#s3-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},14.658);
+tl.fromTo('#s3-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},14.978);
+tl.fromTo('#s3-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},15.298);
+tl.fromTo('#s3-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},15.618);
+tl.fromTo('#s3-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},16.334);
+tl.fromTo('#s3-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},16.654);
+tl.fromTo('#s3-st2',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},16.974);
+tl.fromTo('#sw3-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},13.808);
+tl.to('#sw3-i',{xPercent:104,duration:.38,ease:'power3.out'},14.128);
+tl.fromTo('#s4-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:7.867,ease:'none'},20.991);
+tl.fromTo('#s4-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},21.071);
+tl.fromTo('#s4-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},21.141);
+tl.fromTo('#s4-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},21.031);
+tl.to('#s4-phone',{y:-12,duration:6.967,ease:'sine.inOut'},21.791);
+tl.fromTo('#s4-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},21.541);
+tl.fromTo('#s4-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},21.861);
+tl.fromTo('#s4-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},22.181);
+tl.fromTo('#s4-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},22.501);
+tl.fromTo('#s4-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},23.217);
+tl.fromTo('#s4-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},23.537);
+tl.fromTo('#s4-st2',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},23.857);
+tl.fromTo('#s4-st3',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},24.177);
+tl.fromTo('#sw4-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},20.691);
+tl.to('#sw4-i',{xPercent:104,duration:.38,ease:'power3.out'},21.011);
+tl.fromTo('#s5-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:3.063,ease:'none'},28.858);
+tl.fromTo('#s5-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},28.938);
+tl.fromTo('#s5-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},29.008);
+tl.fromTo('#s5-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},28.898);
+tl.to('#s5-phone',{y:-12,duration:2.163,ease:'sine.inOut'},29.658);
+tl.fromTo('#s5-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},29.408);
+tl.fromTo('#s5-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},29.728);
+tl.fromTo('#s5-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},30.048);
+tl.fromTo('#s5-st0',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},30.764);
+tl.fromTo('#s5-st1',{y:40,scale:.8,opacity:0},{y:0,scale:1,opacity:1,duration:.45,ease:'back.out(2)'},31.084);
+tl.fromTo('#sw5-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},28.558);
+tl.to('#sw5-i',{xPercent:104,duration:.38,ease:'power3.out'},28.878);
+tl.fromTo('#s6-orb',{xPercent:-8,scale:.92},{xPercent:8,scale:1.06,duration:3,ease:'none'},31.92);
+tl.fromTo('#s6-tag',{opacity:0,y:26},{opacity:1,y:0,duration:.35,ease:'power3.out'},32);
+tl.fromTo('#s6-title .wi',{yPercent:115},{yPercent:0,duration:.5,stagger:.06,ease:'power4.out'},32.07);
+tl.fromTo('#s6-phone',{y:420,rotate:2.5,opacity:0},{y:0,rotate:0,opacity:1,duration:.7,ease:'power4.out'},31.96);
+tl.to('#s6-phone',{y:-12,duration:2.1,ease:'sine.inOut'},32.72);
+tl.fromTo('#s6-chip0',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},32.47);
+tl.fromTo('#s6-chip1',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},32.79);
+tl.fromTo('#s6-chip2',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},33.11);
+tl.fromTo('#s6-chip3',{y:30,scale:.6,opacity:0},{y:0,scale:1,opacity:1,duration:.4,ease:'back.out(2)'},33.43);
+tl.fromTo('#sw6-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},31.62);
+tl.to('#sw6-i',{xPercent:104,duration:.38,ease:'power3.out'},31.94);
+tl.fromTo('#s7-logo',{scale:.6,opacity:0,rotate:-4},{scale:1,opacity:1,rotate:0,duration:.7,ease:'back.out(1.8)'},35.02);
+tl.fromTo('#s7-title .wi',{yPercent:115},{yPercent:0,duration:.55,stagger:.08,ease:'power4.out'},35.37);
+tl.fromTo('#s7-prods img',{y:140,opacity:0,rotate:6},{y:0,opacity:1,rotate:0,duration:.6,stagger:.1,ease:'power3.out'},35.72);
+tl.fromTo('#s7-cta',{scale:.7,opacity:0},{scale:1,opacity:1,duration:.45,ease:'back.out(2)'},36.62);
+tl.to('#s7-cta',{y:-8,duration:.45,ease:'sine.inOut'},36.72);
+tl.to('#s7-cta',{y:0,duration:.45,ease:'sine.inOut'},37.17);
+tl.fromTo('#s7-note',{opacity:0},{opacity:.8,duration:.5},36.72);
+tl.fromTo('#sw7-i',{xPercent:-104},{xPercent:0,duration:.3,ease:'power3.in'},34.62);
+tl.to('#sw7-i',{xPercent:104,duration:.38,ease:'power3.out'},34.94);
 
 window.__timelines["main"] = tl;
 </script></body></html>

@@ -79,8 +79,8 @@ for (const s of scenes) {
   } else {
     const chipsArr = (s.kind === 'pwa' ? ['App Store', 'CH Play', 'Cài từ web'] : s.sub.split(' · ')).map(cap);
     s.chips = chipsArr;
-    const tsize = PORT ? Math.max(62, Math.min(100, Math.floor(930 / (s.title.length * 0.56)))) : (s.device === 'web' ? 70 : 108);
-    const head = `<div class="head"${!PORT && s.device === 'web' ? ' style="width:620px"' : ''}><div class="tag" id="${id}-tag">${esc(s.tag)}</div><h1 class="title" id="${id}-title" style="font-size:${tsize}px">${s.title.split(' ').map((w) => `<span class="w"><span class="wi">${esc(w)}</span></span>`).join(' ')}</h1>
+    const tsize = PORT ? Math.max(62, Math.min(100, Math.floor(930 / (s.title.length * 0.56)))) : (s.device === 'web' ? 70 : 90);
+    const head = `<div class="head"${!PORT && s.device === 'web' ? ' style="width:620px"' : ''}><div class="tag" id="${id}-tag">${esc(s.tag)}</div><h1 class="title" id="${id}-title" style="font-size:${PORT && s.title.length > 29 ? 66 : tsize}px${PORT && s.title.length > 29 ? ';white-space:normal;line-height:1.1' : ''}">${s.title.split(' ').map((w) => `<span class="w"><span class="wi">${esc(w)}</span></span>`).join(' ')}</h1>
 <ul class="chips ${O}">${chipsArr.map((c, k) => `<li id="${id}-chip${k}"><i></i>${esc(c)}</li>`).join('')}</ul></div>`;
     const screen = s.kind === 'pwa'
       ? `<div class="pwa"><div class="bar"><span>🔒</span> app.nhomeurohouse.com</div><div class="site"><img src="assets/brand/hero-ecento-70.jpg"><div class="siteh"><img src="assets/brand/logo-landscape.png"></div></div>
@@ -190,19 +190,19 @@ const Tt = turnScene ? turnScene.T : 0;
 const m459 = probe(path.join(ROOT, 'assets', 'music', 'bgm-459.wav')), m526 = probe(path.join(ROOT, 'assets', 'music', 'bgm-526.wav')), m533 = probe(path.join(ROOT, 'assets', 'music', 'bgm-533.wav'));
 if (Tt > 0) audio += `<audio id="bgm0" class="clip" src="assets/music/bgm-459.wav" data-start="0" data-duration="${r2(Math.min(m459, Tt + 0.15))}" data-track-index="${track++}" data-volume="0.32" data-fade-out="0.25"></audio>\n`;
 const after = TOTAL - Tt;
-// Giữ đúng hai bài nhạc cũ (526 rồi 533). Cắt 526 ở đoạn còn to (trước phần đuôi tắt dần) và nối thẳng vào 533 bằng crossfade,
-// để không có đoạn nhạc tụt. 533 có quãng nhẹ ở giây 44-70: căn cho quãng nhẹ nằm dưới lời đọc và cú "drop" thứ hai rơi vào cảnh tải ứng dụng.
-if (after <= m526) audio += `<audio id="bgm1" class="clip" src="assets/music/bgm-526.wav" data-start="${r2(Tt)}" data-duration="${r2(after)}" data-track-index="${track++}" data-volume="0.24" data-fade-out="3"></audio>
-`;
-else {
-  const cut = 88, xf = 2.5; const Ts = Tt + cut - xf;
-  const store = scenes.find((q) => q.kind === 'pwa'); const dropAt = store ? store.T : TOTAL - 12;
-  const mstart = Math.max(8, Math.min(30, 70 - (dropAt - Ts)));
-  audio += `<audio id="bgm1" class="clip" src="assets/music/bgm-526.wav" data-start="${r2(Tt)}" data-duration="${r2(cut)}" data-track-index="${track++}" data-volume="0.24" data-fade-out="${xf}"></audio>
-`;
-  audio += `<audio id="bgm2" class="clip" src="assets/music/bgm-533.wav" data-start="${r2(Ts)}" data-media-start="${r2(mstart)}" data-duration="${r2(TOTAL - Ts)}" data-track-index="${track++}" data-volume="0.24" data-fade-in="${xf}" data-fade-out="3"></audio>
-`;
-  console.log('nhạc: 526 đến', r2(Tt + cut), '; 533 từ', r2(Ts), 'media-start', r2(mstart), '; drop 2 khoảng', r2(Ts + (70 - mstart)));
+// Hai bài nhạc cũ (526, 533) chỉ dài khoảng 100 giây, còn video dài hơn: ghép nối tiếp các đoạn còn to của hai bài bằng crossfade 2,5 giây,
+// tránh đoạn quãng nhẹ (526 giây 42-60, 533 giây 42-66) rơi dưới lời đọc. Đoạn cuối tự cắt theo độ dài video và tắt dần 3 giây.
+const plan = [['526', 0, 88], ['533', 58, 100], ['526', 60, 86], ['533', 10, 56]];
+{
+  const xf = 2.5; let at = Tt; let n = 0;
+  for (const [i, [name, m0, m1]] of plan.entries()) {
+    const last = i === plan.length - 1;
+    const dur = last ? TOTAL - at : Math.min(m1 - m0, TOTAL - at);
+    if (dur <= (i > 0 ? 5 : 0.5)) break;
+    audio += `<audio id="bgm${++n}" class="clip" src="assets/music/bgm-${name}.wav" data-start="${r2(at)}" data-media-start="${m0}" data-duration="${r2(dur)}" data-track-index="${track++}" data-volume="0.24"${i > 0 ? ` data-fade-in="${xf}"` : ''} data-fade-out="${last || at + dur >= TOTAL - 0.1 ? 3 : xf}"></audio>\n`;
+    at = at + dur - xf;
+  }
+  console.log('nhạc: ghép', n, 'đoạn, hết ở', r2(TOTAL));
 }
 
 const css = `
@@ -245,9 +245,11 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#F5F6F7;font-fam
 .win{position:absolute;z-index:4;background:#151A22;border-radius:18px;overflow:hidden;box-shadow:0 40px 90px rgba(21,26,34,.35)}
 .wbar{height:${BAR}px;background:#EEF0F3;display:flex;align-items:center;gap:9px;padding:0 18px}.wbar i{width:14px;height:14px;border-radius:50%;background:#F47C20;display:block}.wbar i:nth-child(2){background:#F9A82F}.wbar i:nth-child(3){background:#98A2B3}.wbar span{margin-left:14px;font-size:20px;font-weight:700;color:#475467}
 .wscr{position:relative;overflow:hidden;background:#fff}
+.chips.l li{max-width:640px}
 .stats{position:absolute;z-index:5;display:flex;gap:18px}
 .stats.p{left:40px;right:40px;top:1400px}.stats.l{left:770px;top:930px;width:1060px}
 .stat{flex:1;background:#fff;border:2px solid #DFE3E8;border-left:10px solid #F47C20;border-radius:8px;padding:14px 20px;box-shadow:0 10px 26px rgba(21,26,34,.1)}
+.stats.p.n4{flex-wrap:wrap}.stats.p.n4 .stat{flex:1 1 calc(50% - 9px)}
 .stats.n3 .stat b,.stats.n4 .stat b{font-size:${PORT ? 32 : 28}px;white-space:nowrap}.stats.n4 .stat small{font-size:${PORT ? 22 : 19}px}.stats.n4 .stat{padding:12px 14px}
 .stat small{display:block;font-size:${PORT ? 26 : 22}px;font-weight:700;color:#667085;letter-spacing:.04em}.stat b{display:block;font-size:${PORT ? 44 : 38}px;font-weight:800;color:#151A22;line-height:1.15;margin-top:4px}
 .prog{position:absolute;left:110px;bottom:70px;display:flex;gap:8px;z-index:3}
@@ -262,7 +264,7 @@ html,body{width:${W}px;height:${H}px;overflow:hidden;background:#F5F6F7;font-fam
 .scene.l .textcol .title{line-height:1.05}
 .outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${PORT ? 44 : 30}px;text-align:center;z-index:3}
 .logoblock{background:#F9A82F;border-radius:8px;padding:14px;box-shadow:0 20px 60px rgba(244,124,32,.35)}.logoblock img{width:${PORT ? 640 : 520}px;display:block;border-radius:6px}
-.title.big{font-size:${PORT ? 92 : 88}px;white-space:normal}
+.title.big{font-size:${PORT ? 78 : 88}px;white-space:normal}
 .stores{display:flex;gap:22px}.store{background:#151A22;color:#fff;border-radius:12px;padding:16px 34px;text-align:left;box-shadow:0 14px 30px rgba(21,26,34,.3)}.store small{display:block;font-size:20px;letter-spacing:.14em;font-weight:700;opacity:.8}.store b{font-size:${PORT ? 46 : 42}px;font-weight:800}
 .cta{background:#F47C20;color:#fff;font-weight:800;font-size:${PORT ? 36 : 40}px;padding:24px 40px;border-radius:8px;box-shadow:0 18px 40px rgba(244,124,32,.4)}
 .prods{display:flex;gap:22px}.prods img{width:${PORT ? 200 : 210}px;height:${PORT ? 266 : 280}px;object-fit:cover;border-radius:8px;border:2px solid #DFE3E8;background:#fff}

@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+import { rewriteApi } from './route-api.mjs';
+const b = await chromium.launch({ channel: 'msedge' });
+const ctx = await b.newContext({ storageState: process.env.TEMP + '/eh-npp-state.json', viewport: { width: 1366, height: 768 }, locale: 'vi-VN' });
+await rewriteApi(ctx);
+const p = await ctx.newPage();
+p.on('console', (m) => console.log('console', m.type(), m.text().slice(0, 150)));
+p.on('response', (r) => { if (r.status() >= 400) console.log('http', r.status(), r.url().slice(0, 100)); });
+await p.goto('http://localhost:3072/orders'); await p.waitForTimeout(6000);
+console.log(await p.evaluate(() => Object.keys(localStorage)), p.url());
+await b.close();

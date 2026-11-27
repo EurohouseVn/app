@@ -1,4 +1,5 @@
 {
- "dash_stats": [["Tổng đơn", "29"], ["Số xưởng", "6"], ["Công nợ còn mở", "193,8 triệu"], ["Doanh thu tháng", "148,4 triệu"]],
- "recon_stats": [["Xưởng nhiều đơn nhất", "Hùng Phát · 7 đơn"], ["Tổng kg", "1.628 kg"], ["Giá trị", "142,3 triệu"]]
+ "dash_stats": [["Tổng đơn", "29"], ["Số xưởng", "6"], ["Công nợ còn mở", "287,2 triệu"], ["Doanh thu tháng", "184,0 triệu"]],
+ "recon_stats": [["Xưởng nhiều đơn nhất", "Hùng Phát · 7 đơn"], ["Tổng kg", "1.713,6 kg"], ["Giá trị", "258,9 triệu"]],
+ "report_stats": [["Doanh thu 6 tháng", "886,3 triệu"], ["Công nợ còn mở", "287,2 triệu"]]
 }

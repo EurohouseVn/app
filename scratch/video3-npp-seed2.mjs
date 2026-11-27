@@ -21,7 +21,7 @@ let n = 0;
 for (const [i, o] of stuck.entries()) {
   const theo = o.theoreticalTotalKg || o.totalKg;
   const actual = Math.round(theo * (1.012 + (i % 4) * 0.006) * 100) / 100;
-  const r = await call('POST', `/npp/orders/${o.id}/delivery`, { actualTotalKg: actual, finalUnitPricePerKg: 87500 - (i % 3) * 500 });
+  const r = await call('POST', `/npp/orders/${o.id}/delivery`, { actualTotalKg: actual, finalUnitPricePerKg: 146000 - (i % 3) * 1000 });
   if (!r) continue;
   await call('POST', `/npp/orders/${o.id}/complete`);
   const dt = new Date(Date.now() - ages[i % ages.length] * 86400000);
@@ -43,7 +43,7 @@ for (const d of rows) {
 // tồn kho về mức trình diễn
 const stocks = await prisma.nppProfileStock.findMany({ include: { profile: true } });
 for (const s of stocks) {
-  const base = { C3225: 160, C3296: 140, E701A: 96, E702: 120, E704A: 60, E705: 75, E706: 85, E70D110: 40 }[s.profile.code] ?? 70;
+  const base = { C3225: 160, C3296: 140, E701A: 96, E702: 120, E704A: 60, E705: 75, E706: 85, E70D110: 40, E70D150: 70 }[s.profile.code] ?? 70;
   const idx = ['CAFE_METALIC', 'XAM_NGOC_TRAI', 'CAFE_THUONG', 'VAN_GO_CAM_LAI'].indexOf(s.colorCode);
   let q = Math.round(base * [1, 0.7, 0.45, 0.25][Math.max(0, idx)]);
   if (s.profile.code === 'E704A' && s.colorCode === 'CAFE_METALIC') q = 7;

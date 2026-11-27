@@ -1,4 +1,4 @@
-// Dữ liệu GIẢ cho video giới thiệu web NPP. Chỉ chạy với API tạm cổng 3061 + CSDL tạm 55461.
+// Dữ liệu GIẢ cho video giới thiệu web NPP. Chỉ chạy với API tạm cổng 3061 + CSDL tạm 55471.
 import { createRequire } from 'node:module';
 const require = createRequire('E:/LELOIGLOBAL_CODEX/APP EUROHOUSE/apps/api/package.json');
 const { PrismaClient } = require('@prisma/client');
@@ -45,7 +45,7 @@ console.log('xưởng', factories.length);
 const systems = await call('npp', 'GET', '/catalog/systems');
 const pick = (sysCode, codes) => systems.find((s) => s.code === sysCode).profiles.filter((p) => codes.includes(p.code));
 const PROFILES = [
-  ...pick('EU-70', ['C3225', 'C3296', 'E701A', 'E702', 'E704A', 'E705', 'E706', 'E70D110']),
+  ...pick('EU-70', ['C3225', 'C3296', 'E701A', 'E702', 'E704A', 'E705', 'E706', 'E70D110', 'E70D150']),
   ...pick('EU-55', ['C3300', 'C3326', 'CN55']),
   ...pick('EU-TRUOT', ['KH-K9809', 'KH-K9810', 'KH-K9812']),
   ...pick('EU-PRECO', ['C3202', 'C3203', 'C3209']),
@@ -55,7 +55,7 @@ console.log('mã cây', PROFILES.length);
 
 // --- Tồn kho nhôm của NPP (số cây nguyên 6m)
 const stockPlan = (p, ci) => {
-  const base = { C3225: 160, C3296: 140, E701A: 90, E702: 120, E704A: 60, E705: 75, E706: 85, E70D110: 40 }[p.code] ?? 70;
+  const base = { C3225: 160, C3296: 140, E701A: 90, E702: 120, E704A: 60, E705: 75, E706: 85, E70D110: 40, E70D150: 70 }[p.code] ?? 70;
   const factor = [1, 0.7, 0.45, 0.25][ci];
   return Math.round(base * factor);
 };
@@ -72,7 +72,7 @@ console.log('tồn kho xong');
 
 // --- Đơn lịch sử: 6 tháng, hoàn tất, có công nợ
 const rnd = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
-const PRICE = 87500;
+const PRICE = 146000;
 async function makeOrder(f, items, cust, addr) {
   if (!tokens[f.key]) await login(f.key, f.email);
   const o = await call(f.key, 'POST', '/orders', { sourceType: 'FACTORY', clientRequestId: 'seed-' + Math.random().toString(36).slice(2), submitToNpp: true, colorCode: [...new Set(items.map((i) => i.colorCode))].join(', '), customerName: cust, deliveryAddress: addr, items: items.map((i) => ({ profileId: i.p.id, productCode: i.p.code, productName: i.p.name, colorCode: i.colorCode, quantity: i.q })) });
@@ -121,6 +121,9 @@ await makeOrder(B, [{ p: PROFILES[4], colorCode: 'CAFE_METALIC', q: 20 }, { p: P
 
 // --- Kính + phụ kiện
 const accs = [['Bản lề 3D inox', 'Kinlong', 'Bản lề', 'bộ', 185000, 120], ['Khóa đa điểm cửa đi', 'Kinlong', 'Khóa', 'bộ', 640000, 45], ['Tay nắm cửa đi 2 mặt', 'Hafele', 'Tay nắm', 'bộ', 420000, 60], ['Ron EPDM đen', 'Eurohouse', 'Ron', 'cuộn', 380000, 80], ['Silicone trung tính', 'Apollo', 'Keo', 'chai', 52000, 300]];
-for (const [name, brand, category, unit, price, qty] of accs) await call('npp', 'POST', '/npp/accessories', { name, brand, category, unit, price, stockQty: qty, quantity: qty });
+for (const [name, brand, category, unit, unitCost, quantity] of accs) await call('npp', 'POST', '/npp/accessories', { name, brand, category, unit, unitCost, quantity });
+// Bảng giá niêm yết theo màu (đ/kg): giá bó nguyên và giá nhôm trần. Số liệu minh hoạ cho video.
+const colorPrices = [['CAFE_METALIC', 144000, 150000], ['XAM_NGOC_TRAI', 152000, 158000], ['VAN_GO_CAM_LAI', 172000, 178000], ['CAFE_THUONG', 138000, 144000], ['VAN_GO_OLAK', 168000, 174000], ['XAM_RITA', 150000, 156000]];
+await call('npp', 'PUT', '/npp/color-prices', { prices: colorPrices.map(([colorCode, bundlePricePerKg, barePricePerKg]) => ({ colorCode, bundlePricePerKg, barePricePerKg })) });
 await prisma.$disconnect();
 console.log('xong');
