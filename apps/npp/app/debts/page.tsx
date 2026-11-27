@@ -6,6 +6,7 @@ import type { DebtItem, DebtPaymentRequestItem } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiGet, apiSend } from '../../src/lib/api';
 import { chipStyle, currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, primaryButtonStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
+import { shortCode } from '../../src/lib/short-code';
 
 const statusMeta: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' }> = {
   OPEN: { label: 'Chưa thu', tone: 'warning' },
@@ -93,7 +94,7 @@ export default function NppDebtsPage() {
                 <tr key={request.id}>
                   <td style={{ ...tableCellStyle, fontWeight: 800 }}>{request.code}</td>
                   <td style={tableCellStyle}>{request.factoryName || request.debtPartnerName}</td>
-                  <td style={tableCellStyle}>{request.orderCode || '-'}</td>
+                  <td style={tableCellStyle} title={request.orderCode ?? undefined}>{shortCode(request.orderCode)}</td>
                   <td style={tableCellStyle}>{methodLabel[request.method] ?? request.method}</td>
                   <td style={tableCellStyle}>{currency(request.amount)}</td>
                   <td style={tableCellStyle}>
@@ -137,7 +138,7 @@ export default function NppDebtsPage() {
                   return (
                     <tr key={d.id} onClick={() => setSelected(d)} style={{ cursor: 'pointer', background: selected?.id === d.id ? ui.brandSoft : 'transparent' }}>
                       <td style={{ ...tableCellStyle, fontWeight: 700 }}>{d.factoryOrgName ?? d.partnerName}</td>
-                      <td style={tableCellStyle}>{d.orderCode ?? '-'}</td>
+                      <td style={tableCellStyle} title={d.orderCode ?? undefined}>{shortCode(d.orderCode)}</td>
                       <td style={tableCellStyle}>{currency(d.amount)}</td>
                       <td style={tableCellStyle}>{currency(d.amount - d.paidAmount)}</td>
                       <td style={tableCellStyle}><span style={chipStyle(meta.tone)}>{meta.label}</span></td>
@@ -154,7 +155,7 @@ export default function NppDebtsPage() {
           {selected ? (
             <>
               <h2 style={{ margin: '0 0 4px', color: ui.text, fontSize: 18, fontWeight: 800 }}>{selected.factoryOrgName ?? selected.partnerName}</h2>
-              <p style={{ margin: 0, color: ui.textMuted, fontSize: 13 }}>Đơn hàng: {selected.orderCode ?? '-'}</p>
+              <p style={{ margin: 0, color: ui.textMuted, fontSize: 13 }}>Đơn hàng: {shortCode(selected.orderCode)}</p>
               <div style={{ display: 'flex', gap: 24, margin: '14px 0' }}>
                 <div><small style={{ color: ui.textFaint }}>Tổng nợ</small><p style={{ margin: 0, fontWeight: 800, color: ui.text, fontSize: 18 }}>{currency(selected.amount)}</p></div>
                 <div><small style={{ color: ui.textFaint }}>Còn lại</small><p style={{ margin: 0, fontWeight: 800, color: ui.danger, fontSize: 18 }}>{currency(selected.amount - selected.paidAmount)}</p></div>

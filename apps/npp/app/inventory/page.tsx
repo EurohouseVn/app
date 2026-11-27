@@ -6,6 +6,7 @@ import type { AdjustProfileStockInput, CatalogSystem, CreateOrderInput, Inventor
 import { NppPage } from '../../src/NppPage';
 import { apiGet, apiSend } from '../../src/lib/api';
 import { chipStyle, currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, primaryButtonStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
+import { shortCode } from '../../src/lib/short-code';
 
 type SystemGroup = {
   code: string;
@@ -303,7 +304,7 @@ export default function NppInventoryPage() {
                 const pending = shipment.status === 'ADMIN_SENT_NPP';
                 return (
                   <tr key={shipment.id}>
-                    <td style={{ ...tableCellStyle, fontWeight: 800 }}>{shipment.code}</td>
+                    <td style={{ ...tableCellStyle, fontWeight: 800 }} title={shipment.code}>{shortCode(shipment.code)}</td>
                     <td style={tableCellStyle}>{new Date(shipment.createdAt).toLocaleDateString('vi-VN')}</td>
                     <td style={tableCellStyle}>{bars.toLocaleString('vi-VN')} cây</td>
                     <td style={tableCellStyle}>{shipment.totalKg.toFixed(1)} kg</td>

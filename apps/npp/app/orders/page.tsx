@@ -8,6 +8,7 @@ import type { NppColorPriceItem, NppPriceBasis, PaginatedOrders } from '@eurohou
 import { NppPage } from '../../src/NppPage';
 import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
 import { currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
+import { shortCode } from '../../src/lib/short-code';
 
 type ApiOrder = {
   id: string;
@@ -304,7 +305,7 @@ export default function NppOrdersPage() {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id} onClick={() => selectOrder(order)} style={{ cursor: 'pointer', background: selected?.id === order.id ? ui.brandSoft : 'transparent' }}>
-                      <td style={{ ...tableCellStyle, fontWeight: 700 }}>{order.code}</td>
+                      <td style={{ ...tableCellStyle, fontWeight: 700 }} title={order.code}>{shortCode(order.code)}</td>
                       <td style={tableCellStyle}>{order.factoryName || 'Chưa xác định'}</td>
                       <td style={tableCellStyle}>{order.pricingStatus === 'FINALIZED' ? currency(order.totalAmount) : <span style={{ color: ui.textFaint }}>Chờ cân và chốt giá</span>}</td>
                       <td style={tableCellStyle}><StatusChip status={order.status} /></td>
@@ -325,7 +326,7 @@ export default function NppOrdersPage() {
           <div style={panelStyle}>
             {selected ? (
               <>
-                <h2 style={{ margin: '0 0 4px', color: ui.text, fontSize: 19, fontWeight: 800 }}>{selected.code}</h2>
+                <h2 style={{ margin: '0 0 4px', color: ui.text, fontSize: 19, fontWeight: 800 }} title={selected.code}>{shortCode(selected.code)}</h2>
                 <p style={{ margin: 0, color: ui.textMuted, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <MapPin size={13} /> {selected.factoryName || factoryContact?.name || 'Chưa xác định'}
                 </p>
