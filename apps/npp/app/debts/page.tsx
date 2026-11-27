@@ -124,7 +124,7 @@ export default function NppDebtsPage() {
         <strong style={{ display: 'block', fontSize: 22, color: ui.text }}>{currency(totalOpen)}</strong>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 440px)', gap: 20, alignItems: 'start' }} className="npp-split">
         <div style={{ ...panelStyle, padding: 0 }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>

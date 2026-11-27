@@ -84,6 +84,7 @@ export const tableHeadStyle: CSSProperties = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: 0.4,
+  whiteSpace: 'nowrap',
 };
 
 export const tableCellStyle: CSSProperties = {
@@ -91,6 +92,8 @@ export const tableCellStyle: CSSProperties = {
   borderBottom: `1px solid ${ui.border}`,
   color: ui.text,
   fontSize: 14,
+  whiteSpace: 'nowrap', // số tiền, tên xưởng, mã không được ngắt dòng; bảng đã có thanh cuộn ngang
+  fontVariantNumeric: 'tabular-nums',
 };
 
 export const eyebrowStyle: CSSProperties = {

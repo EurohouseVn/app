@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, FileSpreadsheet, FileText, MapPin, PackageOpen, Plus, Printer, Truck, UserRound } from 'lucide-react';
 import { fixLegacyUtf8Mojibake } from '@eurohouse/types';
-import type { PaginatedOrders } from '@eurohouse/types';
+import type { NppColorPriceItem, NppPriceBasis, PaginatedOrders } from '@eurohouse/types';
 import { NppPage } from '../../src/NppPage';
 import { apiBlob, apiGet, apiSend } from '../../src/lib/api';
 import { currency, eyebrowStyle, ghostButtonStyle, inputStyle, labelStyle, pageTitleStyle, panelStyle, subtitleStyle, tableCellStyle, tableHeadStyle, ui } from '../../src/ui';
@@ -37,6 +37,7 @@ type ApiOrder = {
     organization?: { name?: string; address?: string; phone?: string; email?: string };
   };
   items: { productCode: string; productName: string; quantity: number; totalKg: number; colorCode: string; totalPrice?: number }[];
+  colorWeighings?: { colorCode: string; basis: NppPriceBasis; actualKg: number; unitPricePerKg: number; amount: number }[];
   histories: { status: string; title: string; note: string; actor: string; createdAt: string }[];
 };
 
@@ -71,6 +72,20 @@ function StatusChip({ status }: { status: string }) {
   return <span style={{ background: meta.soft, color: meta.fg, borderRadius: 999, padding: '4px 10px', fontWeight: 700, fontSize: 12 }}>{fixVietnamese(meta.label)}</span>;
 }
 
+const BASIS_LABEL: Record<NppPriceBasis, string> = { BUNDLE: 'Bó nguyên (chưa bóc nilon)', BARE: 'Nhôm trần (không gồm vỏ)' };
+type WeighCell = { kg: string; price: string };
+const weighKey = (color: string, basis: NppPriceBasis) => `${color}:${basis}`;
+
+/** Kg theo tỷ trọng của từng màu trong đơn, theo thứ tự màu xuất hiện. */
+function theoreticalByColor(order: ApiOrder) {
+  const map = new Map<string, number>();
+  for (const item of order.items) {
+    const color = (item.colorCode || '').trim();
+    map.set(color, (map.get(color) ?? 0) + (item.totalKg || 0));
+  }
+  return [...map.entries()].map(([colorCode, kg]) => ({ colorCode, kg: Number(kg.toFixed(2)) }));
+}
+
 function estimatedKg(order: ApiOrder) {
   return order.theoreticalTotalKg || order.items.reduce((sum, item) => sum + (item.totalKg || 0), 0) || order.totalKg;
 }
@@ -81,8 +96,8 @@ export default function NppOrdersPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('ALL');
   const [selected, setSelected] = useState<ApiOrder | null>(null);
-  const [deliveryActualKg, setDeliveryActualKg] = useState('');
-  const [deliveryUnitPrice, setDeliveryUnitPrice] = useState('');
+  const [colorPrices, setColorPrices] = useState<NppColorPriceItem[]>([]);
+  const [weigh, setWeigh] = useState<Record<string, WeighCell>>({});
   const [deliveryDiscount, setDeliveryDiscount] = useState('0');
   const [deliverySurcharge, setDeliverySurcharge] = useState('0');
   const [deliveryPricingNote, setDeliveryPricingNote] = useState('');
@@ -96,15 +111,11 @@ export default function NppOrdersPage() {
       return;
     }
     setSelected(order);
-    setDeliveryActualKg((order.actualTotalKg ?? order.theoreticalTotalKg ?? order.totalKg)?.toFixed(2) || '');
-    setDeliveryUnitPrice(order.finalUnitPricePerKg ? String(order.finalUnitPricePerKg) : '');
     setDeliveryDiscount(String(order.pricingDiscountAmount ?? 0));
     setDeliverySurcharge(String(order.pricingSurchargeAmount ?? 0));
     setDeliveryPricingNote(order.pricingNote ?? '');
     apiGet<ApiOrder>(`/npp/orders/${order.id}`).then((detail) => {
       setSelected(detail);
-      setDeliveryActualKg((detail.actualTotalKg ?? detail.theoreticalTotalKg ?? detail.totalKg)?.toFixed(2) || '');
-      setDeliveryUnitPrice(detail.finalUnitPricePerKg ? String(detail.finalUnitPricePerKg) : '');
       setDeliveryDiscount(String(detail.pricingDiscountAmount ?? 0));
       setDeliverySurcharge(String(detail.pricingSurchargeAmount ?? 0));
       setDeliveryPricingNote(detail.pricingNote ?? '');
@@ -124,6 +135,24 @@ export default function NppOrdersPage() {
   }, [selectOrder]);
 
   useEffect(() => { load(1, status); }, [load, status]);
+  useEffect(() => { apiGet<NppColorPriceItem[]>('/npp/color-prices').then(setColorPrices).catch(() => setColorPrices([])); }, []);
+
+  // Mỗi đơn chọn: mỗi màu hai dòng cân (bó nguyên, nhôm trần). Mặc định đặt kg theo tỷ trọng vào dòng bó nguyên, giá lấy từ bảng giá của NPP.
+  useEffect(() => {
+    if (!selected) { setWeigh({}); return; }
+    const next: Record<string, WeighCell> = {};
+    for (const { colorCode, kg } of theoreticalByColor(selected)) {
+      const price = colorPrices.find((p) => p.colorCode === colorCode);
+      next[weighKey(colorCode, 'BUNDLE')] = { kg: kg.toFixed(2), price: price?.bundlePricePerKg ? String(price.bundlePricePerKg) : '' };
+      next[weighKey(colorCode, 'BARE')] = { kg: '', price: price?.barePricePerKg ? String(price.barePricePerKg) : '' };
+    }
+    setWeigh(next);
+  }, [selected?.id, colorPrices]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function setCell(color: string, basis: NppPriceBasis, patch: Partial<WeighCell>) {
+    setWeigh((cur) => ({ ...cur, [weighKey(color, basis)]: { ...(cur[weighKey(color, basis)] ?? { kg: '', price: '' }), ...patch } }));
+  }
+  const colorName = (code: string) => colorPrices.find((p) => p.colorCode === code)?.colorName || code;
 
   async function receive(order: ApiOrder) {
     setMessage('');
@@ -140,29 +169,29 @@ export default function NppOrdersPage() {
   async function createDelivery(order: ApiOrder) {
     setMessage('');
     setError('');
-    const actualKg = Number(deliveryActualKg);
-    const unitPrice = Number(deliveryUnitPrice);
     const discountAmount = Number(deliveryDiscount || 0);
     const surchargeAmount = Number(deliverySurcharge || 0);
-    if (!Number.isFinite(actualKg) || actualKg <= 0) {
-      setError('Nhập kg thực cân của đơn giao trước khi tạo phiếu.');
-      return;
+    const colorLines = theoreticalByColor(order).flatMap(({ colorCode }) => (['BUNDLE', 'BARE'] as NppPriceBasis[]).map((basis) => {
+      const cell = weigh[weighKey(colorCode, basis)] ?? { kg: '', price: '' };
+      return { colorCode, basis, actualKg: Number(cell.kg || 0), unitPricePerKg: Number(cell.price || 0) };
+    })).filter((l) => l.actualKg > 0);
+    for (const { colorCode, kg } of theoreticalByColor(order)) {
+      const total = colorLines.filter((l) => l.colorCode === colorCode).reduce((sum, l) => sum + l.actualKg, 0);
+      if (total <= 0) return setError(`Nhập kg cân thực cho màu ${colorName(colorCode)}.`);
+      if (total + 0.01 < kg) return setError(`Màu ${colorName(colorCode)}: kg thực ${total.toFixed(2)} thấp hơn kg theo tỷ trọng ${kg.toFixed(2)}.`);
     }
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      setError('Nhập đơn giá NPP áp dụng cho đơn giao.');
-      return;
-    }
+    if (colorLines.some((l) => !(l.unitPricePerKg > 0))) return setError('Nhập đơn giá cho mọi dòng đã nhập kg (hoặc thiết lập ở trang Bảng giá màu).');
     if (!Number.isFinite(discountAmount) || discountAmount < 0 || !Number.isFinite(surchargeAmount) || surchargeAmount < 0) {
       setError('Giảm giá hoặc phụ phí không hợp lệ.');
       return;
     }
-    const finalAmount = Math.round(actualKg * unitPrice) - Math.round(discountAmount) + Math.round(surchargeAmount);
+    const finalAmount = colorLines.reduce((sum, l) => sum + Math.round(l.actualKg * l.unitPricePerKg), 0) - Math.round(discountAmount) + Math.round(surchargeAmount);
     if (finalAmount <= 0) return setError('Thành tiền chính thức phải lớn hơn 0.');
-    if (!window.confirm(`Xác nhận chốt đơn ${order.code}\n${actualKg.toLocaleString('vi-VN')} kg × ${unitPrice.toLocaleString('vi-VN')} đ/kg\nThành tiền: ${currency(finalAmount)}\n\nSau khi xác nhận, giá trị này sẽ được gửi tới CSSX.`)) return;
+    const totalKgNow = colorLines.reduce((sum, l) => sum + l.actualKg, 0);
+    if (!window.confirm(`Xác nhận chốt đơn ${order.code}\n${colorLines.length} dòng cân theo màu, tổng ${totalKgNow.toLocaleString('vi-VN')} kg\nThành tiền: ${currency(finalAmount)}\n\nSau khi xác nhận, giá trị này sẽ được gửi tới CSSX và kho NPP tự trừ.`)) return;
     try {
       await apiSend(`/npp/orders/${order.id}/delivery`, 'POST', {
-        actualTotalKg: actualKg,
-        finalUnitPricePerKg: unitPrice,
+        colorLines,
         discountAmount,
         surchargeAmount,
         pricingNote: deliveryPricingNote.trim() || undefined,
@@ -232,11 +261,16 @@ export default function NppOrdersPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const factoryContact = selected?.createdBy?.organization;
-  const pricingPreview = Math.max(0,
-    Math.round(Number(deliveryActualKg || 0) * Number(deliveryUnitPrice || 0))
-      - Math.round(Number(deliveryDiscount || 0))
-      + Math.round(Number(deliverySurcharge || 0)),
-  );
+  const weighTotals = (() => {
+    let kg = 0; let amount = 0;
+    for (const [key, cell] of Object.entries(weigh)) {
+      void key;
+      const k = Number(cell.kg || 0); const price = Number(cell.price || 0);
+      if (k > 0) { kg += k; amount += Math.round(k * price); }
+    }
+    return { kg, amount };
+  })();
+  const pricingPreview = Math.max(0, weighTotals.amount - Math.round(Number(deliveryDiscount || 0)) + Math.round(Number(deliverySurcharge || 0)));
 
   return (
     <NppPage>
@@ -260,7 +294,7 @@ export default function NppOrdersPage() {
       {orders.length === 0 ? (
         <div style={{ ...panelStyle, marginTop: 16, textAlign: 'center', padding: 48, color: ui.textFaint }}>Chưa có đơn hàng nào ở trạng thái này.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 20, marginTop: 4, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(380px, 480px)', gap: 20, marginTop: 4, alignItems: 'start' }} className="npp-split">
           <div style={{ ...panelStyle, padding: 0 }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -325,6 +359,18 @@ export default function NppOrdersPage() {
                   </div>
                 ))}
 
+                {selected.colorWeighings && selected.colorWeighings.length > 0 ? (
+                  <>
+                    <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18 }}>Cân và giá theo màu</h3>
+                    {selected.colorWeighings.map((w) => (
+                      <div key={`${w.colorCode}-${w.basis}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, padding: '8px 0', borderBottom: `1px solid ${ui.border}`, fontSize: 13 }}>
+                        <span style={{ color: ui.text }}><strong>{colorName(w.colorCode)}</strong> · {BASIS_LABEL[w.basis]}<br /><small style={{ color: ui.textFaint }}>{w.actualKg.toLocaleString('vi-VN')} kg × {currency(w.unitPricePerKg)}/kg</small></span>
+                        <strong style={{ color: ui.text }}>{currency(w.amount)}</strong>
+                      </div>
+                    ))}
+                  </>
+                ) : null}
+
                 <h3 style={{ color: ui.text, fontSize: 14, fontWeight: 700, marginTop: 18, display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={15} /> Lịch sử xử lý</h3>
                 {selected.histories.map((event) => {
                   const meta = statusMeta[event.status] ?? { label: event.title, fg: ui.brand };
@@ -346,14 +392,31 @@ export default function NppOrdersPage() {
                   {['NPP_REVIEWING', 'CONFIRMED', 'RESERVED'].includes(selected.status) ? (
                     <div style={{ width: '100%', display: 'grid', gap: 12, padding: 14, border: `1px solid ${ui.border}`, borderRadius: 12, background: ui.surfaceMuted }}>
                       <strong style={{ color: ui.text }}>Cân hàng và chốt giá giao CSSX</strong>
-                      <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>Kg dự tính: {estimatedKg(selected).toFixed(2)} kg. Giá chỉ được gửi tới CSSX sau bước xác nhận này.</p>
+                      <p style={{ margin: 0, color: ui.textMuted, fontSize: 12 }}>Kg dự tính: {estimatedKg(selected).toFixed(2)} kg. Mỗi màu cân và tính giá riêng, trong một màu tách hai dòng: bó nguyên và nhôm trần. Giá chỉ được gửi tới CSSX sau bước xác nhận này.</p>
+                      {theoreticalByColor(selected).map(({ colorCode, kg }) => (
+                        <div key={colorCode} style={{ border: `1px solid ${ui.border}`, borderRadius: 10, background: ui.surface, padding: 12, display: 'grid', gap: 8 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                            <strong style={{ color: ui.text }}>{colorName(colorCode)}</strong>
+                            <small style={{ color: ui.textFaint }}>Theo tỷ trọng: {kg.toFixed(2)} kg</small>
+                          </div>
+                          {(['BUNDLE', 'BARE'] as NppPriceBasis[]).map((basis) => {
+                            const cell = weigh[weighKey(colorCode, basis)] ?? { kg: '', price: '' };
+                            const amount = Math.round(Number(cell.kg || 0) * Number(cell.price || 0));
+                            return (
+                              <div key={basis} style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 8, alignItems: 'end' }}>
+                                <div style={{ fontSize: 12, color: ui.textMuted, fontWeight: 700 }}>{BASIS_LABEL[basis]}{amount > 0 ? <div style={{ color: ui.brandText }}>{currency(amount)}</div> : null}</div>
+                                <label style={labelStyle}>Kg thực cân
+                                  <input style={{ ...inputStyle, height: 36 }} type="number" min="0" step="0.01" value={cell.kg} onChange={(e) => setCell(colorCode, basis, { kg: e.target.value })} placeholder="0" />
+                                </label>
+                                <label style={labelStyle}>Đơn giá (đ/kg)
+                                  <input style={{ ...inputStyle, height: 36 }} type="number" min="0" step="500" value={cell.price} onChange={(e) => setCell(colorCode, basis, { price: e.target.value })} placeholder="Bảng giá" />
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: 10 }}>
-                        <label style={labelStyle}>Kg thực cân toàn đơn
-                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="0.01" value={deliveryActualKg} onChange={(e) => setDeliveryActualKg(e.target.value)} placeholder={estimatedKg(selected).toFixed(2)} />
-                        </label>
-                        <label style={labelStyle}>Đơn giá NPP (đ/kg)
-                          <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="100" value={deliveryUnitPrice} onChange={(e) => setDeliveryUnitPrice(e.target.value)} placeholder="Nhập đơn giá giao thực tế" />
-                        </label>
                         <label style={labelStyle}>Giảm giá (đ)
                           <input style={{ ...inputStyle, height: 38 }} type="number" min="0" step="1000" value={deliveryDiscount} onChange={(e) => setDeliveryDiscount(e.target.value)} />
                         </label>
@@ -365,7 +428,7 @@ export default function NppOrdersPage() {
                         <input style={{ ...inputStyle, height: 38 }} value={deliveryPricingNote} onChange={(e) => setDeliveryPricingNote(e.target.value)} placeholder="Chiết khấu, vận chuyển hoặc thỏa thuận riêng" />
                       </label>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <div><small style={{ color: ui.textFaint }}>Thành tiền sẽ ghi nhận</small><div style={{ color: ui.brandText, fontSize: 20, fontWeight: 900 }}>{currency(pricingPreview)}</div></div>
+                        <div><small style={{ color: ui.textFaint }}>Thành tiền sẽ ghi nhận · {weighTotals.kg.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} kg</small><div style={{ color: ui.brandText, fontSize: 20, fontWeight: 900 }}>{currency(pricingPreview)}</div></div>
                         <button onClick={() => createDelivery(selected)} style={{ ...ghostButtonStyle, background: ui.brand, color: '#fff' }}><Truck size={14} /> Xác nhận giá và tạo đơn giao</button>
                       </div>
                     </div>

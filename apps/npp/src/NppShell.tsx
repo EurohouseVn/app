@@ -37,6 +37,7 @@ const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   { label: 'Trạm in', href: '/print-station', icon: Printer },
   { label: 'Báo giá', href: '/quotations', icon: FileText },
   { label: 'Công trình', href: '/projects', icon: Building2 },
+  { label: 'Bảng giá màu', href: '/prices', icon: FileText },
   { label: 'Đối chiếu', href: '/reconciliation', icon: Scale },
   { label: 'Công nợ', href: '/debts', icon: HandCoins },
   { label: 'Báo cáo', href: '/reports', icon: FileBarChart },
@@ -52,7 +53,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
   const pathname = usePathname();
 
   return (
-    <main className="npp-shell" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100vh', background: ui.bg }}>
+    <main className="npp-shell" style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)', minHeight: '100vh', background: ui.bg }}>
       <aside
         className="npp-sidebar"
         style={{
@@ -130,7 +131,7 @@ export function NppShell({ user, onLogout, children }: { user: DemoAdminUser; on
           <LogOut size={17} /> Đăng xuất
         </button>
       </aside>
-      <section className="npp-content" style={{ padding: 32, maxWidth: 1280, width: '100%', minWidth: 0 }}>{children}</section>
+      <section className="npp-content" style={{ padding: '28px clamp(16px, 2.2vw, 40px)', maxWidth: 1920, width: '100%', minWidth: 0 }}>{children}</section>
     </main>
   );
 }

@@ -72,6 +72,13 @@ button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+/* Danh sách + chi tiết: chi tiết là cột cố định bên phải, màn vừa thì xếp chồng thay vì ép bảng hẹp lại. */
+@media (max-width: 1180px) {
+  .npp-split {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 /* Khung NPP chuyển từ sidebar sang thanh điều hướng ngang trên màn hình nhỏ. */
 @media (max-width: 760px) {
   .npp-shell {
